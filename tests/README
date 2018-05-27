@@ -1,0 +1,7 @@
+
+Test cases:
+  - test1.sam extracted from ERR315432, these are all the reads (including multi-mappers)
+    that support these star intron calls:
+
+    chr1     4972750 4975850 1       1       0       8       11      48
+    chr1     5097551 5098801 1       1       0       7       3       50  
