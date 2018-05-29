@@ -170,11 +170,10 @@ static void print_intron_bed(const vector<Junction*>& juncs,
 // entry point
 int main(int argc, char *argv[]) {
     CmdParser opts(argc, argv);
-    JunctionsExtractor je(opts.bam_file,
-                          opts.min_anchor_length,
+    JunctionsExtractor je(opts.min_anchor_length,
                           opts.min_intron_length, opts.max_intron_length,
                           opts.strandness);
-    je.identify_junctions_from_bam();
+    je.identify_junctions_from_bam(opts.bam_file);
     vector<Junction*> juncs = je.get_junctions_sorted();
     if (opts.junction_bed != "") {
         print_anchor_bed(juncs, opts.junction_bed);

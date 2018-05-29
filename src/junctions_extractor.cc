@@ -265,7 +265,8 @@ void JunctionsExtractor::save_targets(bam_hdr_t *header) {
 }
 
 // The workhorse - identifies junctions from BAM
-void JunctionsExtractor::identify_junctions_from_bam() {
+void JunctionsExtractor::identify_junctions_from_bam(const string& bam) {
+    bam_ = bam;
     samFile *in_sam = sam_open(bam_.c_str(), "r");
     if (in_sam == NULL) {
         throw runtime_error("Unable to open BAM/SAM/CRAM file: " + bam_);

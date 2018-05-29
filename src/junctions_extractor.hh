@@ -166,8 +166,6 @@ public:
     static const unsigned RF_STRANDED = 1;
     static const unsigned FR_STRANDED = 2;
 private:
-    // Alignment file
-    string bam_;
     // Minimum anchor length for junctions
     // Junctions need atleast this many bp overlap
     // on both ends.  Mismatch bases are not included in the count.
@@ -178,6 +176,9 @@ private:
     uint32_t max_intron_length_;
     //strandness of data; 0 = unstranded, 1 = RF, 2 = FR
     int strandness_;
+
+    // Alignment file, used for error messsages
+    string bam_;
 
     // target index to target (chrom) name
     vector<string> targets_;
@@ -206,12 +207,10 @@ private:
         assert(false); // Default constructor not allowed
     }
 public:
-    JunctionsExtractor(string bam,
-                       uint32_t min_anchor_length,
+    JunctionsExtractor(uint32_t min_anchor_length,
                        uint32_t min_intron_length,
                        uint32_t max_intron_length,
                        int strandness):
-        bam_(bam),
         min_anchor_length_(min_anchor_length),
         min_intron_length_(min_intron_length),
         max_intron_length_(max_intron_length),
@@ -219,7 +218,7 @@ public:
     }
     
     // Identify exon-exon junctions
-    void identify_junctions_from_bam();
+    void identify_junctions_from_bam(const string& bam);
 
     // Print BED with anchors as blocks and intron as gap.
     void print_anchor_bed(ostream& out);
