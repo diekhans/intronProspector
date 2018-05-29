@@ -56,13 +56,14 @@ static string uint32_to_string(uint32_t num) {
 }
 
 // Do some basic qc on the junction
-bool JunctionsExtractor::junction_qc(uint32_t anchor_start, uint32_t anchor_end,
-                                     uint32_t thick_start, uint32_t thick_end) {
-    if ((anchor_end - anchor_start < min_intron_length_) ||
-        (anchor_end - anchor_start > max_intron_length_)) {
+bool JunctionsExtractor::junction_qc(uint32_t anchor_start, uint32_t intron_start,
+                                     uint32_t intron_end, uint32_t anchor_end,
+                                     uint32_t left_mismatch_cnt, uint32_t right_mismatch_cnt) {
+    if ((intron_end - intron_start < min_intron_length_) ||
+        (intron_end - intron_start > max_intron_length_)) {
         return false;
-    } else if ((anchor_start - thick_start < min_anchor_length_) ||
-               (thick_end - anchor_end < min_anchor_length_)) {
+    } else if (((intron_start - anchor_start) - left_mismatch_cnt < min_anchor_length_) ||
+               ((anchor_end - intron_end) - right_mismatch_cnt < min_anchor_length_)) {
         return false;
     } else {
         return true;
@@ -85,76 +86,48 @@ string JunctionsExtractor::make_junction_key(const string& chrom, char strand,
 }
 
 // Add a junction to the junctions map
-// The read_count field is the number of reads supporting the junction.
 void JunctionsExtractor::add_junction(const string& chrom, char strand,
-                                      uint32_t anchor_start, uint32_t anchor_end,
-                                      uint32_t thick_start, uint32_t thick_end) {
-    // Check junction_qc
-    if (!junction_qc(anchor_start, anchor_end, thick_start, thick_end)) {
-        return;
-    }
-
+                                      uint32_t anchor_start, uint32_t intron_start,
+                                      uint32_t intron_end, uint32_t anchor_end) {
     // Construct key chr:start-end:strand
-    string key = make_junction_key(chrom, strand, thick_start, thick_end);
+    string key = make_junction_key(chrom, strand, intron_start, intron_end);
 
     // Check if new junction
     Junction *junc = NULL;
     if (!junctions_.count(key)) {
-        junc = new Junction(chrom, anchor_start, anchor_end,
-                            thick_start, thick_end, strand);
+        junc = new Junction(chrom, intron_start, intron_end, anchor_start, anchor_end, strand);
         junctions_[key] = junc;
     } else {
          // existing junction
         junc = junctions_[key];
         // Check if thick starts are any better
-        if (thick_start < junc->thick_start)
-            junc->thick_start = thick_start;
-        if (thick_end > junc->thick_end)
-            junc->thick_end = thick_end;
+        if (anchor_start < junc->anchor_start)
+            junc->anchor_start = anchor_start;
+        if (anchor_end > junc->anchor_end)
+            junc->anchor_end = anchor_end;
     }
     junc->read_count += 1;
 }
 
-#if 0 // FIXME
-// Print all the junctions - this function needs work
-vector<Junction> JunctionsExtractor::get_all_junctions() {
-    return junctions_vector_;
+// Validate a junction and save if it passes.
+void JunctionsExtractor::process_junction(const string& chrom, char strand,
+                                          uint32_t anchor_start, uint32_t intron_start,
+                                          uint32_t intron_end, uint32_t anchor_end,
+                                          uint32_t left_mismatch_cnt, uint32_t right_mismatch_cnt) {
+    if (junction_qc(anchor_start, intron_start, intron_end, anchor_end, left_mismatch_cnt, right_mismatch_cnt)) {
+        add_junction(chrom, strand, anchor_start, intron_start, intron_end, anchor_end);
+    }
 }
 
 // Print all the junctions - this function needs work
-void JunctionsExtractor::print_all_junctions(ostream& out) {
-    ofstream fout;
-    if (output_file_ != string("NA")) {
-        fout.open(output_file_.c_str());
-    }
-    // Sort junctions by position
-    if (!junctions_sorted_) {
-        create_junctions_vector();
-        sort_junctions(junctions_vector_);
-        junctions_sorted_ = true;
-    }
-    for (vector<Junction> :: iterator it = junctions_vector_.begin();
-        it != junctions_vector_.end(); it++) {
-        Junction j1 = *it;
-        if (j1.has_left_min_anchor && j1.has_right_min_anchor) {
-            if (fout.is_open())
-                j1.print(fout);
-            else
-                j1.print(out);
-        }
-    }
-    if (fout.is_open())
-        fout.close();
-}
-#else
-// Print all the junctions - this function needs work
-void JunctionsExtractor::print_all_junctions(ostream& out) {
+vector<Junction*> JunctionsExtractor::get_junctions_sorted() {
+    vector<Junction*> juncs;
     for (map<string, Junction*>::iterator it = junctions_.begin(); it != junctions_.end(); it++) {
-        Junction *junc = it->second;
-        junc->print(out);
+        juncs.push_back(it->second);
     }
+    sort_junctions(juncs);
+    return juncs;
 }
-#endif
 
 // Get the strand from the XS aux tag
 char JunctionsExtractor::get_junction_strand_XS(bam1_t *aln) {
@@ -179,13 +152,13 @@ char JunctionsExtractor::get_junction_strand_flag(bam1_t *aln) {
     int first_strand = !bool_strandness ^ first_in_pair ^ reversed;
     int second_strand = !bool_strandness ^ second_in_pair ^ mate_reversed;
     char strand;
-    if (first_strand){
+    if (first_strand) {
         strand = '+';
     } else {
         strand = '-';
     }
     // if strand inferences from first and second in pair don't agree, we've got a problem
-    if (first_strand == second_strand){
+    if (first_strand == second_strand) {
         return strand;
     } else {
         return '.';
@@ -194,7 +167,7 @@ char JunctionsExtractor::get_junction_strand_flag(bam1_t *aln) {
 
 // Get the strand
 char JunctionsExtractor::get_junction_strand(bam1_t *aln) {
-    if (strandness_ != UNSTRANDED){
+    if (strandness_ != UNSTRANDED) {
         return get_junction_strand_flag(aln);
     } else {
         return get_junction_strand_XS(aln);
@@ -213,9 +186,11 @@ int JunctionsExtractor::parse_alignment_into_junctions(bam_hdr_t *header, bam1_t
     uint32_t *cigar = bam_get_cigar(aln);
 
     uint32_t anchor_start = read_pos;
+    uint32_t intron_start = read_pos;
+    uint32_t intron_end = 0;
     uint32_t anchor_end = 0;
-    uint32_t thick_start = read_pos;
-    uint32_t thick_end = 0;
+    uint32_t left_mismatch_cnt = 0;   // mismatches in left anchor
+    uint32_t right_mismatch_cnt = 0;  // mismatches in right anchor
     bool started_junction = false;
     for (int i = 0; i < n_cigar; ++i) {
         char op = bam_cigar_opchr(cigar[i]);
@@ -223,52 +198,59 @@ int JunctionsExtractor::parse_alignment_into_junctions(bam_hdr_t *header, bam1_t
         switch(op) {
             case 'N': // skipped region from the reference
                 if (!started_junction) {
-                    anchor_end = anchor_start + len;
-                    thick_end = anchor_end;
+                    intron_end = intron_start + len;
+                    anchor_end = intron_end;
                     // Start the first one and remains started
                     started_junction = true;
                 } else {
                     // Add the previous junction
-                    add_junction(chrom, strand, anchor_start, anchor_end, thick_start, thick_end);
-                    thick_start = anchor_end;
-                    anchor_start = thick_end;
-                    anchor_end = anchor_start + len;
-                    thick_end = anchor_end;
+                    process_junction(chrom, strand, anchor_start, intron_start, intron_end, anchor_end, left_mismatch_cnt, right_mismatch_cnt);
+                    anchor_start = intron_end;
+                    intron_start = anchor_end;
+                    intron_end = intron_start + len;
+                    anchor_end = intron_end;
                     // For clarity - the next junction is now open
                     started_junction = true;
                 }
                 break;
             case '=':  // sequence match
             case 'M':  // alignment match (can be a sequence match or mismatch)
-                if (!started_junction)
-                    anchor_start += len;
-                else
-                    thick_end += len;
-                break;
-            // No mismatches allowed in anchor
-            case 'D':  // deletion from the reference
-            case 'X':  // sequence mismatch
-                // FIXME: do we want to keep this restriction?
                 if (!started_junction) {
-                    anchor_start += len;
-                    thick_start = anchor_start;
+                    intron_start += len;
                 } else {
-                    add_junction(chrom, strand, anchor_start, anchor_end, thick_start, thick_end);
+                    anchor_end += len;
+                }
+                break;
+            case 'X':  // sequence mismatch
+                if (!started_junction) {
+                    intron_start += len;
+                    left_mismatch_cnt += len;
+                } else {
+                    right_mismatch_cnt += len;
+                    anchor_end += len;
+                }
+                break;
+            case 'D':  // deletion from the reference
+                if (!started_junction) {
+                    intron_start += len;
+                    anchor_start = intron_start;
+                } else {
+                    process_junction(chrom, strand, anchor_start, intron_start, intron_end, anchor_end, left_mismatch_cnt, right_mismatch_cnt);
                     // Don't include these in the next anchor
-                    anchor_start = thick_end + len;
-                    thick_start = anchor_start;
+                    intron_start = anchor_end + len;
+                    anchor_start = intron_start;
                 }
                 started_junction = false;
                 break;
             case 'I':  // insertion to the reference
             case 'S':  // soft clipping (clipped sequences present in SEQ)
-                if (!started_junction)
-                    thick_start = anchor_start;
-                else {
-                    add_junction(chrom, strand, anchor_start, anchor_end, thick_start, thick_end);
+                if (!started_junction) {
+                    anchor_start = intron_start;
+                } else {
+                    process_junction(chrom, strand, anchor_start, intron_start, intron_end, anchor_end, left_mismatch_cnt, right_mismatch_cnt);
                     // Don't include these in the next anchor
-                    anchor_start = thick_end;
-                    thick_start = anchor_start;
+                    intron_start = anchor_end;
+                    anchor_start = intron_start;
                 }
                 started_junction = false;
                 break;
@@ -279,7 +261,7 @@ int JunctionsExtractor::parse_alignment_into_junctions(bam_hdr_t *header, bam1_t
         }
     }
     if (started_junction) {
-        add_junction(chrom, strand, anchor_start, anchor_end, thick_start, thick_end);
+        process_junction(chrom, strand, anchor_start, intron_start, intron_end, anchor_end, left_mismatch_cnt, right_mismatch_cnt);
     }
     return 0;
 }
@@ -311,15 +293,4 @@ void JunctionsExtractor::identify_junctions_from_bam() {
     bam_destroy1(aln);
     bam_hdr_destroy(header);
     sam_close(in);
-}
-
-// Create the junctions vector from the map
-void JunctionsExtractor::create_junctions_vector() {
-#if 0 //FIXME
-    for (map<string, Junction*> :: iterator it = junctions_.begin();
-        it != junctions_.end(); it++) {
-        Junction j1 = it->second;
-        junctions_vector_.push_back(j1);
-    }
-#endif
 }

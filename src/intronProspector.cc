@@ -32,85 +32,158 @@ DEALINGS IN THE SOFTWARE.  */
 
 #include <getopt.h>
 #include <algorithm>
+#include <fstream>
 #include "junctions_extractor.hh"
 
 using namespace std;
 
-#if 0
-//Usage statement for this tool
-static int usage(const string& prog,
-                 const string& msg) {
-    
-    out << "Usage:" 
-        << "\t\t" << "" << endl;
-    out << "Options:" << endl;
-    out << "\t\t" << "-a INT\tMinimum anchor length. Junctions which satisfy a minimum \n"
-        << "\t\t\t " << "anchor length on both sides are reported. [8]" << endl;
-    out << "\t\t" << "-i INT\tMinimum intron length. [70]" << endl;
-    out << "\t\t" << "-I INT\tMaximum intron length. [500000]" << endl;
-    out << "\t\t" << "-o FILE\tThe file to write output to. [STDOUT]" << endl;
-    out << "\t\t" << "-r STR\tThe region to identify junctions \n"
-        << "\t\t\t " << "in \"chr:start-end\" format. Entire BAM by default." << endl;
-    out << "\t\t" << "-s INT\tStrand specificity of RNA library preparation \n"
-        << "\t\t\t " << "(0 = unstranded, 1 = first-strand/RF, 2, = second-strand/FR). [1]" << endl;
-    out << endl;
-    return 0;
+static const uint32_t DEFAULT_MIN_ANCHOR_LENGTH = 8;
+static const uint32_t DEFAULT_MIN_INTRON_LENGTH = 70;
+static const uint32_t DEFAULT_MAX_INTRON_LENGTH = 500000;
+static const unsigned DEFAULT_STRANDED = JunctionsExtractor::UNSTRANDED;
+
+static const char *usage_msg =
+#include "manpage.h"
+    ;
+
+// Usage statement for this tool and exit non-zero.
+static void usage() {
+    cerr << usage_msg;
+    exit(1);
 }
 
-// Parse the options passed to this tool
-int main(int argc, char *argv[]) {
-    optind = 1; // Reset before parsing again.
-    int c;
-    min_anchor_length = 8;
-    min_intron_length = 70;
-    max_intron_length = 500000;
-    string bam_file = "/dev/stdin";
-    string output_file = "/dev/stdout";
-    while((c = getopt(argc, argv, "ha:i:I:o:r:s:")) != -1) {
-        switch(c) {
-            case 'a':
-                min_anchor_length = atoi(optarg);
-                break;
-            case 'i':
-                min_intron_length = atoi(optarg);
-                break;
-            case 'I':
-                max_intron_length = atoi(optarg);
-                break;
-            case 'o':
-                output_file = string(optarg);
-                break;
-#if 0 // FIXME
-            case 'r':
-                region_ = string(optarg);
-                break;
-#endif
-            case 's':
-                strandness_ = atoi(optarg);
-                break;
-            case 'h':
-                usage("");
-            case '?':
-            default:
-                usage();
-                exit(1)
+// convert a specification for strandness to constant.
+static int str_to_strandness(const string s) {
+    // case-insensitive compare
+    string su(s);
+    transform(su.begin(), su.end(), su.begin(), ::toupper);
+    if (su == "UN") {
+        return JunctionsExtractor::UNSTRANDED;
+    } else if (su == "RF") {
+        return JunctionsExtractor::RF_STRANDED;
+    } else if (su == "FR") {
+        return JunctionsExtractor::FR_STRANDED;
+    } else {
+        throw runtime_error("invalid strandness value '" + s + "', expected one of 'UN', 'RF', or 'FR' (case insensitive)");
+    }
+}
+
+
+// Parse command line
+class CmdParser {
+    public:
+    // program info
+    int print_help;
+    int print_version;
+
+    // input
+    string bam_file;
+    uint32_t min_anchor_length;
+    uint32_t min_intron_length;
+    uint32_t max_intron_length;
+    int strandness;
+
+    // output
+    string junction_bed;
+    string intron_bed;
+
+    CmdParser(int argc, char *argv[]):
+        print_help(false),
+        print_version(false),
+        bam_file("/dev/stdin"),
+        min_anchor_length(DEFAULT_MIN_ANCHOR_LENGTH),
+        min_intron_length(DEFAULT_MIN_INTRON_LENGTH),
+        max_intron_length(DEFAULT_MAX_INTRON_LENGTH),
+        strandness(JunctionsExtractor::UNSTRANDED) {
+
+        struct option long_options[] = {
+            {"help", no_argument, &print_help, 1},
+            {"version", no_argument, &print_version, 1},
+            {"min-anchor-length", required_argument, NULL, 'a'},
+            {"min-intron_length", required_argument, NULL, 'i'},
+            {"max-intron_length", required_argument, NULL, 'I'},
+            {"strandness", required_argument, NULL, 's'},
+            {"junction-bed", required_argument, NULL, 'j'},
+            {"intron-bed", required_argument, NULL, 'n'},
+            {NULL, 0, NULL, 0}
+        };
+            
+        const char *short_options = "hva:i:I:s:j:n:";
+        int c;
+        while ((c = getopt_long(argc, argv, short_options, long_options, NULL)) != -1) {
+            switch (c) {
+                case 'a':
+                    min_anchor_length = atoi(optarg);
+                    break;
+                case 'i':
+                    min_intron_length = atoi(optarg);
+                    break;
+                case 'I':
+                    max_intron_length = atoi(optarg);
+                    break;
+                case 's':
+                    strandness = str_to_strandness(optarg);
+                    break;
+                case 'j':
+                    junction_bed = optarg;
+                    break;
+                case 'n':
+                    intron_bed = optarg;
+                    break;
+                case 'h':
+                    usage();
+                case '?':
+                default:
+                    cerr << "Invalid option '" << argv[optind] << "'" << endl;
+                    usage();
+            }
+        }
+
+        if (argc - optind > 1) {
+            cerr << "Error: too many position arguments" << endl << endl;
+            usage();
+        }
+        if (argc - optind == 1) {
+            bam_file = string(argv[optind++]);
+        }
+        if (print_help) {
+            usage();
         }
     }
-    if (argc - optind >= 1) {
-        bam_ = string(argv[optind++]);
+};
+
+// Print BED with anchors as blocks and intron as gap.
+static void print_anchor_bed(const vector<Junction*>& juncs,
+                             const string& outfile) {
+    ofstream out(outfile);
+    for (vector<Junction*>::const_iterator it = juncs.begin(); it != juncs.end(); it++) {
+        (*it)->print_anchor_bed(out);
     }
-    if (optind < argc || bam_ == "NA") {
-        usage();
-        throw runtime_error("Error parsing inputs!(2)\n\n");
+}
+
+// Print BED with intron as block
+static void print_intron_bed(const vector<Junction*>& juncs,
+                             const string& outfile) {
+    ofstream out(outfile);
+    for (vector<Junction*>::const_iterator it = juncs.begin(); it != juncs.end(); it++) {
+        (*it)->print_intron_bed(out);
+    }
+}
+
+// entry point
+int main(int argc, char *argv[]) {
+    CmdParser opts(argc, argv);
+    JunctionsExtractor je(opts.bam_file,
+                          opts.min_anchor_length,
+                          opts.min_intron_length, opts.max_intron_length,
+                          opts.strandness);
+    je.identify_junctions_from_bam();
+    vector<Junction*> juncs = je.get_junctions_sorted();
+    if (opts.junction_bed != "") {
+        print_anchor_bed(juncs, opts.junction_bed);
+    }
+    if (opts.intron_bed != "") {
+        print_intron_bed(juncs, opts.intron_bed);
     }
     return 0;
 }
-#else
-// FIXME: quick hack
-int main(int argc, char *argv[]) {
-    JunctionsExtractor je("../tests/input/test1.sam");
-    je.identify_junctions_from_bam();
-    je.print_all_junctions(cout);
-}
-
-#endif

@@ -13,3 +13,7 @@ clean:
 
 savebak:
 	savebak -r hgwdev.soe.ucsc.edu intronProspector .
+
+# requires pandoc
+doc:
+	cd src && ${MAKE} doc

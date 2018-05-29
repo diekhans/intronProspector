@@ -16,6 +16,19 @@ ${OBJDIR}/%.o: %.cc
 clean:
 	rm -f ${OBJS} ${PROG} ${DEPENDS}
 
+# Generate manpage.h, which is included to generate help message.  This
+# requires pandoc, so it is checked in and only genereated by developers.
+doc:  manpage.h
+
+
+manpage.h: ../docs/intronProspector.1.md
+	pandoc -f markdown -t plain  $< >$@.txt.tmp
+	awk -f mkManHelp.awk $@.txt.tmp > $@.tmp
+	mv $@.tmp $@
+	rm -f $@.txt.tmp
+
+
+
 # don't fail on missing dependencies, they are first time the .o is generates
 -include ${DEPENDS}
 

@@ -47,38 +47,45 @@ using namespace std;
 class Junction {
 public:
     const string& chrom;
-    uint32_t start;
-    uint32_t end;
+    uint32_t intron_start;
+    uint32_t intron_end;
     char strand;
     // Number of reads supporting the junction
     unsigned int read_count;
-    // This is the start - max overhang
-    uint32_t thick_start;
+    // This is the intron_start - max overhang
+    uint32_t anchor_start;
     // This is the end + max overhang
-    uint32_t thick_end;
+    uint32_t anchor_end;
 
-    Junction(const string& chrom1, uint32_t start1, uint32_t end1,
-             uint32_t thick_start1, uint32_t thick_end1,
+    Junction(const string& chrom1, uint32_t intron_start1, uint32_t intron_end1,
+             uint32_t anchor_start1, uint32_t anchor_end1,
              char strand1):
-        chrom(chrom1), start(start1), end(end1),
-        thick_start(thick_start1), thick_end(thick_end1),
+        chrom(chrom1), intron_start(intron_start1), intron_end(intron_end1),
+        anchor_start(anchor_start1), anchor_end(anchor_end1),
         strand(strand1), read_count(0) {
     }
     Junction(const Junction& src):
-        chrom(src.chrom), start(src.start), end(src.end),
-        thick_start(src.thick_start), thick_end(src.thick_end),
+        chrom(src.chrom), intron_start(src.intron_start), intron_end(src.intron_end),
+        anchor_start(src.anchor_start), anchor_end(src.anchor_end),
         strand(src.strand), read_count(src.read_count) {
     }
 
-    // Print junction
-    void print(ostream& out) const {
-        out << chrom <<
-            "\t" << thick_start << "\t" << thick_end <<
-            "\t" << "jnc" << "\t" << read_count << "\t" << strand <<
-            "\t" << thick_start << "\t" << thick_end <<
-            "\t" << "255,0,0" << "\t" << 2 <<
-            "\t" << start - thick_start << "," << thick_end - end <<
-            "\t" << "0," << end - thick_start << endl;
+    // Print BED with anchors as blocks and intron as gap.
+    void print_anchor_bed(ostream& out) const {
+        out << chrom
+            << "\t" << anchor_start << "\t" << anchor_end
+            << "\t" << "jnc" << "\t" << read_count << "\t" << strand
+            << "\t" << anchor_start << "\t" << anchor_end
+            << "\t" << "255,0,0" << "\t" << 2
+            << "\t" << intron_start - anchor_start << "," << anchor_end - intron_end
+            << "\t" << "0," << intron_end - anchor_start << endl;
+    }
+
+    // Print BED with intron as block
+    void print_intron_bed(ostream& out) const {
+        out << chrom
+            << "\t" << intron_start << "\t" << intron_end
+            << "\t" << "jnc" << "\t" << read_count << "\t" << strand << endl;
     }
 
 };
@@ -86,26 +93,30 @@ public:
 // Compare two junctions
 // Return true if j1.start < j2.start
 // If j1.start == j2.start, return true if j1.end < j2.end
-static inline bool compare_junctions(const Junction &j1,
-                                     const Junction &j2) {
-    // Different chromosome
-    if (j1.chrom < j2.chrom){
+static inline bool compare_junctions(const Junction *j1,
+                                     const Junction *j2) {
+    if (j1->chrom < j2->chrom){
         return true;
     }
-    if (j1.chrom > j2.chrom){
+    if (j1->chrom > j2->chrom){
         return false;
     }
     // Same chromosome
-    if (j1.thick_start < j2.thick_start) {
+    if (j1->anchor_start < j2->anchor_start) {
         return true;
     }
-    if (j1.thick_start > j2.thick_start) {
+    if (j1->anchor_start > j2->anchor_start) {
         return false;
     }
-    if (j1.thick_end < j2.thick_end) {
+    // Same start
+    if (j1->anchor_end < j2->anchor_end) {
         return true;
     }
-    return (j1.thick_end > j2.thick_end);
+    if (j1->anchor_end > j2->anchor_end) {
+        return false;
+    }
+    // Same end
+    return j1->strand < j2->strand;
 }
 
 // Sort a vector of junctions
@@ -117,19 +128,15 @@ inline void sort_junctions(CollectionType &junctions) {
 // The class that deals with creating the junctions
 class JunctionsExtractor {
 public:
-    static const uint32_t DEFAULT_MIN_ANCHOR_LENGTH = 8;
-    static const uint32_t DEFAULT_MIN_INTRON_LENGTH = 70;
-    static const uint32_t DEFAULT_MAX_INTRON_LENGTH = 500000;
-
-    static const int UNSTRANDED = 0;
-    static const int RF_STRANDED = 1;
-    static const int FR_STRANDED = 2;
+    static const unsigned UNSTRANDED = 0;
+    static const unsigned RF_STRANDED = 1;
+    static const unsigned FR_STRANDED = 2;
 private:
     // Alignment file
     string bam_;
     // Minimum anchor length for junctions
     // Junctions need atleast this many bp overlap
-    // on both ends.
+    // on both ends.  Mismatch bases are not included in the count.
     uint32_t min_anchor_length_;
     // Minimum length of an intron, i.e min junction width
     uint32_t min_intron_length_;
@@ -142,16 +149,16 @@ private:
     vector<string> targets_;
     
     // Map to store the junctions
-    // The key is "chr:start-end:strand"
+    // The key is "chr:intron_start-intron_end:strand"
     // The value is an object of type Junction(see above)
+    // FIXME: use more structured key
     map<string, Junction*> junctions_;
-    // Maintain a sorted list of junctions
-    //FIXME: vector<Junction> junctions_vector_;
 
     // internal functions
     void save_targets(bam_hdr_t *header);
-    bool junction_qc(uint32_t anchor_start, uint32_t anchor_end,
-                     uint32_t thick_start, uint32_t thick_end);
+    bool junction_qc(uint32_t anchor_start, uint32_t intron_start,
+                     uint32_t intron_end, uint32_t anchor_end,
+                     uint32_t left_mismatch_cnt, uint32_t right_mismatch_cnt);
     string make_junction_key(const string& chrom, char strand,
                              uint32_t start, uint32_t end);
     int parse_alignment_into_junctions(bam_hdr_t *header, bam1_t *aln);
@@ -159,22 +166,25 @@ private:
     int parse_cigar_into_junctions(string chr, int read_pos,
                                    uint32_t *cigar, int n_cigar);
     void add_junction(const string& chrom, char strand,
-                      uint32_t anchor_start, uint32_t anchor_end,
-                      uint32_t thick_start, uint32_t thick_end);
+                      uint32_t anchor_start, uint32_t intron_start, 
+                      uint32_t intron_end, uint32_t anchor_end);
+    void process_junction(const string& chrom, char strand,
+                          uint32_t anchor_start, uint32_t intron_start,
+                          uint32_t intron_end, uint32_t anchor_end,
+                          uint32_t left_mismatch_cnt, uint32_t right_mismatch_cnt);
     char get_junction_strand_XS(bam1_t *aln);
     char get_junction_strand_flag(bam1_t *aln);
     char get_junction_strand(bam1_t *aln);
-    void create_junctions_vector();
-    
+
     JunctionsExtractor() {
         assert(false); // Default constructor not allowed
     }
 public:
     JunctionsExtractor(string bam,
-                       uint32_t min_anchor_length=DEFAULT_MIN_ANCHOR_LENGTH,
-                       uint32_t min_intron_length=DEFAULT_MIN_INTRON_LENGTH,
-                       uint32_t max_intron_length=DEFAULT_MAX_INTRON_LENGTH,
-                       int strandness = RF_STRANDED):
+                       uint32_t min_anchor_length,
+                       uint32_t min_intron_length,
+                       uint32_t max_intron_length,
+                       int strandness):
         bam_(bam),
         min_anchor_length_(min_anchor_length),
         min_intron_length_(min_intron_length),
@@ -185,11 +195,14 @@ public:
     // Identify exon-exon junctions
     void identify_junctions_from_bam();
 
-    // Print all the junctions
-    void print_all_junctions(ostream& out=cout);
+    // Print BED with anchors as blocks and intron as gap.
+    void print_anchor_bed(ostream& out);
+
+    // Print BED with intron as block
+    void print_intron_bed(ostream& out);
 
     // Get a vector of all the junctions
-    vector<Junction> get_all_junctions();
+    vector<Junction*> get_junctions_sorted();
 
     // Get the BAM filename
     const string& get_bam() {
