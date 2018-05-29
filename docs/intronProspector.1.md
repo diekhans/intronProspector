@@ -50,6 +50,9 @@ Options
 
 > Write the intron BED with the bounds of the intron. The score is the number of alignments spanning the junction.
 
+`-p FILE, --pass-through=FILE`
+
+> Pass through input BAM/SAM records to this file, used for constructing pipelines with `/dev/stdin` is specified.  CRAM output is not support, these will be written as BAM.
 
 BUGS
 ====

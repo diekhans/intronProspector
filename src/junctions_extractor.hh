@@ -91,13 +91,10 @@ public:
     const string& chrom;
     uint32_t intron_start;
     uint32_t intron_end;
+    uint32_t anchor_start;  // This is the intron_start - max overhang
+    uint32_t anchor_end;   // This is the end + max overhang
     char strand;
-    // Number of reads supporting the junction
-    unsigned int read_count;
-    // This is the intron_start - max overhang
-    uint32_t anchor_start;
-    // This is the end + max overhang
-    uint32_t anchor_end;
+    unsigned int read_count;  // Number of reads supporting the junction
 
     Junction(const string& chrom1, uint32_t intron_start1, uint32_t intron_end1,
              uint32_t anchor_start1, uint32_t anchor_end1,
@@ -177,7 +174,7 @@ private:
     //strandness of data; 0 = unstranded, 1 = RF, 2 = FR
     int strandness_;
 
-    // Alignment file, used for error messsages
+    // Alignment file
     string bam_;
 
     // target index to target (chrom) name
@@ -202,6 +199,9 @@ private:
     char get_junction_strand_XS(bam1_t *aln);
     char get_junction_strand_flag(bam1_t *aln);
     char get_junction_strand(bam1_t *aln);
+    samFile* open_pass_through(samFile *in_sam,
+                               bam_hdr_t *in_header,
+                               const string& bam_pass_through);
 
     JunctionsExtractor() {
         assert(false); // Default constructor not allowed
@@ -218,7 +218,8 @@ public:
     }
     
     // Identify exon-exon junctions
-    void identify_junctions_from_bam(const string& bam);
+    void identify_junctions_from_bam(const string& bam,
+                                     const string& bam_pass_through);
 
     // Print BED with anchors as blocks and intron as gap.
     void print_anchor_bed(ostream& out);
@@ -228,11 +229,6 @@ public:
 
     // Get a vector of all the junctions
     vector<Junction*> get_junctions_sorted();
-
-    // Get the BAM filename
-    const string& get_bam() {
-        return bam_;
-    }
 };
 
 #endif

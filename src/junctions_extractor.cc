@@ -48,13 +48,6 @@ static string char_to_string(char ch) {
     return string(chs);
 }
 
-// convert a unsigned integer to a string
-static string uint32_to_string(uint32_t num) {
-    stringstream s1;
-    s1 << num;
-    return s1.str();
-}
-
 // Sort a vector of junctions
 template <class CollectionType>
 static inline void sort_junctions(CollectionType &junctions) {
@@ -264,25 +257,59 @@ void JunctionsExtractor::save_targets(bam_hdr_t *header) {
     }
 }
 
+// open pass-through file
+samFile* JunctionsExtractor::open_pass_through(samFile *in_sam,
+                                               bam_hdr_t *in_header,
+                                               const string& bam_pass_through) {
+    const htsFormat *fmt = hts_get_format(in_sam);
+    if (!(fmt->format == sam) || (fmt->format == bam)) {
+        throw runtime_error("Error: pass-through is only implemented for SAM or BAM files: " + bam_pass_through);
+    }
+        
+    samFile *out_sam = hts_open_format(bam_pass_through.c_str(), "w", fmt);
+    if (sam_hdr_write(out_sam, in_header) < 0) {
+        throw runtime_error("Error writing SAM header: " + bam_pass_through);
+    }
+    return out_sam;
+}
+
 // The workhorse - identifies junctions from BAM
-void JunctionsExtractor::identify_junctions_from_bam(const string& bam) {
+void JunctionsExtractor::identify_junctions_from_bam(const string& bam,
+                                                     const string& bam_pass_through) {
     bam_ = bam;
     samFile *in_sam = sam_open(bam_.c_str(), "r");
     if (in_sam == NULL) {
-        throw runtime_error("Unable to open BAM/SAM/CRAM file: " + bam_);
+        throw runtime_error("Error opening BAM/SAM/CRAM file: " + bam_);
     }
     bam_hdr_t *in_header = sam_hdr_read(in_sam);
     save_targets(in_header);
 
+    samFile* out_sam = NULL;
+    if (bam_pass_through != "") {
+        out_sam = open_pass_through(in_sam, in_header, bam_pass_through);
+    }
+
     bam1_t *aln = bam_init1();
-    while(sam_read1(in_sam, in_header, aln) >= 0) {
+    int stat;
+    while((stat = sam_read1(in_sam, in_header, aln)) >= 0) {
         try {
             parse_alignment_into_junctions(aln);
         } catch (const std::logic_error& e) {
             cerr << "Warning: error processing read: " << e.what() << endl;
         }
+        if (out_sam != NULL) {
+            if (sam_write1(out_sam, in_header, aln) < 0) {
+                throw runtime_error("Error writing BAM record: " + bam_pass_through);
+            }
+        }
+    }
+    if (stat < -1) {
+        throw runtime_error("Error reader BAM record: " + bam);
     }
     bam_destroy1(aln);
+    if (out_sam != NULL) {
+        sam_close(out_sam);
+    }
     bam_hdr_destroy(in_header);
     sam_close(in_sam);
 }

@@ -84,6 +84,7 @@ class CmdParser {
     // output
     string junction_bed;
     string intron_bed;
+    string bam_pass_through;
 
     CmdParser(int argc, char *argv[]):
         bam_file("/dev/stdin"),
@@ -101,6 +102,7 @@ class CmdParser {
             {"strandness", required_argument, NULL, 's'},
             {"junction-bed", required_argument, NULL, 'j'},
             {"intron-bed", required_argument, NULL, 'n'},
+            {"pass-through", required_argument, NULL, 'p'},
             {NULL, 0, NULL, 0}
         };
             
@@ -125,6 +127,9 @@ class CmdParser {
                     break;
                 case 'n':
                     intron_bed = optarg;
+                    break;
+                case 'p':
+                    bam_pass_through = optarg;
                     break;
                 case 'h':
                     usage();
@@ -173,7 +178,7 @@ int main(int argc, char *argv[]) {
     JunctionsExtractor je(opts.min_anchor_length,
                           opts.min_intron_length, opts.max_intron_length,
                           opts.strandness);
-    je.identify_junctions_from_bam(opts.bam_file);
+    je.identify_junctions_from_bam(opts.bam_file, opts.bam_pass_through);
     vector<Junction*> juncs = je.get_junctions_sorted();
     if (opts.junction_bed != "") {
         print_anchor_bed(juncs, opts.junction_bed);

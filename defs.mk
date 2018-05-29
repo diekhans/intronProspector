@@ -12,7 +12,7 @@ OBJS =  ${SRCS:%.cc=${OBJDIR}/%.o}
 DEPENDS =  ${SRCS:%.cc=%.depend}
 intronProspector = ${BINDIR}/intronProspector
 
-OPT = -g -O0
+OPT = -g -O0 -Wall
 
 CXXFLAGS = ${OPT} ${HTSLIB_INCL}
 LIBS = ${HTSLIB_LIB}
