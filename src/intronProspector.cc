@@ -34,6 +34,7 @@ DEALINGS IN THE SOFTWARE.  */
 #include <algorithm>
 #include <fstream>
 #include "junctions_extractor.hh"
+#include "version.hh"
 
 using namespace std;
 
@@ -64,7 +65,8 @@ static int str_to_strandness(const string s) {
     } else if (su == "FR") {
         return JunctionsExtractor::FR_STRANDED;
     } else {
-        throw runtime_error("invalid strandness value '" + s + "', expected one of 'UN', 'RF', or 'FR' (case insensitive)");
+        cerr << "Error: invalid strandness value '" + s + "', expected one of 'UN', 'RF', or 'FR' (case insensitive)" << endl;
+        exit(1);
     }
 }
 
@@ -72,10 +74,6 @@ static int str_to_strandness(const string s) {
 // Parse command line
 class CmdParser {
     public:
-    // program info
-    int print_help;
-    int print_version;
-
     // input
     string bam_file;
     uint32_t min_anchor_length;
@@ -88,8 +86,6 @@ class CmdParser {
     string intron_bed;
 
     CmdParser(int argc, char *argv[]):
-        print_help(false),
-        print_version(false),
         bam_file("/dev/stdin"),
         min_anchor_length(DEFAULT_MIN_ANCHOR_LENGTH),
         min_intron_length(DEFAULT_MIN_INTRON_LENGTH),
@@ -97,8 +93,8 @@ class CmdParser {
         strandness(JunctionsExtractor::UNSTRANDED) {
 
         struct option long_options[] = {
-            {"help", no_argument, &print_help, 1},
-            {"version", no_argument, &print_version, 1},
+            {"help", no_argument, NULL, 'h'},
+            {"version", no_argument, NULL, 'v'},
             {"min-anchor-length", required_argument, NULL, 'a'},
             {"min-intron_length", required_argument, NULL, 'i'},
             {"max-intron_length", required_argument, NULL, 'I'},
@@ -132,9 +128,13 @@ class CmdParser {
                     break;
                 case 'h':
                     usage();
+                    break;
+                case 'v':
+                    cerr << PACKAGE_NAME << " " << VERSION << " " << PACKAGE_URL << endl;
+                    exit(0);
                 case '?':
                 default:
-                    cerr << "Invalid option '" << argv[optind] << "'" << endl;
+                    cerr << "Error: invalid option '" << c << "'" << endl;
                     usage();
             }
         }
@@ -145,9 +145,6 @@ class CmdParser {
         }
         if (argc - optind == 1) {
             bam_file = string(argv[optind++]);
-        }
-        if (print_help) {
-            usage();
         }
     }
 };

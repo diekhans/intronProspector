@@ -43,6 +43,48 @@ DEALINGS IN THE SOFTWARE.  */
 
 using namespace std;
 
+// class used to map Junction objects
+class JunctionKey {
+    public:
+    const string& chrom;
+    const uint32_t intron_start;
+    const uint32_t intron_end;
+    const char strand;
+
+    JunctionKey(const string& chrom,
+                uint32_t intron_start,
+                uint32_t intron_end,
+                char strand):
+        chrom(chrom), intron_start(intron_start), intron_end(intron_end), strand(strand) {
+    }
+};
+
+// comparison key
+static inline bool operator<(const JunctionKey &jk1, const JunctionKey &jk2) {
+    if (jk1.chrom < jk2.chrom){
+        return true;
+    }
+    if (jk1.chrom > jk2.chrom){
+        return false;
+    }
+    // Same chromosome
+    if (jk1.intron_start < jk2.intron_start) {
+        return true;
+    }
+    if (jk1.intron_start > jk2.intron_start) {
+        return false;
+    }
+    // Same start
+    if (jk1.intron_end < jk2.intron_end) {
+        return true;
+    }
+    if (jk1.intron_end > jk2.intron_end) {
+        return false;
+    }
+    // Same end
+    return jk1.strand < jk2.strand;
+}
+
 // Data save for an intron
 class Junction {
 public:
@@ -91,8 +133,6 @@ public:
 };
 
 // Compare two junctions
-// Return true if j1.start < j2.start
-// If j1.start == j2.start, return true if j1.end < j2.end
 static inline bool compare_junctions(const Junction *j1,
                                      const Junction *j2) {
     if (j1->chrom < j2->chrom){
@@ -119,12 +159,6 @@ static inline bool compare_junctions(const Junction *j1,
     return j1->strand < j2->strand;
 }
 
-// Sort a vector of junctions
-template <class CollectionType>
-inline void sort_junctions(CollectionType &junctions) {
-    sort(junctions.begin(), junctions.end(), compare_junctions);
-}
-
 // The class that deals with creating the junctions
 class JunctionsExtractor {
 public:
@@ -148,23 +182,15 @@ private:
     // target index to target (chrom) name
     vector<string> targets_;
     
-    // Map to store the junctions
-    // The key is "chr:intron_start-intron_end:strand"
-    // The value is an object of type Junction(see above)
-    // FIXME: use more structured key
-    map<string, Junction*> junctions_;
+    // Map to store the junctions by intron coordinates
+    map<JunctionKey, Junction*> junctions_;
 
     // internal functions
     void save_targets(bam_hdr_t *header);
     bool junction_qc(uint32_t anchor_start, uint32_t intron_start,
                      uint32_t intron_end, uint32_t anchor_end,
                      uint32_t left_mismatch_cnt, uint32_t right_mismatch_cnt);
-    string make_junction_key(const string& chrom, char strand,
-                             uint32_t start, uint32_t end);
-    int parse_alignment_into_junctions(bam_hdr_t *header, bam1_t *aln);
-    int parse_read(bam_hdr_t *header, bam1_t *aln);
-    int parse_cigar_into_junctions(string chr, int read_pos,
-                                   uint32_t *cigar, int n_cigar);
+    int parse_alignment_into_junctions(bam1_t *aln);
     void add_junction(const string& chrom, char strand,
                       uint32_t anchor_start, uint32_t intron_start, 
                       uint32_t intron_end, uint32_t anchor_end);

@@ -76,6 +76,8 @@
 "\n"
 "Mark Diekhans markd@ucsc.edu\n"
 "\n"
+"Source available from https://github.com/diekhans/intronProspector\n"
+"\n"
 "Base on code from RegTools https://github.com/griffithlab/regtools by\n"
 "Avinash Ramu aramu@genome.wustl.edu.\n"
 "\n"

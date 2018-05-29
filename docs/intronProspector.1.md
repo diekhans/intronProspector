@@ -61,6 +61,8 @@ AUTHOR
 
 Mark Diekhans <markd@ucsc.edu>
 
+Source available from <https://github.com/diekhans/intronProspector>
+
 Base on code from RegTools <https://github.com/griffithlab/regtools>
 by Avinash Ramu <aramu@genome.wustl.edu>.
 

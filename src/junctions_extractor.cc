@@ -55,6 +55,12 @@ static string uint32_to_string(uint32_t num) {
     return s1.str();
 }
 
+// Sort a vector of junctions
+template <class CollectionType>
+static inline void sort_junctions(CollectionType &junctions) {
+    sort(junctions.begin(), junctions.end(), compare_junctions);
+}
+
 // Do some basic qc on the junction
 bool JunctionsExtractor::junction_qc(uint32_t anchor_start, uint32_t intron_start,
                                      uint32_t intron_end, uint32_t anchor_end,
@@ -70,27 +76,12 @@ bool JunctionsExtractor::junction_qc(uint32_t anchor_start, uint32_t intron_star
     }
 }
 
-// make key for a junction
-string JunctionsExtractor::make_junction_key(const string& chrom, char strand,
-                                             uint32_t start, uint32_t end) {
-    // since ?,+,- sort differently on different systems
-    string strand_proxy;
-    if (strand == '+') {
-        strand_proxy = "0";
-    } else if (strand == '-') {
-        strand_proxy = "1";
-    } else {
-        strand_proxy = "2";
-    }
-    return chrom + string(":") + uint32_to_string(start) + "-" + uint32_to_string(end) + ":" + strand_proxy;
-}
-
 // Add a junction to the junctions map
 void JunctionsExtractor::add_junction(const string& chrom, char strand,
                                       uint32_t anchor_start, uint32_t intron_start,
                                       uint32_t intron_end, uint32_t anchor_end) {
     // Construct key chr:start-end:strand
-    string key = make_junction_key(chrom, strand, intron_start, intron_end);
+    JunctionKey key(chrom, intron_start, intron_end, strand);
 
     // Check if new junction
     Junction *junc = NULL;
@@ -122,7 +113,7 @@ void JunctionsExtractor::process_junction(const string& chrom, char strand,
 // Print all the junctions - this function needs work
 vector<Junction*> JunctionsExtractor::get_junctions_sorted() {
     vector<Junction*> juncs;
-    for (map<string, Junction*>::iterator it = junctions_.begin(); it != junctions_.end(); it++) {
+    for (map<JunctionKey, Junction*>::iterator it = junctions_.begin(); it != junctions_.end(); it++) {
         juncs.push_back(it->second);
     }
     sort_junctions(juncs);
@@ -175,7 +166,7 @@ char JunctionsExtractor::get_junction_strand(bam1_t *aln) {
 }
 
 // Parse junctions from the read and store in junction map
-int JunctionsExtractor::parse_alignment_into_junctions(bam_hdr_t *header, bam1_t *aln) {
+int JunctionsExtractor::parse_alignment_into_junctions(bam1_t *aln) {
     int n_cigar = aln->core.n_cigar;
     if (n_cigar <= 1) // max one cigar operation exists(likely all matches)
         return 0;
@@ -275,22 +266,22 @@ void JunctionsExtractor::save_targets(bam_hdr_t *header) {
 
 // The workhorse - identifies junctions from BAM
 void JunctionsExtractor::identify_junctions_from_bam() {
-    samFile *in = sam_open(bam_.c_str(), "r");
-    if (in == NULL) {
+    samFile *in_sam = sam_open(bam_.c_str(), "r");
+    if (in_sam == NULL) {
         throw runtime_error("Unable to open BAM/SAM/CRAM file: " + bam_);
     }
-    bam_hdr_t *header = sam_hdr_read(in);
-    save_targets(header);
+    bam_hdr_t *in_header = sam_hdr_read(in_sam);
+    save_targets(in_header);
 
     bam1_t *aln = bam_init1();
-    while(sam_read1(in, header, aln) >= 0) {
+    while(sam_read1(in_sam, in_header, aln) >= 0) {
         try {
-            parse_alignment_into_junctions(header, aln);
+            parse_alignment_into_junctions(aln);
         } catch (const std::logic_error& e) {
             cerr << "Warning: error processing read: " << e.what() << endl;
         }
     }
     bam_destroy1(aln);
-    bam_hdr_destroy(header);
-    sam_close(in);
+    bam_hdr_destroy(in_header);
+    sam_close(in_sam);
 }
