@@ -48,6 +48,15 @@ static string char_to_string(char ch) {
     return string(chs);
 }
 
+#if 0
+// convert an integer to a string
+static string int_to_string(int num) {
+    stringstream s1;
+    s1 << num;
+    return s1.str();
+}
+#endif
+
 // Sort a vector of junctions
 template <class CollectionType>
 static inline void sort_junctions(CollectionType &junctions) {
@@ -159,11 +168,13 @@ char JunctionsExtractor::get_junction_strand(bam1_t *aln) {
 }
 
 // Parse junctions from the read and store in junction map
-int JunctionsExtractor::parse_alignment_into_junctions(bam1_t *aln) {
+void JunctionsExtractor::parse_alignment_into_junctions(bam1_t *aln) {
+    // skip if unmapped or only one cigar operation exists (likely all matches)
     int n_cigar = aln->core.n_cigar;
-    if (n_cigar <= 1) // max one cigar operation exists(likely all matches)
-        return 0;
-
+    if ((n_cigar <= 1) || (aln->core.tid < 0)) {
+        return;
+    }
+    
     const string& chrom = targets_[aln->core.tid];
     char strand = get_junction_strand(aln);
     int read_pos = aln->core.pos;
@@ -241,13 +252,12 @@ int JunctionsExtractor::parse_alignment_into_junctions(bam1_t *aln) {
             case 'H':  // hard clipping (clipped sequences NOT present in SEQ)
                 break;
             default:
-                throw new std::invalid_argument("Unknown cigar operation '" + char_to_string(op) + "' found in " + bam_);
+                throw std::invalid_argument("Unknown cigar operation '" + char_to_string(op) + "' found in " + bam_);
         }
     }
     if (started_junction) {
         process_junction(chrom, strand, anchor_start, intron_start, intron_end, anchor_end, left_mismatch_cnt, right_mismatch_cnt);
     }
-    return 0;
 }
 
 // build target array from bam header

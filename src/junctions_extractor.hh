@@ -188,7 +188,7 @@ private:
     bool junction_qc(uint32_t anchor_start, uint32_t intron_start,
                      uint32_t intron_end, uint32_t anchor_end,
                      uint32_t left_mismatch_cnt, uint32_t right_mismatch_cnt);
-    int parse_alignment_into_junctions(bam1_t *aln);
+    void parse_alignment_into_junctions(bam1_t *aln);
     void add_junction(const string& chrom, char strand,
                       uint32_t anchor_start, uint32_t intron_start, 
                       uint32_t intron_end, uint32_t anchor_end);

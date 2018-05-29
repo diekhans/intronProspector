@@ -3,7 +3,12 @@
 OBJDIR = ${ROOT}/objs
 BINDIR = ${ROOT}/bin
 
-HTSLIB_PREFIX = /opt/local
+ifneq (${MED_OPT},)
+   HTSLIB_PREFIX = ${MED_OPT}
+   CXX =  /opt/rh/devtoolset-6/root/usr/bin/g++ 
+else
+   HTSLIB_PREFIX = /opt/local
+endif
 HTSLIB_INCL = -I${HTSLIB_PREFIX}/include
 HTSLIB_LIB = -L${HTSLIB_PREFIX}/lib -lhts
 
