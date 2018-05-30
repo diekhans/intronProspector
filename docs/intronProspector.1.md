@@ -42,6 +42,19 @@ Options
 
 > Strand specificity of RNA library preparation.  Use `UN` for unstranded, `RF` for first-strand, `FR` for second-strand (case-insensitive).  The default is `UN`.  This is used to set the strand in the junction-format BED file.
 
+`-c FILE, --intron-calls=FILE`
+
+> Write a tab-separated values (TSV) file, with the junctions calls.  It will contain the following columns :
+* chrom - chromosome name
+* intron_start - zero based starting coordinates of intron.
+* intron_end - zero based ending coordinates of intron.
+* strand - `+`, `-`, or `.` if not known.
+* uniq_mapped_count - number of uniquely mapped reads supporting the junction.
+* multi_mapped_count - number of uniquely mapped reads supporting the junction.
+* unsure_mapped_count - number of reads that are either in discordant or partial mapped pair or do not have the BAM `NH` tag.
+* max_left_overhang - maximum number of bases overlapping the exon upstream of the intron.
+* max_right_overhang - maximum number of bases overlapping the exon downstream of the intron.
+
 `-j FILE, --junction-bed=FILE`
 
 > Write the junction calls and support anchors to this file.  This is in the same format as ToHat `junctions.bed` and `regtools junction extract` output.  It UCSC BED track, with each junction consists of two connected BED blocks, where each block is as long as the maximal overhang of any read spanning the junction. The score is the number of alignments spanning the junction.

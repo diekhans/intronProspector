@@ -79,7 +79,7 @@ bool JunctionsExtractor::junction_qc(uint32_t anchor_start, uint32_t intron_star
 }
 
 // Add a junction to the junctions map
-void JunctionsExtractor::add_junction(const string& chrom, char strand,
+void JunctionsExtractor::add_junction(bam1_t *aln, const string& chrom, char strand,
                                       uint32_t anchor_start, uint32_t intron_start,
                                       uint32_t intron_end, uint32_t anchor_end) {
     // Construct key chr:start-end:strand
@@ -99,16 +99,17 @@ void JunctionsExtractor::add_junction(const string& chrom, char strand,
         if (anchor_end > junc->anchor_end)
             junc->anchor_end = anchor_end;
     }
-    junc->read_count += 1;
+    junc->read_counts[get_read_category(aln)] += 1;
+
 }
 
 // Validate a junction and save if it passes.
-void JunctionsExtractor::process_junction(const string& chrom, char strand,
+void JunctionsExtractor::process_junction(bam1_t *aln, const string& chrom, char strand,
                                           uint32_t anchor_start, uint32_t intron_start,
                                           uint32_t intron_end, uint32_t anchor_end,
                                           uint32_t left_mismatch_cnt, uint32_t right_mismatch_cnt) {
     if (junction_qc(anchor_start, intron_start, intron_end, anchor_end, left_mismatch_cnt, right_mismatch_cnt)) {
-        add_junction(chrom, strand, anchor_start, intron_start, intron_end, anchor_end);
+        add_junction(aln, chrom, strand, anchor_start, intron_start, intron_end, anchor_end);
     }
 }
 
@@ -167,19 +168,66 @@ char JunctionsExtractor::get_junction_strand(bam1_t *aln) {
     }
 }
 
+// get number of alignments for current read (NH tag), or -1 if not set.
+int JunctionsExtractor::get_num_aligns(bam1_t *aln) {
+    uint8_t *val = bam_aux_get(aln, "NH");
+    if (val == NULL) {
+        return -1;
+    } else {
+        if (*val != 'i') {
+            throw runtime_error("Error BAM NH tag not integer: " + string(bam_get_qname(aln)) + ": " + bam_);
+        }
+        return bam_aux2i(val);
+    }
+}
+
+// Determine category base on tag
+ReadCategory JunctionsExtractor::get_category_from_tag(bam1_t *aln) {
+    int num_aligns = get_num_aligns(aln);
+    if (num_aligns <= 0) {
+        return UNSURE_READ;
+    } else if (num_aligns == 1) {
+        return SINGLE_MAPPED_READ;
+    } else {
+        return MULTI_MAPPED_READ;
+    }
+}
+
+
+// Determine the category of read.  Logic from samtools flagstat
+ReadCategory JunctionsExtractor::get_read_category(bam1_t *aln) {
+    unsigned flag = aln->core.flag;
+    if (flag & (BAM_FQCFAIL | BAM_FUNMAP | BAM_FDUP)) {
+        throw logic_error("should never look at FQCAIL, FUNMAP, FDUP reads");
+    } else if (flag & BAM_FSECONDARY) {
+        return MULTI_MAPPED_READ;  // secondary alignment
+    } else if (flag & BAM_FSUPPLEMENTARY ) {
+        return MULTI_MAPPED_READ;  // supplementary alignment
+    } else {
+        if (flag & BAM_FPAIRED) {
+            // paired reads
+            if ((flag & BAM_FPROPER_PAIR) && !(flag & BAM_FUNMAP)) {
+                return get_category_from_tag(aln); // proper pair
+            } else if (flag & BAM_FMUNMAP) {
+                return UNSURE_READ; // mate unmapped
+            } else if (aln->core.mtid != aln->core.tid) {
+                return UNSURE_READ; // mapped to different chromosomes
+            } else {
+                return UNSURE_READ; // mapped to same chromosome, but not a proper pair
+            }
+        } else {
+            return get_category_from_tag(aln);  // mapped, unpaired read
+        }
+    }
+}
+
 // Parse junctions from the read and store in junction map
 void JunctionsExtractor::parse_alignment_into_junctions(bam1_t *aln) {
-    // skip if unmapped or only one cigar operation exists (likely all matches)
-    int n_cigar = aln->core.n_cigar;
-    if ((n_cigar <= 1) || (aln->core.tid < 0)) {
-        return;
-    }
-    
     const string& chrom = targets_[aln->core.tid];
     char strand = get_junction_strand(aln);
     int read_pos = aln->core.pos;
+    int n_cigar = aln->core.n_cigar;
     uint32_t *cigar = bam_get_cigar(aln);
-
     uint32_t anchor_start = read_pos;
     uint32_t intron_start = read_pos;
     uint32_t intron_end = 0;
@@ -199,7 +247,7 @@ void JunctionsExtractor::parse_alignment_into_junctions(bam1_t *aln) {
                     started_junction = true;
                 } else {
                     // Add the previous junction
-                    process_junction(chrom, strand, anchor_start, intron_start, intron_end, anchor_end, left_mismatch_cnt, right_mismatch_cnt);
+                    process_junction(aln, chrom, strand, anchor_start, intron_start, intron_end, anchor_end, left_mismatch_cnt, right_mismatch_cnt);
                     anchor_start = intron_end;
                     intron_start = anchor_end;
                     intron_end = intron_start + len;
@@ -230,7 +278,7 @@ void JunctionsExtractor::parse_alignment_into_junctions(bam1_t *aln) {
                     intron_start += len;
                     anchor_start = intron_start;
                 } else {
-                    process_junction(chrom, strand, anchor_start, intron_start, intron_end, anchor_end, left_mismatch_cnt, right_mismatch_cnt);
+                    process_junction(aln, chrom, strand, anchor_start, intron_start, intron_end, anchor_end, left_mismatch_cnt, right_mismatch_cnt);
                     // Don't include these in the next anchor
                     intron_start = anchor_end + len;
                     anchor_start = intron_start;
@@ -242,7 +290,7 @@ void JunctionsExtractor::parse_alignment_into_junctions(bam1_t *aln) {
                 if (!started_junction) {
                     anchor_start = intron_start;
                 } else {
-                    process_junction(chrom, strand, anchor_start, intron_start, intron_end, anchor_end, left_mismatch_cnt, right_mismatch_cnt);
+                    process_junction(aln, chrom, strand, anchor_start, intron_start, intron_end, anchor_end, left_mismatch_cnt, right_mismatch_cnt);
                     // Don't include these in the next anchor
                     intron_start = anchor_end;
                     anchor_start = intron_start;
@@ -256,9 +304,19 @@ void JunctionsExtractor::parse_alignment_into_junctions(bam1_t *aln) {
         }
     }
     if (started_junction) {
-        process_junction(chrom, strand, anchor_start, intron_start, intron_end, anchor_end, left_mismatch_cnt, right_mismatch_cnt);
+        process_junction(aln, chrom, strand, anchor_start, intron_start, intron_end, anchor_end, left_mismatch_cnt, right_mismatch_cnt);
     }
 }
+
+// Process an alignment
+void JunctionsExtractor::process_alignment(bam1_t *aln) {
+    // skip if unmapped, only one cigar operation exists (likely all matches),
+    // low-quality or duplicate
+    if (!((aln->core.n_cigar <= 1) || (aln->core.tid < 0) || (aln->core.flag & (BAM_FQCFAIL | BAM_FDUP)))) {
+        parse_alignment_into_junctions(aln);
+    }
+}
+
 
 // build target array from bam header
 void JunctionsExtractor::save_targets(bam_hdr_t *header) {
@@ -272,11 +330,14 @@ samFile* JunctionsExtractor::open_pass_through(samFile *in_sam,
                                                bam_hdr_t *in_header,
                                                const string& bam_pass_through) {
     const htsFormat *fmt = hts_get_format(in_sam);
-    if (!(fmt->format == sam) || (fmt->format == bam)) {
-        throw runtime_error("Error: pass-through is only implemented for SAM or BAM files: " + bam_pass_through);
+    if (!((fmt->format == sam) || (fmt->format == bam))) {
+        throw invalid_argument("Error: pass-through is only implemented for SAM or BAM files: " + bam_pass_through);
     }
         
     samFile *out_sam = hts_open_format(bam_pass_through.c_str(), "w", fmt);
+    if (out_sam == NULL) {
+        throw runtime_error("Error opening BAM/SAM/CRAM file: " + bam_pass_through);
+    }
     if (sam_hdr_write(out_sam, in_header) < 0) {
         throw runtime_error("Error writing SAM header: " + bam_pass_through);
     }
@@ -302,11 +363,7 @@ void JunctionsExtractor::identify_junctions_from_bam(const string& bam,
     bam1_t *aln = bam_init1();
     int stat;
     while((stat = sam_read1(in_sam, in_header, aln)) >= 0) {
-        try {
-            parse_alignment_into_junctions(aln);
-        } catch (const std::logic_error& e) {
-            cerr << "Warning: error processing read: " << e.what() << endl;
-        }
+        process_alignment(aln);
         if (out_sam != NULL) {
             if (sam_write1(out_sam, in_header, aln) < 0) {
                 throw runtime_error("Error writing BAM record: " + bam_pass_through);

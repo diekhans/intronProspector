@@ -41,7 +41,7 @@ using namespace std;
 static const uint32_t DEFAULT_MIN_ANCHOR_LENGTH = 8;
 static const uint32_t DEFAULT_MIN_INTRON_LENGTH = 70;
 static const uint32_t DEFAULT_MAX_INTRON_LENGTH = 500000;
-static const unsigned DEFAULT_STRANDED = JunctionsExtractor::UNSTRANDED;
+static const Strandness DEFAULT_STRANDED = UNSTRANDED;
 
 static const char *usage_msg =
 #include "manpage.h"
@@ -54,16 +54,16 @@ static void usage() {
 }
 
 // convert a specification for strandness to constant.
-static int str_to_strandness(const string s) {
+static Strandness str_to_strandness(const string s) {
     // case-insensitive compare
     string su(s);
     transform(su.begin(), su.end(), su.begin(), ::toupper);
     if (su == "UN") {
-        return JunctionsExtractor::UNSTRANDED;
+        return UNSTRANDED;
     } else if (su == "RF") {
-        return JunctionsExtractor::RF_STRANDED;
+        return RF_STRANDED;
     } else if (su == "FR") {
-        return JunctionsExtractor::FR_STRANDED;
+        return FR_STRANDED;
     } else {
         cerr << "Error: invalid strandness value '" + s + "', expected one of 'UN', 'RF', or 'FR' (case insensitive)" << endl;
         exit(1);
@@ -79,11 +79,12 @@ class CmdParser {
     uint32_t min_anchor_length;
     uint32_t min_intron_length;
     uint32_t max_intron_length;
-    int strandness;
+    Strandness strandness;
 
     // output
     string junction_bed;
     string intron_bed;
+    string intron_call_tsv;
     string bam_pass_through;
 
     CmdParser(int argc, char *argv[]):
@@ -91,7 +92,7 @@ class CmdParser {
         min_anchor_length(DEFAULT_MIN_ANCHOR_LENGTH),
         min_intron_length(DEFAULT_MIN_INTRON_LENGTH),
         max_intron_length(DEFAULT_MAX_INTRON_LENGTH),
-        strandness(JunctionsExtractor::UNSTRANDED) {
+        strandness(UNSTRANDED) {
 
         struct option long_options[] = {
             {"help", no_argument, NULL, 'h'},
@@ -102,11 +103,12 @@ class CmdParser {
             {"strandness", required_argument, NULL, 's'},
             {"junction-bed", required_argument, NULL, 'j'},
             {"intron-bed", required_argument, NULL, 'n'},
+            {"intron-calls", required_argument, NULL, 'c'},
             {"pass-through", required_argument, NULL, 'p'},
             {NULL, 0, NULL, 0}
         };
             
-        const char *short_options = "hva:i:I:s:j:n:";
+        const char *short_options = "hva:i:I:s:j:n:c:p:";
         int c;
         while ((c = getopt_long(argc, argv, short_options, long_options, NULL)) != -1) {
             switch (c) {
@@ -127,6 +129,9 @@ class CmdParser {
                     break;
                 case 'n':
                     intron_bed = optarg;
+                    break;
+                case 'c':
+                    intron_call_tsv = optarg;
                     break;
                 case 'p':
                     bam_pass_through = optarg;
@@ -172,10 +177,18 @@ static void print_intron_bed(const vector<Junction*>& juncs,
     }
 }
 
-// entry point
-int main(int argc, char *argv[]) {
-    CmdParser opts(argc, argv);
-    JunctionsExtractor je(opts.min_anchor_length,
+// Print TSV with intron information
+static void print_intron_call_tsv(const vector<Junction*>& juncs,
+                                  const string& outfile) {
+    ofstream out(outfile);
+    Junction::print_juncion_call_header(out);
+    for (vector<Junction*>::const_iterator it = juncs.begin(); it != juncs.end(); it++) {
+        (*it)->print_juncion_call_row(out);
+    }
+}
+
+static void extract_junctions(CmdParser &opts) {
+   JunctionsExtractor je(opts.min_anchor_length,
                           opts.min_intron_length, opts.max_intron_length,
                           opts.strandness);
     je.identify_junctions_from_bam(opts.bam_file, opts.bam_pass_through);
@@ -185,6 +198,20 @@ int main(int argc, char *argv[]) {
     }
     if (opts.intron_bed != "") {
         print_intron_bed(juncs, opts.intron_bed);
+    }
+    if (opts.intron_call_tsv != "") {
+        print_intron_call_tsv(juncs, opts.intron_call_tsv);
+    }
+ }
+
+// entry point
+int main(int argc, char *argv[]) {
+    CmdParser opts(argc, argv);
+    try {
+        extract_junctions(opts);
+    } catch (const std::exception& e) {
+        cerr << "Error: " << e.what() << '\n';
+        exit(1);
     }
     return 0;
 }

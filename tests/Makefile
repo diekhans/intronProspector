@@ -14,22 +14,25 @@ test: test1 test2 test3
 
 # basic unstranded
 test1: mkout
-	${intronProspector} --junction-bed=output/$@.juncs.bed --intron-bed=output/$@.introns.bed --pass-through=output/$@.sam ${basic_sam}
+	${intronProspector} --junction-bed=output/$@.juncs.bed --intron-bed=output/$@.introns.bed --intron-calls=output/$@.introns.tsv --pass-through=output/$@.sam ${basic_sam}
 	${diff} expected/$@.juncs.bed output/$@.juncs.bed
 	${diff} expected/$@.introns.bed output/$@.introns.bed
+	${diff} expected/$@.introns.tsv output/$@.introns.tsv
 	${diff} output/test1.sam output/$@.sam
 
 # RF strandness
 test2: mkout
-	${intronProspector} --strandness=RF --junction-bed=output/$@.juncs.bed --intron-bed=output/$@.introns.bed ${basic_sam}
+	${intronProspector} --strandness=RF --junction-bed=output/$@.juncs.bed --intron-bed=output/$@.introns.bed --intron-calls=output/$@.introns.tsv ${basic_sam}
 	${diff} expected/$@.juncs.bed output/$@.juncs.bed
 	${diff} expected/$@.introns.bed output/$@.introns.bed
+	${diff} expected/$@.introns.tsv output/$@.introns.tsv
 
 # test1 with BAM
 test3: mkout ${basic_bam}
-	${intronProspector} --junction-bed=output/$@.juncs.bed --intron-bed=output/$@.introns.bed --pass-through=output/$@.bam ${basic_bam}
+	${intronProspector} --junction-bed=output/$@.juncs.bed --intron-bed=output/$@.introns.bed --pass-through=output/$@.bam --intron-calls=output/$@.introns.tsv ${basic_bam}
 	${diff} expected/test1.juncs.bed output/$@.juncs.bed
 	${diff} expected/test1.introns.bed output/$@.introns.bed
+	${diff} expected/$@.introns.tsv output/$@.introns.tsv
 	samtools view -h output/$@.bam >output/$@.sam
 	${diff} output/test1.sam output/$@.sam
 
