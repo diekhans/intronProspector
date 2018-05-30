@@ -168,16 +168,14 @@ char JunctionsExtractor::get_junction_strand(bam1_t *aln) {
     }
 }
 
-// get number of alignments for current read (NH tag), or -1 if not set.
+// get number of alignments for current read (NH tag), or -1 if not set,
+// and 0 if there is some other issue (don't check error, just ignored).
 int JunctionsExtractor::get_num_aligns(bam1_t *aln) {
-    uint8_t *val = bam_aux_get(aln, "NH");
-    if (val == NULL) {
+    uint8_t *tag = bam_aux_get(aln, "NH");
+    if (tag == NULL) {
         return -1;
     } else {
-        if (*val != 'C') {  // not idea why this is `C' instead of `i'
-            throw runtime_error("Error BAM NH tag not integer: " + string(bam_get_qname(aln)) + ": " + bam_);
-        }
-        return bam_aux2i(val);
+        return bam_aux2i(tag);
     }
 }
 
