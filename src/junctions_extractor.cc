@@ -174,7 +174,7 @@ int JunctionsExtractor::get_num_aligns(bam1_t *aln) {
     if (val == NULL) {
         return -1;
     } else {
-        if (*val != 'i') {
+        if (*val != 'C') {  // not idea why this is `C' instead of `i'
             throw runtime_error("Error BAM NH tag not integer: " + string(bam_get_qname(aln)) + ": " + bam_);
         }
         return bam_aux2i(val);

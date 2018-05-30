@@ -8,10 +8,10 @@ ifneq (${MED_OPT},)
    CXX =  /opt/rh/devtoolset-6/root/usr/bin/g++ 
 else
    HTSLIB_PREFIX = /opt/local
-   HTSLIB_PREFIX = /Users/markd/compbio/gencode/projs/icedb/array-express/src/local
+   # FIXME: HTSLIB_PREFIX = /Users/markd/compbio/gencode/projs/icedb/array-express/src/local
 endif
 HTSLIB_INCL = -I${HTSLIB_PREFIX}/include
-HTSLIB_LIB = -L${HTSLIB_PREFIX}/lib -lhts
+HTSLIB_LIB = -L${HTSLIB_PREFIX}/lib -lhts -lcurl -lbz2 -lz -llzma
 
 SRCS = intronProspector.cc junctions_extractor.cc
 OBJS =  ${SRCS:%.cc=${OBJDIR}/%.o}
