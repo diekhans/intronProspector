@@ -163,8 +163,8 @@ class CmdParser {
 static void print_anchor_bed(const vector<Junction*>& juncs,
                              const string& outfile) {
     ofstream out(outfile);
-    for (vector<Junction*>::const_iterator it = juncs.begin(); it != juncs.end(); it++) {
-        (*it)->print_anchor_bed(out);
+    for (unsigned ijunc = 0; ijunc < juncs.size(); ijunc++) {
+        juncs[ijunc]->print_anchor_bed(ijunc, out);
     }
 }
 
@@ -172,8 +172,8 @@ static void print_anchor_bed(const vector<Junction*>& juncs,
 static void print_intron_bed(const vector<Junction*>& juncs,
                              const string& outfile) {
     ofstream out(outfile);
-    for (vector<Junction*>::const_iterator it = juncs.begin(); it != juncs.end(); it++) {
-        (*it)->print_intron_bed(out);
+    for (unsigned ijunc = 0; ijunc < juncs.size(); ijunc++) {
+        juncs[ijunc]->print_intron_bed(ijunc, out);
     }
 }
 

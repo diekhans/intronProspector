@@ -142,22 +142,26 @@ public:
         return cnt;
     }
 
-    // Print BED with anchors as blocks and intron as gap.
-    void print_anchor_bed(ostream& out) const {
+    // Print BED with anchors as blocks and intron as gap.  ijunc is used to
+    // make the BED name.
+    void print_anchor_bed(unsigned ijunc,
+                          ostream& out) const {
         out << chrom
             << "\t" << anchor_start << "\t" << anchor_end
-            << "\t" << "jnc" << "\t" << total_read_count() << "\t" << strand
+            << "\t" << "sj" << ijunc << "\t" << total_read_count() << "\t" << strand
             << "\t" << anchor_start << "\t" << anchor_end
             << "\t" << "255,0,0" << "\t" << 2
             << "\t" << intron_start - anchor_start << "," << anchor_end - intron_end
             << "\t" << "0," << intron_end - anchor_start << endl;
     }
 
-    // Print BED with intron as block
-    void print_intron_bed(ostream& out) const {
+    // Print BED with intron as block  ijunc is used to
+    // make the BED name.
+    void print_intron_bed(unsigned ijunc,
+                          ostream& out) const {
         out << chrom
             << "\t" << intron_start << "\t" << intron_end
-            << "\t" << "jnc" << "\t" << total_read_count() << "\t" << strand << endl;
+            << "\t" << "sj" << ijunc << "\t" << total_read_count() << "\t" << strand << endl;
     }
 
     // Print header for junction call TSV

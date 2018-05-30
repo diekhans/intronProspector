@@ -5,37 +5,69 @@ include ${ROOT}/defs.mk
 
 diff = diff -u
 
-all:
-
 basic_sam = input/test_basic.sam
 basic_bam = output/test_basic.bam
+fake10_star_sam = input/fake10.star.sam
+fake10_hisat2_sam = input/fake10.hisat2.sam
 
-test: test1 test2 test3
+
+all:
+
+test: testBasic testFake10
+
+###
+# basic tests
+##
+testBasic: testBasic1 testBasic2 testBasic3
 
 # basic unstranded
-test1: mkout
+testBasic1: mkout
 	${intronProspector} --junction-bed=output/$@.juncs.bed --intron-bed=output/$@.introns.bed --intron-calls=output/$@.introns.tsv --pass-through=output/$@.sam ${basic_sam}
 	${diff} expected/$@.juncs.bed output/$@.juncs.bed
 	${diff} expected/$@.introns.bed output/$@.introns.bed
 	${diff} expected/$@.introns.tsv output/$@.introns.tsv
-	${diff} output/test1.sam output/$@.sam
+	${diff} ${basic_sam} output/$@.sam
 
 # RF strandness
-test2: mkout
+testBasic2: mkout
 	${intronProspector} --strandness=RF --junction-bed=output/$@.juncs.bed --intron-bed=output/$@.introns.bed --intron-calls=output/$@.introns.tsv ${basic_sam}
 	${diff} expected/$@.juncs.bed output/$@.juncs.bed
 	${diff} expected/$@.introns.bed output/$@.introns.bed
 	${diff} expected/$@.introns.tsv output/$@.introns.tsv
 
-# test1 with BAM
-test3: mkout ${basic_bam}
+# testBasic1 with BAM
+testBasic3: mkout ${basic_bam}
 	${intronProspector} --junction-bed=output/$@.juncs.bed --intron-bed=output/$@.introns.bed --pass-through=output/$@.bam --intron-calls=output/$@.introns.tsv ${basic_bam}
-	${diff} expected/test1.juncs.bed output/$@.juncs.bed
-	${diff} expected/test1.introns.bed output/$@.introns.bed
+	${diff} expected/testBasic1.juncs.bed output/$@.juncs.bed
+	${diff} expected/testBasic1.introns.bed output/$@.introns.bed
 	${diff} expected/$@.introns.tsv output/$@.introns.tsv
 	samtools view -h output/$@.bam >output/$@.sam
-	${diff} output/test1.sam output/$@.sam
+	${diff} ${basic_sam} output/$@.sam
 
+##
+# fake10 tests
+##
+testFake10: testFake10a testFake10b
+
+# fake10 STAR mappings
+testFake10a: mkout
+	${intronProspector} --junction-bed=output/$@.juncs.bed --intron-bed=output/$@.introns.bed --intron-calls=output/$@.introns.tsv --pass-through=output/$@.sam ${fake10_star_sam}
+	${diff} expected/$@.juncs.bed output/$@.juncs.bed
+	${diff} expected/$@.introns.bed output/$@.introns.bed
+	${diff} expected/$@.introns.tsv output/$@.introns.tsv
+	${diff} ${fake10_star_sam} output/$@.sam
+
+# fake10 hisat2 mappings
+testFake10b: mkout
+	${intronProspector} --junction-bed=output/$@.juncs.bed --intron-bed=output/$@.introns.bed --intron-calls=output/$@.introns.tsv --pass-through=output/$@.sam ${fake10_hisat2_sam}
+	${diff} expected/$@.juncs.bed output/$@.juncs.bed
+	${diff} expected/$@.introns.bed output/$@.introns.bed
+	${diff} expected/$@.introns.tsv output/$@.introns.tsv
+	${diff} ${fake10_hisat2_sam} output/$@.sam
+
+###
+# other rules
+##
 mkout:
 	@mkdir -p output
 
