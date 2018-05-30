@@ -1,3 +1,4 @@
+chrom	start1	end1	strand	motif	annot	uniqmap	multimap	maxoverhang
 chr_fake	34667	35513	2	2	0	0	1	20
 chr_fake	130578	131433	1	1	0	0	1	29
 chr_fake	131551	132801	1	1	0	0	1	16
