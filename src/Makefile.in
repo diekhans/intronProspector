@@ -1,23 +1,41 @@
+# -*- mode: makefile -*-
 ROOT = ..
-include ${ROOT}/defs.mk
+OBJDIR = ${ROOT}/objs
+BINDIR = ${ROOT}/bin
 
+intronProspector = ${BINDIR}/intronProspector
+SRCS = junctions_extractor.cc intronProspector.cc
+OBJS = ${SRCS:%.cc=${OBJDIR}/%.o}
+DEPENDS = ${SRCS:%.cc=%.depend}
+
+CXXFLAGS = @CXXFLAGS@
+CPPFLAGS = @CPPFLAGS@
+LDFLAGS = @LDFLAGS@
+LIBS = @LIBS@
+
+.PHONY: all
 all: ${intronProspector}
 
 ${intronProspector}: ${OBJS}
 	@mkdir -p $(dir $@)
-	${CXX} ${CXXFLAGS} -o $@ ${OBJS} ${LIBS}
+	${CXX} ${CXXFLAGS} ${LDFLAGS} -o $@ ${OBJS} ${LIBS}
 
 # dependency file is generate as part of compile
-${OBJDIR}/%.o: %.cc
+${OBJDIR}/%.o: %.cc Makefile
 	@mkdir -p $(dir $@)
-	${CXX} ${CXXFLAGS} -c -MM -MT $@ $< >$*.depend
-	${CXX} ${CXXFLAGS} -c -o $@ $<
+	${CXX} ${CPPFLAGS} ${CXXFLAGS} -c -MM -MT $@ $< >$*.depend
+	${CXX} ${CPPFLAGS} ${CXXFLAGS} -c -o $@ $<
 
+.PHONY: clean
 clean:
-	rm -f ${OBJS} ${PROG} ${DEPENDS}
+	rm -f ${OBJS} ${intronProspector} ${DEPENDS}
+
+.PHONY: distclean
+distclean: clean
 
 # Generate manpage.h, which is included to generate help message.  This
 # requires pandoc, so it is checked in and only genereated by developers.
+.PHONY: doc
 doc:  manpage.h
 
 

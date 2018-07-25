@@ -1,0 +1,31 @@
+# -*- mode: makefile -*-
+
+.PHONY: all
+all:
+	cd src && ${MAKE} all
+
+.PHONY: test
+test: all
+	cd tests && ${MAKE} test
+
+.PHONY: install
+install:
+
+
+.PHONY: clean
+clean:
+	cd src && ${MAKE} clean
+	cd tests && ${MAKE} clean
+	rm -rf bin objs
+
+.PHONY: distclean
+distclean: clean
+	cd src && ${MAKE} distclean
+	cd tests && ${MAKE} distclean
+	rm -rf Makefile config.status config.log autom4te.cache
+
+
+# requires pandoc
+.PHONY: doc
+doc:
+	cd src && ${MAKE} doc

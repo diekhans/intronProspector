@@ -1,5 +1,8 @@
+-*- mode: makefile -*-
 ROOT = ..
-include ${ROOT}/defs.mk
+BINDIR = ${ROOT}/bin
+
+intronProspector = ${BINDIR}/intronProspector
 
 # Test run command in various ways and compares to expected output
 
@@ -11,8 +14,10 @@ fake10_star_sam = input/fake10.star.sam
 fake10_hisat2_sam = input/fake10.hisat2.sam
 
 
+.PHONY: all
 all:
 
+.PHONY: test
 test: testBasic testFake10
 
 ###
@@ -68,6 +73,7 @@ testFake10b: mkout
 ###
 # other rules
 ##
+.PHONY: mkout
 mkout:
 	@mkdir -p output
 
@@ -76,6 +82,9 @@ output/%.bam: input/%.sam
 	samtools view -b $< >$@.tmp
 	mv -f $@.tmp $@
 
+.PHONY: clean
 clean:
 	rm -rf output
 
+.PHONY: distclean
+distclean: clean
