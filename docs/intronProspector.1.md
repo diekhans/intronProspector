@@ -70,6 +70,25 @@ Options
 
 > Pass through input BAM/SAM records to this file, used for constructing pipelines with `/dev/stdin` is specified.  CRAM output is not support, these will be written as BAM.
 
+EXAMPLES
+========
+
+Call junctions from a BAM file, also creating BEDs of junctions and introns:
+```
+intronProspector --intron-calls=introns.tsv --junction-bed=juncs.bed --intron-bed=introns.bed reads.bam
+```
+
+Pipeline to call introns and create a CRAM file:
+```
+cat reads.sam \
+    | samtools sort -O sam  \
+    | ./intronProspector -c introns.tsv -p /dev/stdout \
+    | samtools view -O CRAM -T grch38.fa >reads.cram
+```
+Note that the `cat` command could be an aligner output a SAM file and that the genome FASTA file must be index by `samtools faidx`.
+
+
+
 BUGS
 ====
 
