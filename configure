@@ -2033,7 +2033,7 @@ hts_lib_found=no
 if test x"${with_htslib}" != "x" ; then
    # explicit location
    hts_saved_CPPFLAGS=${CPPFLAGS}
-   # first, try source tree layout, then include dir
+   # try source tree layout
    HTSLIB_CPPFLAGS="-I${with_htslib}"
    CPPFLAGS="$CPPFLAGS $HTSLIB_CPPFLAGS"
    { $as_echo "$as_me:${as_lineno-$LINENO}: checking for HTSlib header using $HTSLIB_CPPFLAGS" >&5
@@ -3233,6 +3233,7 @@ else
         CPPFLAGS="$CPPFLAGS $HTSLIB_CPPFLAGS"
         { $as_echo "$as_me:${as_lineno-$LINENO}: checking for HTSlib header using $HTSLIB_CPPFLAGS" >&5
 $as_echo "$as_me: checking for HTSlib header using $HTSLIB_CPPFLAGS" >&6;}
+        unset ac_cv_header_htslib_sam_h  # avoid cache
         ac_fn_c_check_header_mongrel "$LINENO" "htslib/sam.h" "ac_cv_header_htslib_sam_h" "$ac_includes_default"
 if test "x$ac_cv_header_htslib_sam_h" = xyes; then :
   hts_incl_found=yes
@@ -3243,7 +3244,7 @@ fi
 
 
    CPPFLAGS=${hts_saved_CPPFLAGS}
-   # first, try source tree layout then lib dir
+   # try source tree layout then lib dir
    hts_saved_LDFLAGS=${LDFLAGS}
    HTSLIB_LDFLAGS="-L${with_htslib} -Wl,-rpath,${with_htslib} -lhts"
    LDFLAGS="$LDFLAGS $HTSLIB_LDFLAGS"

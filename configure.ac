@@ -12,7 +12,7 @@ hts_lib_found=no
 if test x"${with_htslib}" != "x" ; then
    # explicit location
    hts_saved_CPPFLAGS=${CPPFLAGS}
-   # first, try source tree layout, then include dir
+   # try source tree layout
    HTSLIB_CPPFLAGS="-I${with_htslib}"
    CPPFLAGS="$CPPFLAGS $HTSLIB_CPPFLAGS"
    AC_MSG_NOTICE(checking for HTSlib header using $HTSLIB_CPPFLAGS)
@@ -21,10 +21,11 @@ if test x"${with_htslib}" != "x" ; then
        [HTSLIB_CPPFLAGS="-I${with_htslib}/include"
         CPPFLAGS="$CPPFLAGS $HTSLIB_CPPFLAGS"
         AC_MSG_NOTICE(checking for HTSlib header using $HTSLIB_CPPFLAGS)
+        unset ac_cv_header_htslib_sam_h  # avoid cache
         AC_CHECK_HEADER([htslib/sam.h],
             [hts_incl_found=yes])])
    CPPFLAGS=${hts_saved_CPPFLAGS}
-   # first, try source tree layout then lib dir
+   # try source tree layout then lib dir
    hts_saved_LDFLAGS=${LDFLAGS}
    HTSLIB_LDFLAGS="-L${with_htslib} -Wl,-rpath,${with_htslib} -lhts"
    LDFLAGS="$LDFLAGS $HTSLIB_LDFLAGS"

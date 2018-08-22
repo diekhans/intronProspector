@@ -25,9 +25,3 @@
   To rebuild the documentation, pandoc is require.  Rebuild documentation
   with:
       `make doc`
-  
-  
-
-
-  
-  

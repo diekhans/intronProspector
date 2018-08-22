@@ -32,6 +32,7 @@ clean:
 
 .PHONY: distclean
 distclean: clean
+	rm -f Makefile
 
 # Generate manpage.h, which is included to generate help message.  This
 # requires pandoc, so it is checked in and only genereated by developers.
