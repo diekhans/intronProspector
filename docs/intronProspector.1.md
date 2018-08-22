@@ -11,7 +11,7 @@ SYNOPSIS
 DESCRIPTION
 ===========
 
-Find putative intron junctions in a RNA-Seq alignment. The *readaligns* file maybe in SAM, BAM, or CRAM format and does not need to be sorted or indexed and maybe streamed.
+Find putative intron junctions in a RNA-Seq alignment. The *readaligns* file maybe in SAM, BAM, or CRAM format and does not need to be sorted or indexed and maybe streamed. If omitted, stdin is used.
 
 This program allows for calling splice junctions indebtedness of the alignment program.  It maybe used in a pipeline, copying the alignment file on `stdin` to `stdout`.  It can sit between an aligner outputting SAM and `samtools` to convert to BAM/CRAM.
 
@@ -41,6 +41,9 @@ Options
 `-s STRING, --strandness=STRING`
 
 > Strand specificity of RNA library preparation.  Use `UN` for unstranded, `RF` for first-strand, `FR` for second-strand (case-insensitive).  The default is `UN`.  This is used to set the strand in the junction-format BED file.
+
+`-U, --map-to-ucsc`
+> Naively generate UCSC chromosome names in TSV and BED files.  This pre-pends `chr` to numeric names and change `MT` to `chrMT`, other name are not modified.  This will not produce the correct results for reference sequences.  This does not modify records passed through (-p).
 
 `-c FILE, --intron-calls=FILE`
 

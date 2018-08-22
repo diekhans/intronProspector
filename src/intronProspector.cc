@@ -86,13 +86,15 @@ class CmdParser {
     string intron_bed;
     string intron_call_tsv;
     string bam_pass_through;
+    bool map_to_ucsc;
 
     CmdParser(int argc, char *argv[]):
         bam_file("/dev/stdin"),
         min_anchor_length(DEFAULT_MIN_ANCHOR_LENGTH),
         min_intron_length(DEFAULT_MIN_INTRON_LENGTH),
         max_intron_length(DEFAULT_MAX_INTRON_LENGTH),
-        strandness(UNSTRANDED) {
+        strandness(UNSTRANDED),
+        map_to_ucsc(false) {
 
         struct option long_options[] = {
             {"help", no_argument, NULL, 'h'},
@@ -105,10 +107,11 @@ class CmdParser {
             {"intron-bed", required_argument, NULL, 'n'},
             {"intron-calls", required_argument, NULL, 'c'},
             {"pass-through", required_argument, NULL, 'p'},
+            {"map-to-ucsc", no_argument, NULL, 'U'},
             {NULL, 0, NULL, 0}
         };
             
-        const char *short_options = "hva:i:I:s:j:n:c:p:";
+        const char *short_options = "hva:i:I:s:j:n:c:p:U";
         int c;
         while ((c = getopt_long(argc, argv, short_options, long_options, NULL)) != -1) {
             switch (c) {
@@ -136,6 +139,9 @@ class CmdParser {
                 case 'p':
                     bam_pass_through = optarg;
                     break;
+                case 'U':
+                    map_to_ucsc = true;
+                    break;
                 case 'h':
                     usage();
                     break;
@@ -161,29 +167,32 @@ class CmdParser {
 
 // Print BED with anchors as blocks and intron as gap.
 static void print_anchor_bed(const vector<Junction*>& juncs,
+                             bool map_to_ucsc,
                              const string& outfile) {
     ofstream out(outfile.c_str());
     for (unsigned ijunc = 0; ijunc < juncs.size(); ijunc++) {
-        juncs[ijunc]->print_anchor_bed(ijunc, out);
+        juncs[ijunc]->print_anchor_bed(ijunc, map_to_ucsc, out);
     }
 }
 
 // Print BED with intron as block
 static void print_intron_bed(const vector<Junction*>& juncs,
+                             bool map_to_ucsc,
                              const string& outfile) {
     ofstream out(outfile.c_str());
     for (unsigned ijunc = 0; ijunc < juncs.size(); ijunc++) {
-        juncs[ijunc]->print_intron_bed(ijunc, out);
+        juncs[ijunc]->print_intron_bed(ijunc, map_to_ucsc, out);
     }
 }
 
 // Print TSV with intron information
 static void print_intron_call_tsv(const vector<Junction*>& juncs,
+                                  bool map_to_ucsc,
                                   const string& outfile) {
     ofstream out(outfile.c_str());
     Junction::print_juncion_call_header(out);
     for (vector<Junction*>::const_iterator it = juncs.begin(); it != juncs.end(); it++) {
-        (*it)->print_juncion_call_row(out);
+        (*it)->print_juncion_call_row(map_to_ucsc, out);
     }
 }
 
@@ -194,13 +203,13 @@ static void extract_junctions(CmdParser &opts) {
     je.identify_junctions_from_bam(opts.bam_file, opts.bam_pass_through);
     vector<Junction*> juncs = je.get_junctions_sorted();
     if (opts.junction_bed != "") {
-        print_anchor_bed(juncs, opts.junction_bed);
+        print_anchor_bed(juncs, opts.map_to_ucsc, opts.junction_bed);
     }
     if (opts.intron_bed != "") {
-        print_intron_bed(juncs, opts.intron_bed);
+        print_intron_bed(juncs, opts.map_to_ucsc, opts.intron_bed);
     }
     if (opts.intron_call_tsv != "") {
-        print_intron_call_tsv(juncs, opts.intron_call_tsv);
+        print_intron_call_tsv(juncs, opts.map_to_ucsc, opts.intron_call_tsv);
     }
  }
 

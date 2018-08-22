@@ -143,16 +143,28 @@ public:
         return cnt;
     }
 
+    // naive mapping to ucsc chrom name
+    const string make_ucsc_chrom(const string& chrom) const {
+        if (chrom.find_first_not_of("0123456789") == std::string::npos) {
+            return string("chr") + chrom;
+        } else if (chrom == "MT") {
+            return "chrM";
+        } else {
+            return chrom;
+        }
+    }
+    
     // Print BED with anchors as blocks and intron as gap.  ijunc is used to
     // make the BED name.
     void print_anchor_bed(unsigned ijunc,
+                          bool map_to_ucsc,
                           ostream& out) const {
-
-        if (chrom[0]>='0' && chrom[1]<='9')
-                out << "chr";
-
-        out << chrom
-            << "\t" << anchor_start << "\t" << anchor_end
+        if (map_to_ucsc) {
+            out << make_ucsc_chrom(chrom);
+        } else {
+            out << chrom;
+        }        
+        out << "\t" << anchor_start << "\t" << anchor_end
             << "\t" << "sj" << ijunc << "\t" << total_read_count() << "\t" << strand
             << "\t" << anchor_start << "\t" << anchor_end
             << "\t" << "255,0,0" << "\t" << 2
@@ -163,12 +175,14 @@ public:
     // Print BED with intron as block  ijunc is used to
     // make the BED name.
     void print_intron_bed(unsigned ijunc,
+                          bool map_to_ucsc,
                           ostream& out) const {
-        if (chrom[0]>='0' && chrom[1]<='9')
-                out << "chr";
-
-        out << chrom
-            << "\t" << intron_start << "\t" << intron_end
+        if (map_to_ucsc) {
+            out << make_ucsc_chrom(chrom);
+        } else {
+            out << chrom;
+        }        
+        out << "\t" << intron_start << "\t" << intron_end
             << "\t" << "sj" << ijunc << "\t" << total_read_count() << "\t" << strand << endl;
     }
 
@@ -180,8 +194,14 @@ public:
     }
 
     // Print row to junction call TSV
-    void print_juncion_call_row(ostream& out) const {
-        out << chrom << "\t" << intron_start << "\t" << intron_end << "\t" << strand
+    void print_juncion_call_row(bool map_to_ucsc,
+                                ostream& out) const {
+        if (map_to_ucsc) {
+            out << make_ucsc_chrom(chrom);
+        } else {
+            out << chrom;
+        }        
+        out << "\t" << intron_start << "\t" << intron_end << "\t" << strand
             << "\t" << read_counts[SINGLE_MAPPED_READ] << "\t" << read_counts[MULTI_MAPPED_READ] << "\t" << read_counts[UNSURE_READ]
             << "\t" << intron_start - anchor_start << "\t" << anchor_end - intron_end << endl;
     }
