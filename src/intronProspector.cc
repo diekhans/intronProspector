@@ -162,7 +162,7 @@ class CmdParser {
 // Print BED with anchors as blocks and intron as gap.
 static void print_anchor_bed(const vector<Junction*>& juncs,
                              const string& outfile) {
-    ofstream out(outfile);
+    ofstream out(outfile.c_str());
     for (unsigned ijunc = 0; ijunc < juncs.size(); ijunc++) {
         juncs[ijunc]->print_anchor_bed(ijunc, out);
     }
@@ -171,7 +171,7 @@ static void print_anchor_bed(const vector<Junction*>& juncs,
 // Print BED with intron as block
 static void print_intron_bed(const vector<Junction*>& juncs,
                              const string& outfile) {
-    ofstream out(outfile);
+    ofstream out(outfile.c_str());
     for (unsigned ijunc = 0; ijunc < juncs.size(); ijunc++) {
         juncs[ijunc]->print_intron_bed(ijunc, out);
     }
@@ -180,7 +180,7 @@ static void print_intron_bed(const vector<Junction*>& juncs,
 // Print TSV with intron information
 static void print_intron_call_tsv(const vector<Junction*>& juncs,
                                   const string& outfile) {
-    ofstream out(outfile);
+    ofstream out(outfile.c_str());
     Junction::print_juncion_call_header(out);
     for (vector<Junction*>::const_iterator it = juncs.begin(); it != juncs.end(); it++) {
         (*it)->print_juncion_call_row(out);

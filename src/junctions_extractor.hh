@@ -37,6 +37,7 @@ DEALINGS IN THE SOFTWARE.  */
 #include <algorithm>
 #include <iomanip>
 #include <iostream>
+#include <stdio.h>
 #include <map>
 #include <vector>
 #include "htslib/sam.h"
@@ -146,6 +147,10 @@ public:
     // make the BED name.
     void print_anchor_bed(unsigned ijunc,
                           ostream& out) const {
+
+        if (chrom[0]>='0' && chrom[1]<='9')
+                out << "chr";
+
         out << chrom
             << "\t" << anchor_start << "\t" << anchor_end
             << "\t" << "sj" << ijunc << "\t" << total_read_count() << "\t" << strand
@@ -159,6 +164,9 @@ public:
     // make the BED name.
     void print_intron_bed(unsigned ijunc,
                           ostream& out) const {
+        if (chrom[0]>='0' && chrom[1]<='9')
+                out << "chr";
+
         out << chrom
             << "\t" << intron_start << "\t" << intron_end
             << "\t" << "sj" << ijunc << "\t" << total_read_count() << "\t" << strand << endl;
