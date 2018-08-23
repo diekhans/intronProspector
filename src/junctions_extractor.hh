@@ -145,7 +145,8 @@ public:
 
     // naive mapping to ucsc chrom name
     const string make_ucsc_chrom(const string& chrom) const {
-        if (chrom.find_first_not_of("0123456789") == std::string::npos) {
+        if ((chrom.find_first_not_of("0123456789") == std::string::npos)
+            || (chrom == "X") || (chrom == "Y")) {
             return string("chr") + chrom;
         } else if (chrom == "MT") {
             return "chrM";
