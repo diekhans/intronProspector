@@ -97,7 +97,7 @@
 "-p FILE, --pass-through=FILE\n"
 "\n"
 "  Pass through input BAM/SAM records to this file, used for constructing\n"
-"  pipelines with /dev/stdin is specified. CRAM output is not support,\n"
+"  pipelines with /dev/stdout is specified. CRAM output is not support,\n"
 "  these will be written as BAM.\n"
 "\n"
 "\n"

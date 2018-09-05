@@ -68,7 +68,7 @@ Options
 
 `-p FILE, --pass-through=FILE`
 
-> Pass through input BAM/SAM records to this file, used for constructing pipelines with `/dev/stdin` is specified.  CRAM output is not support, these will be written as BAM.
+> Pass through input BAM/SAM records to this file, used for constructing pipelines with `/dev/stdout` is specified.  CRAM output is not support, these will be written as BAM.
 
 EXAMPLES
 ========
