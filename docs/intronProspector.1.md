@@ -51,7 +51,7 @@ Options
 * chrom - chromosome name
 * intron_start - zero based starting coordinates of intron.
 * intron_end - zero based ending coordinates of intron.
-* strand - `+`, `-`, or `.` if not known.
+* strand - `+`, `-`, or `.` if not known.  This is set only if experiment is stranded, it is not set from genomic sequence.
 * uniq_mapped_count - number of uniquely mapped reads supporting the junction.
 * multi_mapped_count - number of uniquely mapped reads supporting the junction.
 * unsure_mapped_count - number of reads that are either in discordant or partial mapped pair or do not have the BAM `NH` tag.

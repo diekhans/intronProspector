@@ -197,7 +197,7 @@ static void print_intron_call_tsv(const vector<Junction*>& juncs,
 }
 
 static void extract_junctions(CmdParser &opts) {
-   JunctionsExtractor je(opts.min_anchor_length,
+    JunctionsExtractor je(opts.min_anchor_length,
                           opts.min_intron_length, opts.max_intron_length,
                           opts.strandness);
     je.identify_junctions_from_bam(opts.bam_file, opts.bam_pass_through);
