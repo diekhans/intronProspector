@@ -37,9 +37,11 @@ DEALINGS IN THE SOFTWARE.  */
 #include <algorithm>
 #include <iomanip>
 #include <iostream>
+#include <sstream>
 #include <stdio.h>
 #include <map>
 #include <vector>
+#include <math.h>
 #include "htslib/sam.h"
 
 using namespace std;
@@ -75,6 +77,12 @@ class JunctionKey {
                 char strand):
         chrom(chrom), intron_start(intron_start), intron_end(intron_end), strand(strand) {
     }
+
+    string to_string() const {
+        stringstream s1;
+        s1 << chrom << ":" << intron_start << "-" << intron_end;
+        return s1.str();
+    }
 };
 
 // comparison key
@@ -106,21 +114,33 @@ static inline bool operator<(const JunctionKey &jk1, const JunctionKey &jk2) {
 // Data save for an intron
 class Junction {
 public:
+    static float NULL_CONFIDENCE;
+    
     const string& chrom;
     uint32_t intron_start;
     uint32_t intron_end;
     uint32_t anchor_start;  // This is the intron_start - max overhang
     uint32_t anchor_end;   // This is the end + max overhang
     char strand;
-    // Number of reads supporting the junction, by category
-    unsigned int read_counts[READ_CATEGORY_MAX + 1];
 
+    private:
+    // Number of reads supporting the junction, by category
+    uint64_t read_counts[READ_CATEGORY_MAX + 1];
+    // For each read, the distance from the start of the read to the start of the intron.
+    // Uses in calculating Shannon-Wiener Diversity Index
+    std::vector<uint16_t> read_offsets;
+    float confidence;   // computed in a lazy manner
+
+    void lazy_get_confidence();
+    float calculate_confidence();
+    
+    public:
     Junction(const string& chrom1, uint32_t intron_start1, uint32_t intron_end1,
              uint32_t anchor_start1, uint32_t anchor_end1,
              char strand1):
         chrom(chrom1), intron_start(intron_start1), intron_end(intron_end1),
         anchor_start(anchor_start1), anchor_end(anchor_end1),
-        strand(strand1)  {
+        strand(strand1), confidence(NULL_CONFIDENCE) {
         for (unsigned i = 0; i <= READ_CATEGORY_MAX; i++) {
             read_counts[i] = 0;
         }
@@ -128,23 +148,38 @@ public:
     Junction(const Junction& src):
         chrom(src.chrom), intron_start(src.intron_start), intron_end(src.intron_end),
         anchor_start(src.anchor_start), anchor_end(src.anchor_end),
-        strand(src.strand)  {
+        strand(src.strand), read_offsets(src.read_offsets), confidence(src.confidence)  {
         for (unsigned i = 0; i <= READ_CATEGORY_MAX; i++) {
             read_counts[i] = 0;
         }
     }
 
+    // add a read to the counts and offsets
+    void count_read(ReadCategory read_category,
+                    uint32_t read_offset) {
+        read_counts[read_category] += 1;
+        read_offsets.push_back(read_offset);
+    }
+
     // sum different read counts
-    unsigned total_read_count() const {
-        unsigned cnt = 0;
+    uint64_t total_read_count() const {
+        uint64_t cnt = 0;
         for (unsigned i = 0; i <= READ_CATEGORY_MAX; i++) {
             cnt += read_counts[i];
         }
         return cnt;
     }
 
+    // get the confidence, computing for the first time
+    float get_confidence() const {
+        if (isnan(confidence)) {
+            const_cast<Junction*>(this)->lazy_get_confidence();
+        }
+        return confidence;
+    }
+    
     // Trim read counts to fit in BED score restriction or 0..1000
-    static unsigned read_count_to_bed_score(unsigned read_count) {
+    static unsigned read_count_to_bed_score(uint64_t read_count) {
         return (read_count <= 1000) ? read_count : 1000;
     }
 
@@ -193,15 +228,15 @@ public:
     }
 
     // Print header for junction call TSV
-    static void print_juncion_call_header(ostream& out) {
+    static void print_junction_call_header(ostream& out) {
         out << "chrom" << "\t" << "intron_start" << "\t" << "intron_end" << "\t" << "strand"
             << "\t" << "uniq_mapped_count" << "\t" << "multi_mapped_count" << "\t" << "unsure_mapped_count"
-            << "\t" << "max_left_overhang" << "\t" << "max_right_overhang" << endl;
+            << "\t" << "max_left_overhang" << "\t" << "max_right_overhang" << "\t" << "confidence" << endl;
     }
 
     // Print row to junction call TSV
-    void print_juncion_call_row(bool map_to_ucsc,
-                                ostream& out) const {
+    void print_junction_call_row(bool map_to_ucsc,
+                                 ostream& out) const {
         if (map_to_ucsc) {
             out << make_ucsc_chrom(chrom);
         } else {
@@ -209,7 +244,8 @@ public:
         }        
         out << "\t" << intron_start << "\t" << intron_end << "\t" << strand
             << "\t" << read_counts[SINGLE_MAPPED_READ] << "\t" << read_counts[MULTI_MAPPED_READ] << "\t" << read_counts[UNSURE_READ]
-            << "\t" << intron_start - anchor_start << "\t" << anchor_end - intron_end << endl;
+            << "\t" << intron_start - anchor_start << "\t" << anchor_end - intron_end
+            << "\t" << get_confidence() << endl;
     }
 
 };
@@ -254,7 +290,7 @@ private:
     uint32_t max_intron_length_;
     //strandness of data; 0 = unstranded, 1 = RF, 2 = FR
     Strandness strandness_;
-
+    
     // Alignment file
     string bam_;
 

@@ -1,15 +1,15 @@
-chrom	intron_start	intron_end	strand	uniq_mapped_count	multi_mapped_count	unsure_mapped_count	max_left_overhang	max_right_overhang
-chr_fake	81	131433	.	0	1	0	72	29
-chr_fake	2944	136100	.	0	1	0	15	85
-chr_fake	10026	489051	.	0	1	0	14	67
-chr_fake	34666	35513	.	0	1	0	81	20
-chr_fake	34666	166601	.	0	1	0	81	20
-chr_fake	130577	131433	.	0	1	0	72	29
-chr_fake	131550	132801	.	0	2	0	85	16
-chr_fake	132879	133326	.	1	0	0	80	17
-chr_fake	133449	136100	.	0	1	0	15	85
-chr_fake	136650	139594	.	0	2	0	75	26
-chr_fake	346165	488947	.	0	2	0	10	91
-chr_fake	487560	488264	.	37	0	0	68	90
-chr_fake	488522	488947	.	44	2	0	87	91
-chr_fake	489118	490086	.	42	4	0	93	90
+chrom	intron_start	intron_end	strand	uniq_mapped_count	multi_mapped_count	unsure_mapped_count	max_left_overhang	max_right_overhang	confidence
+chr_fake	81	131433	.	0	1	0	72	29	0
+chr_fake	2944	136100	.	0	1	0	15	85	0
+chr_fake	10026	489051	.	0	1	0	14	67	0
+chr_fake	34666	35513	.	0	1	0	81	20	0
+chr_fake	34666	166601	.	0	1	0	81	20	0
+chr_fake	130577	131433	.	0	1	0	72	29	0
+chr_fake	131550	132801	.	0	2	0	85	16	0
+chr_fake	132879	133326	.	1	0	0	80	17	0
+chr_fake	133449	136100	.	0	1	0	15	85	0
+chr_fake	136650	139594	.	0	2	0	75	26	0
+chr_fake	346165	488947	.	0	2	0	10	91	0
+chr_fake	487560	488264	.	37	0	0	68	90	3.92
+chr_fake	488522	488947	.	44	2	0	87	91	4.47
+chr_fake	489118	490086	.	42	4	0	93	90	4.9

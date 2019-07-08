@@ -42,13 +42,15 @@ DEALINGS IN THE SOFTWARE.  */
 
 using namespace std;
 
+float Junction::NULL_CONFIDENCE = nanf("not-a-number");
+
 // convert a char to a string
 static string char_to_string(char ch) {
     char chs [2] = {ch, '\0'};
     return string(chs);
 }
 
-#if 0
+#if 1
 // convert an integer to a string
 static string int_to_string(int num) {
     stringstream s1;
@@ -56,6 +58,35 @@ static string int_to_string(int num) {
     return s1.str();
 }
 #endif
+
+// lazy calculation of confidence
+void Junction::lazy_get_confidence() {
+    assert(isnan(confidence));
+    if (total_read_count() == 0) {
+        confidence = 0.0;
+    } else {
+        confidence = calculate_confidence();
+    }
+}
+
+// calculation of confidence
+float Junction::calculate_confidence() {
+    // put in order for counting
+    std::sort(read_offsets.begin(), read_offsets.end());
+    float summation = 0.0;
+    for (unsigned i = 0; i < read_offsets.size(); ) {
+        uint16_t pos = read_offsets[i];
+        unsigned cnt = 0;
+        for (; (i < read_offsets.size()) && (read_offsets[i] == pos); i++) {
+            cnt++;
+        }
+        float p = float(cnt) / read_offsets.size();
+        if (p != 0.0) {
+            summation += p * log2f(p);
+        }
+    }
+    return (summation == 0.0) ? 0.0 : -summation;
+}
 
 // Sort a vector of junctions
 template <class CollectionType>
@@ -99,8 +130,8 @@ void JunctionsExtractor::add_junction(bam1_t *aln, const string& chrom, char str
         if (anchor_end > junc->anchor_end)
             junc->anchor_end = anchor_end;
     }
-    junc->read_counts[get_read_category(aln)] += 1;
-
+    junc->count_read(get_read_category(aln),
+                     intron_start - aln->core.pos);
 }
 
 // Validate a junction and save if it passes.

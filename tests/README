@@ -5,12 +5,14 @@ Test cases:
     including multi-mappers.  For reference, the STAR SJ calls from this
     region are in input/test_basic.star.sj.tab
 
+  - test_multi
+    extracted from ERR315432 with reads crossing two or three exons
+    
+  - fake10:
+    fake10 consists of the GRCh38 chr10 region of ERR315432 from test_basic,
+    with the reads in test_basic extract from the fastq. These mapped
+    with STAR and hisat2, creating the test sam files.  Only the sam
+    files are used in the test, the input files are there to update or
+    reuse.  The STAR junctions and regtools calls are also included for
+    debugging.
 
- - fake10:
-   fake10 consists of the GRCh38 chr10 region of ERR315432 from test_basic,
-   with the reads in test_basic extract from the fastq. These mapped
-   with STAR and hisat2, creating the test sam files.  Only the sam
-   files are used in the test, the input files are there to update or
-   reuse.  The STAR junctions and regtools calls are also included for
-   debugging.
-   

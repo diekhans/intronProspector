@@ -10,6 +10,7 @@ diff = diff -u
 
 basic_sam = input/test_basic.sam
 basic_bam = output/test_basic.bam
+multi_sam = input/test_multi.sam
 fake10_star_sam = input/fake10.star.sam
 fake10_hisat2_sam = input/fake10.hisat2.sam
 
@@ -18,7 +19,7 @@ fake10_hisat2_sam = input/fake10.hisat2.sam
 all:
 
 .PHONY: test
-test: testBasic testFake10
+test: testBasic testMulti testFake10
 
 ###
 # basic tests
@@ -48,6 +49,17 @@ testBasic3: mkout ${basic_bam}
 	${diff} expected/$@.introns.tsv output/$@.introns.tsv
 	samtools view -h output/$@.bam >output/$@.sam
 	${diff} ${basic_sam} output/$@.sam
+
+###
+# multi-introns per read tests
+##
+testMulti: testMulti1
+
+testMulti1: mkout
+	${intronProspector} --junction-bed=output/$@.juncs.bed --intron-bed=output/$@.introns.bed --intron-calls=output/$@.introns.tsv ${multi_sam}
+	${diff} expected/$@.juncs.bed output/$@.juncs.bed
+	${diff} expected/$@.introns.bed output/$@.introns.bed
+	${diff} expected/$@.introns.tsv output/$@.introns.tsv
 
 ##
 # fake10 tests

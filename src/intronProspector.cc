@@ -41,6 +41,7 @@ using namespace std;
 static const uint32_t DEFAULT_MIN_ANCHOR_LENGTH = 8;
 static const uint32_t DEFAULT_MIN_INTRON_LENGTH = 70;
 static const uint32_t DEFAULT_MAX_INTRON_LENGTH = 500000;
+static const float DEFAULT_MIN_CONFIDENCE_SCORE = 0.0;
 static const Strandness DEFAULT_STRANDED = UNSTRANDED;
 
 static const char *usage_msg =
@@ -64,6 +65,7 @@ static Strandness str_to_strandness(const string s) {
         return RF_STRANDED;
     } else if (su == "FR") {
         return FR_STRANDED;
+
     } else {
         cerr << "Error: invalid strandness value '" + s + "', expected one of 'UN', 'RF', or 'FR' (case insensitive)" << endl;
         exit(1);
@@ -79,6 +81,7 @@ class CmdParser {
     uint32_t min_anchor_length;
     uint32_t min_intron_length;
     uint32_t max_intron_length;
+    float min_confidence_score;
     Strandness strandness;
 
     // output
@@ -93,7 +96,8 @@ class CmdParser {
         min_anchor_length(DEFAULT_MIN_ANCHOR_LENGTH),
         min_intron_length(DEFAULT_MIN_INTRON_LENGTH),
         max_intron_length(DEFAULT_MAX_INTRON_LENGTH),
-        strandness(UNSTRANDED),
+        min_confidence_score(DEFAULT_MIN_CONFIDENCE_SCORE),
+        strandness(DEFAULT_STRANDED),
         map_to_ucsc(false) {
 
         struct option long_options[] = {
@@ -102,6 +106,7 @@ class CmdParser {
             {"min-anchor-length", required_argument, NULL, 'a'},
             {"min-intron_length", required_argument, NULL, 'i'},
             {"max-intron_length", required_argument, NULL, 'I'},
+            {"min-confidence-score", required_argument, NULL, 'C'},
             {"strandness", required_argument, NULL, 's'},
             {"junction-bed", required_argument, NULL, 'j'},
             {"intron-bed", required_argument, NULL, 'n'},
@@ -123,6 +128,9 @@ class CmdParser {
                     break;
                 case 'I':
                     max_intron_length = atoi(optarg);
+                    break;
+                case 'C':
+                    min_confidence_score = strtod(optarg, NULL);
                     break;
                 case 's':
                     strandness = str_to_strandness(optarg);
@@ -156,7 +164,7 @@ class CmdParser {
         }
 
         if (argc - optind > 1) {
-            cerr << "Error: too many position arguments" << endl << endl;
+            cerr << "Error: too many positional arguments" << endl << endl;
             usage();
         }
         if (argc - optind == 1) {
@@ -167,32 +175,42 @@ class CmdParser {
 
 // Print BED with anchors as blocks and intron as gap.
 static void print_anchor_bed(const vector<Junction*>& juncs,
+                             float min_confidence_score,
                              bool map_to_ucsc,
                              const string& outfile) {
     ofstream out(outfile.c_str());
     for (unsigned ijunc = 0; ijunc < juncs.size(); ijunc++) {
-        juncs[ijunc]->print_anchor_bed(ijunc, map_to_ucsc, out);
+        if (juncs[ijunc]->get_confidence() >= min_confidence_score) {
+            juncs[ijunc]->print_anchor_bed(ijunc, map_to_ucsc, out);
+        }
     }
 }
 
 // Print BED with intron as block
 static void print_intron_bed(const vector<Junction*>& juncs,
+                             float min_confidence_score,
                              bool map_to_ucsc,
                              const string& outfile) {
     ofstream out(outfile.c_str());
     for (unsigned ijunc = 0; ijunc < juncs.size(); ijunc++) {
-        juncs[ijunc]->print_intron_bed(ijunc, map_to_ucsc, out);
+        if (juncs[ijunc]->get_confidence() >= min_confidence_score) {
+            juncs[ijunc]->print_intron_bed(ijunc, map_to_ucsc, out);
+        }
     }
 }
 
 // Print TSV with intron information
 static void print_intron_call_tsv(const vector<Junction*>& juncs,
+                                  float min_confidence_score,
                                   bool map_to_ucsc,
                                   const string& outfile) {
     ofstream out(outfile.c_str());
-    Junction::print_juncion_call_header(out);
-    for (vector<Junction*>::const_iterator it = juncs.begin(); it != juncs.end(); it++) {
-        (*it)->print_juncion_call_row(map_to_ucsc, out);
+    Junction::print_junction_call_header(out);
+    out << std::setprecision(3);
+    for (unsigned ijunc = 0; ijunc < juncs.size(); ijunc++) {
+        if (juncs[ijunc]->get_confidence() >= min_confidence_score) {
+            juncs[ijunc]->print_junction_call_row(map_to_ucsc, out);
+        }
     }
 }
 
@@ -203,13 +221,13 @@ static void extract_junctions(CmdParser &opts) {
     je.identify_junctions_from_bam(opts.bam_file, opts.bam_pass_through);
     vector<Junction*> juncs = je.get_junctions_sorted();
     if (opts.junction_bed != "") {
-        print_anchor_bed(juncs, opts.map_to_ucsc, opts.junction_bed);
+        print_anchor_bed(juncs, opts.min_confidence_score, opts.map_to_ucsc, opts.junction_bed);
     }
     if (opts.intron_bed != "") {
-        print_intron_bed(juncs, opts.map_to_ucsc, opts.intron_bed);
+        print_intron_bed(juncs, opts.min_confidence_score, opts.map_to_ucsc, opts.intron_bed);
     }
     if (opts.intron_call_tsv != "") {
-        print_intron_call_tsv(juncs, opts.map_to_ucsc, opts.intron_call_tsv);
+        print_intron_call_tsv(juncs, opts.min_confidence_score, opts.map_to_ucsc, opts.intron_call_tsv);
     }
  }
 
