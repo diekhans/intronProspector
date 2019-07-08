@@ -24,7 +24,7 @@ test: testBasic testMulti testFake10
 ###
 # basic tests
 ##
-testBasic: testBasic1 testBasic2 testBasic3
+testBasic: testBasic1 testBasic2 testBasic3 testBasic4
 
 # basic unstranded
 testBasic1: mkout
@@ -49,6 +49,13 @@ testBasic3: mkout ${basic_bam}
 	${diff} expected/$@.introns.tsv output/$@.introns.tsv
 	samtools view -h output/$@.bam >output/$@.sam
 	${diff} ${basic_sam} output/$@.sam
+
+# test confidence score filter
+testBasic4: mkout ${basic_bam}
+	${intronProspector} --min-confidence-score=1.0 --junction-bed=output/$@.juncs.bed --intron-bed=output/$@.introns.bed --intron-calls=output/$@.introns.tsv ${basic_bam}
+	${diff} expected/$@.juncs.bed output/$@.juncs.bed
+	${diff} expected/$@.introns.bed output/$@.introns.bed
+	${diff} expected/$@.introns.tsv output/$@.introns.tsv
 
 ###
 # multi-introns per read tests

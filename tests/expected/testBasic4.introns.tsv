@@ -1,0 +1,5 @@
+chrom	intron_start	intron_end	strand	uniq_mapped_count	multi_mapped_count	unsure_mapped_count	max_left_overhang	max_right_overhang	confidence
+chr10	5453560	5454264	.	41	0	0	68	86	4.03
+chr10	5454522	5454947	.	53	2	0	87	91	4.45
+chr10	5455118	5456086	.	45	0	0	85	90	4.75
+chr10	5456273	5456587	.	46	0	0	86	79	4.69
