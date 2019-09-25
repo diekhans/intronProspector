@@ -1,4 +1,4 @@
-/*  junctions_extractor.h -- splice junction extraction.
+/*  junctions_extractor.hh -- splice junction extraction.
 
     Copyright (c) 2018, Mark Diekhans, University of California, Santa Cruz
 
@@ -43,6 +43,7 @@ DEALINGS IN THE SOFTWARE.  */
 #include <vector>
 #include <math.h>
 #include "htslib/sam.h"
+class Genome;
 
 using namespace std;
 
@@ -120,8 +121,9 @@ public:
     uint32_t intron_start;
     uint32_t intron_end;
     uint32_t anchor_start;  // This is the intron_start - max overhang
-    uint32_t anchor_end;   // This is the end + max overhang
+    uint32_t anchor_end;    // This is the end + max overhang
     char strand;
+    string splice_sites;    // splite sites in the form GT/AG if genome available
 
     private:
     // Number of reads supporting the junction, by category
@@ -137,10 +139,10 @@ public:
     public:
     Junction(const string& chrom1, uint32_t intron_start1, uint32_t intron_end1,
              uint32_t anchor_start1, uint32_t anchor_end1,
-             char strand1):
+             char strand1, const string& splice_sites):
         chrom(chrom1), intron_start(intron_start1), intron_end(intron_end1),
         anchor_start(anchor_start1), anchor_end(anchor_end1),
-        strand(strand1), confidence(NULL_CONFIDENCE) {
+        strand(strand1), confidence(NULL_CONFIDENCE), splice_sites(splice_sites) {
         for (unsigned i = 0; i <= READ_CATEGORY_MAX; i++) {
             read_counts[i] = 0;
         }
@@ -148,7 +150,8 @@ public:
     Junction(const Junction& src):
         chrom(src.chrom), intron_start(src.intron_start), intron_end(src.intron_end),
         anchor_start(src.anchor_start), anchor_end(src.anchor_end),
-        strand(src.strand), read_offsets(src.read_offsets), confidence(src.confidence)  {
+        strand(src.strand), read_offsets(src.read_offsets), confidence(src.confidence),
+        splice_sites(splice_sites)  {
         for (unsigned i = 0; i <= READ_CATEGORY_MAX; i++) {
             read_counts[i] = 0;
         }
@@ -206,7 +209,11 @@ public:
             out << chrom;
         }        
         out << "\t" << anchor_start << "\t" << anchor_end
-            << "\t" << "sj" << ijunc << "\t" << read_count_to_bed_score(total_read_count()) << "\t" << strand
+            << "\t" << "sj" << ijunc;
+        if (splice_sites != "") {
+            out << '_' << splice_sites;
+        }
+        out << "\t" << read_count_to_bed_score(total_read_count()) << "\t" << strand
             << "\t" << anchor_start << "\t" << anchor_end
             << "\t" << "255,0,0" << "\t" << 2
             << "\t" << intron_start - anchor_start << "," << anchor_end - intron_end
@@ -224,18 +231,27 @@ public:
             out << chrom;
         }        
         out << "\t" << intron_start << "\t" << intron_end
-            << "\t" << "sj" << ijunc << "\t" << read_count_to_bed_score(total_read_count()) << "\t" << strand << endl;
+            << "\t" << "sj" << ijunc;
+        if (splice_sites != "") {
+            out << '_' << splice_sites;
+        }
+        out << "\t" << read_count_to_bed_score(total_read_count()) << "\t" << strand << endl;
     }
 
     // Print header for junction call TSV
-    static void print_junction_call_header(ostream& out) {
+    static void print_junction_call_header(bool have_genome,ostream& out) {
         out << "chrom" << "\t" << "intron_start" << "\t" << "intron_end" << "\t" << "strand"
             << "\t" << "uniq_mapped_count" << "\t" << "multi_mapped_count" << "\t" << "unsure_mapped_count"
-            << "\t" << "max_left_overhang" << "\t" << "max_right_overhang" << "\t" << "confidence" << endl;
+            << "\t" << "max_left_overhang" << "\t" << "max_right_overhang" << "\t" << "confidence";
+        if (have_genome) {
+            out << "\t" << "splice_sites";
+        }
+        out << endl;
     }
 
     // Print row to junction call TSV
-    void print_junction_call_row(bool map_to_ucsc,
+    void print_junction_call_row(bool have_genome,
+                                 bool map_to_ucsc,
                                  ostream& out) const {
         if (map_to_ucsc) {
             out << make_ucsc_chrom(chrom);
@@ -245,7 +261,11 @@ public:
         out << "\t" << intron_start << "\t" << intron_end << "\t" << strand
             << "\t" << read_counts[SINGLE_MAPPED_READ] << "\t" << read_counts[MULTI_MAPPED_READ] << "\t" << read_counts[UNSURE_READ]
             << "\t" << intron_start - anchor_start << "\t" << anchor_end - intron_end
-            << "\t" << get_confidence() << endl;
+            << "\t" << get_confidence();
+        if (have_genome) {
+            out << "\t" << splice_sites;
+        }
+        out << endl;
     }
 
 };
@@ -294,6 +314,9 @@ private:
     // Alignment file
     string bam_;
 
+    // Object to get genome sequences, which maybe NULL
+    Genome *genome_;
+
     // target index to target (chrom) name
     vector<string> targets_;
     
@@ -323,6 +346,9 @@ private:
     samFile* open_pass_through(samFile *in_sam,
                                bam_hdr_t *in_header,
                                const string& bam_pass_through);
+    bool is_canonical(const string& junctions);
+    string get_splice_sites(const string& chrom, char strand,
+                            uint32_t intron_start, uint32_t intron_end);
 
     JunctionsExtractor() {
         assert(false); // Default constructor not allowed
@@ -331,7 +357,9 @@ public:
     JunctionsExtractor(uint32_t min_anchor_length,
                        uint32_t min_intron_length,
                        uint32_t max_intron_length,
-                       Strandness strandness):
+                       Strandness strandness,
+                       Genome *genome):
+        genome_(genome),
         min_anchor_length_(min_anchor_length),
         min_intron_length_(min_intron_length),
         max_intron_length_(max_intron_length),
@@ -351,5 +379,4 @@ public:
     // Get a vector of all the junctions
     vector<Junction*> get_junctions_sorted();
 };
-
 #endif

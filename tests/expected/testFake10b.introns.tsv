@@ -1,11 +1,11 @@
-chrom	intron_start	intron_end	strand	uniq_mapped_count	multi_mapped_count	unsure_mapped_count	max_left_overhang	max_right_overhang	confidence
-chr_fake	34666	35513	-	1	0	0	81	20	0
-chr_fake	130577	131433	+	1	0	0	72	29	0
-chr_fake	131550	132801	+	1	0	0	85	16	0
-chr_fake	132879	133326	+	1	0	0	80	17	0
-chr_fake	133449	136100	+	1	0	0	15	85	0
-chr_fake	136650	139594	+	1	0	0	75	26	0
-chr_fake	426491	489097	+	0	0	1	9	21	0
-chr_fake	487560	488264	+	37	0	0	68	90	3.92
-chr_fake	488522	488947	+	44	0	1	87	91	4.46
-chr_fake	489118	490086	+	41	0	7	93	90	4.97
+chrom	intron_start	intron_end	strand	uniq_mapped_count	multi_mapped_count	unsure_mapped_count	max_left_overhang	max_right_overhang	confidence	splice_sites
+fake10	34666	35513	-	1	0	0	81	20	0	ca/tc
+fake10	130577	131433	+	1	0	0	72	29	0	GT/AG
+fake10	131550	132801	+	1	0	0	85	16	0	GT/AG
+fake10	132879	133326	+	1	0	0	80	17	0	GT/AG
+fake10	133449	136100	+	1	0	0	15	85	0	GT/AG
+fake10	136650	139594	+	1	0	0	75	26	0	GT/AG
+fake10	426491	489097	+	0	0	1	9	21	0	GT/AG
+fake10	487560	488264	+	37	0	0	68	90	3.92	GT/AG
+fake10	488522	488947	+	44	0	1	87	91	4.46	GT/AG
+fake10	489118	490086	+	41	0	7	93	90	4.97	GT/AG

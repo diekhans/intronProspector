@@ -38,13 +38,17 @@ Options
 
 > Maximum intron length. The default is 500000 bases.
 
--C FLOAT, --min-confidence-score=FLOAT
+`-C FLOAT, --min-confidence-score=FLOAT`
 
 > Calculate the Shannon-Wiener Diversity Index to use as a confidence score and discard intron calls below this value.  The default is 0.0, which discards no class. A value of 1.0 is a good threshold for filtering. This methodology it take from JuncBASE DOI: 10.1101/gr.108662.110.
 
 `-s STRING, --strandness=STRING`
 
 > Strand specificity of RNA library preparation.  Use `UN` for unstranded, `RF` for first-strand, `FR` for second-strand (case-insensitive).  The default is `UN`.  This is used to set the strand in the junction-format BED file.
+
+`-g fasta, --genome-fasta=fasta`
+
+> Genome FASTA file, must be indexed by `samtools faidx`.  Donor and acceptor dinuclotides are identified if provided. 
 
 `-U, --map-to-ucsc`
 
@@ -63,6 +67,7 @@ Options
 * max_left_overhang - maximum number of bases overlapping the exon upstream of the intron.
 * max_right_overhang - maximum number of bases overlapping the exon downstream of the intron.
 * confidence - confidence score.
+* splice_sites - Donor-acceptor pair, if genome provided. In upper-case for known splicing patterns, lower-case for unknown.  If strand is not known, this field is empty.
 
 `-j FILE, --junction-bed=FILE`
 

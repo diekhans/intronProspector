@@ -34,6 +34,7 @@ DEALINGS IN THE SOFTWARE.  */
 #include <algorithm>
 #include <fstream>
 #include "junctions_extractor.hh"
+#include "genome.hh"
 #include "version.hh"
 
 using namespace std;
@@ -83,6 +84,7 @@ class CmdParser {
     uint32_t max_intron_length;
     float min_confidence_score;
     Strandness strandness;
+    string genome_fa;
 
     // output
     string junction_bed;
@@ -108,6 +110,7 @@ class CmdParser {
             {"max-intron_length", required_argument, NULL, 'I'},
             {"min-confidence-score", required_argument, NULL, 'C'},
             {"strandness", required_argument, NULL, 's'},
+            {"genome-fasta", required_argument, NULL, 'g'},
             {"junction-bed", required_argument, NULL, 'j'},
             {"intron-bed", required_argument, NULL, 'n'},
             {"intron-calls", required_argument, NULL, 'c'},
@@ -134,6 +137,9 @@ class CmdParser {
                     break;
                 case 's':
                     strandness = str_to_strandness(optarg);
+                    break;
+                case 'g':
+                    genome_fa = string(optarg);
                     break;
                 case 'j':
                     junction_bed = optarg;
@@ -202,22 +208,27 @@ static void print_intron_bed(const vector<Junction*>& juncs,
 // Print TSV with intron information
 static void print_intron_call_tsv(const vector<Junction*>& juncs,
                                   float min_confidence_score,
+                                  bool have_genome,
                                   bool map_to_ucsc,
                                   const string& outfile) {
     ofstream out(outfile.c_str());
-    Junction::print_junction_call_header(out);
+    Junction::print_junction_call_header(have_genome, out);
     out << std::setprecision(3);
     for (unsigned ijunc = 0; ijunc < juncs.size(); ijunc++) {
         if (juncs[ijunc]->get_confidence() >= min_confidence_score) {
-            juncs[ijunc]->print_junction_call_row(map_to_ucsc, out);
+            juncs[ijunc]->print_junction_call_row(have_genome, map_to_ucsc, out);
         }
     }
 }
 
 static void extract_junctions(CmdParser &opts) {
+    Genome *genome = NULL;
+    if (opts.genome_fa.size() > 0) {
+        genome = new Genome(opts.genome_fa);
+    }
     JunctionsExtractor je(opts.min_anchor_length,
                           opts.min_intron_length, opts.max_intron_length,
-                          opts.strandness);
+                          opts.strandness, genome);
     je.identify_junctions_from_bam(opts.bam_file, opts.bam_pass_through);
     vector<Junction*> juncs = je.get_junctions_sorted();
     if (opts.junction_bed != "") {
@@ -227,8 +238,10 @@ static void extract_junctions(CmdParser &opts) {
         print_intron_bed(juncs, opts.min_confidence_score, opts.map_to_ucsc, opts.intron_bed);
     }
     if (opts.intron_call_tsv != "") {
-        print_intron_call_tsv(juncs, opts.min_confidence_score, opts.map_to_ucsc, opts.intron_call_tsv);
+        print_intron_call_tsv(juncs, opts.min_confidence_score, genome != NULL,
+                              opts.map_to_ucsc, opts.intron_call_tsv);
     }
+    delete genome;
  }
 
 // entry point

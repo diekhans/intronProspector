@@ -32,9 +32,10 @@ DEALINGS IN THE SOFTWARE.  */
 
 #include <iostream>
 #include <iomanip>
-#include <sstream>
 #include <stdexcept>
 #include "junctions_extractor.hh"
+#include "type_ops.hh"
+#include "genome.hh"
 #include "htslib/sam.h"
 #include "htslib/hts.h"
 #include "htslib/faidx.h"
@@ -43,21 +44,6 @@ DEALINGS IN THE SOFTWARE.  */
 using namespace std;
 
 float Junction::NULL_CONFIDENCE = nanf("not-a-number");
-
-// convert a char to a string
-static string char_to_string(char ch) {
-    char chs [2] = {ch, '\0'};
-    return string(chs);
-}
-
-#if 1
-// convert an integer to a string
-static string int_to_string(int num) {
-    stringstream s1;
-    s1 << num;
-    return s1.str();
-}
-#endif
 
 // lazy calculation of confidence
 void Junction::lazy_get_confidence() {
@@ -88,6 +74,14 @@ float Junction::calculate_confidence() {
     return (summation == 0.0) ? 0.0 : -summation;
 }
 
+// determine if a junctions string in the for GT/AG is canonical.
+// they must be upper case.
+bool JunctionsExtractor::is_canonical(const string& junctions) {
+    return (junctions == "GT/AG")
+        or (junctions == "GC/AG")
+        or (junctions == "AT/AC");
+}
+
 // Sort a vector of junctions
 template <class CollectionType>
 static inline void sort_junctions(CollectionType &junctions) {
@@ -109,6 +103,23 @@ bool JunctionsExtractor::junction_qc(uint32_t anchor_start, uint32_t intron_star
     }
 }
 
+// get the splice site strings
+string JunctionsExtractor::get_splice_sites(const string& chrom, char strand,
+                                            uint32_t intron_start, uint32_t intron_end) {
+    if ((genome_ == NULL) or (strand == '.')) {
+        return "";
+    }
+    string splice_site = to_upper(genome_->fetch(chrom, intron_start, intron_start + 2) + "/"
+                                  + genome_->fetch(chrom, intron_end - 2, intron_end));
+    if (strand == '-') {
+        splice_site = dnaReverseComplement(splice_site);
+    }
+    if (not is_canonical(splice_site)) {
+        splice_site = to_lower(splice_site);
+    }
+    return splice_site;
+}
+
 // Add a junction to the junctions map
 void JunctionsExtractor::add_junction(bam1_t *aln, const string& chrom, char strand,
                                       uint32_t anchor_start, uint32_t intron_start,
@@ -119,7 +130,8 @@ void JunctionsExtractor::add_junction(bam1_t *aln, const string& chrom, char str
     // Check if new junction
     Junction *junc = NULL;
     if (!junctions_.count(key)) {
-        junc = new Junction(chrom, intron_start, intron_end, anchor_start, anchor_end, strand);
+        junc = new Junction(chrom, intron_start, intron_end, anchor_start, anchor_end, strand,
+                            get_splice_sites(chrom, strand, intron_start, intron_end));
         junctions_[key] = junc;
     } else {
          // existing junction
@@ -329,7 +341,7 @@ void JunctionsExtractor::parse_alignment_into_junctions(bam1_t *aln) {
             case 'H':  // hard clipping (clipped sequences NOT present in SEQ)
                 break;
             default:
-                throw std::invalid_argument("Unknown cigar operation '" + char_to_string(op) + "' found in " + bam_);
+                throw std::invalid_argument("Unknown cigar operation '" + string(1, op) + "' found in " + bam_);
         }
     }
     if (started_junction) {

@@ -4,7 +4,7 @@ OBJDIR = ${ROOT}/objs
 BINDIR = ${ROOT}/bin
 
 intronProspector = ${BINDIR}/intronProspector
-SRCS = junctions_extractor.cc intronProspector.cc
+SRCS = junctions_extractor.cc genome.cc intronProspector.cc
 OBJS = ${SRCS:%.cc=${OBJDIR}/%.o}
 DEPENDS = ${SRCS:%.cc=%.depend}
 

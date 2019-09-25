@@ -13,7 +13,8 @@ basic_bam = output/test_basic.bam
 multi_sam = input/test_multi.sam
 fake10_star_sam = input/fake10.star.sam
 fake10_hisat2_sam = input/fake10.hisat2.sam
-
+fake10_fa = output/fake10_genome.fa
+fake10_fai = output/fake10_genome.fa.fai
 
 .PHONY: all
 all:
@@ -73,17 +74,17 @@ testMulti1: mkout
 ##
 testFake10: testFake10a testFake10b
 
-# fake10 STAR mappings
-testFake10a: mkout
-	${intronProspector} --junction-bed=output/$@.juncs.bed --intron-bed=output/$@.introns.bed --intron-calls=output/$@.introns.tsv --pass-through=output/$@.sam ${fake10_star_sam}
+# fake10 STAR mappings (SAM doesn't have strand)
+testFake10a: mkout ${fake10_fa} ${fake10_fai}
+	${intronProspector} --genome-fasta=${fake10_fa} --junction-bed=output/$@.juncs.bed --intron-bed=output/$@.introns.bed --intron-calls=output/$@.introns.tsv --pass-through=output/$@.sam ${fake10_star_sam}
 	${diff} expected/$@.juncs.bed output/$@.juncs.bed
 	${diff} expected/$@.introns.bed output/$@.introns.bed
 	${diff} expected/$@.introns.tsv output/$@.introns.tsv
 	${diff} ${fake10_star_sam} output/$@.sam
 
 # fake10 hisat2 mappings
-testFake10b: mkout
-	${intronProspector} --junction-bed=output/$@.juncs.bed --intron-bed=output/$@.introns.bed --intron-calls=output/$@.introns.tsv --pass-through=output/$@.sam ${fake10_hisat2_sam}
+testFake10b: mkout ${fake10_fa} ${fake10_fai}
+	${intronProspector} --genome-fasta=${fake10_fa}  --junction-bed=output/$@.juncs.bed --intron-bed=output/$@.introns.bed --intron-calls=output/$@.introns.tsv --pass-through=output/$@.sam ${fake10_hisat2_sam}
 	${diff} expected/$@.juncs.bed output/$@.juncs.bed
 	${diff} expected/$@.introns.bed output/$@.introns.bed
 	${diff} expected/$@.introns.tsv output/$@.introns.tsv
@@ -100,6 +101,13 @@ output/%.bam: input/%.sam
 	@mkdir -p output
 	samtools view -b $< >$@.tmp
 	mv -f $@.tmp $@
+
+output/%.fa: input/%.fa
+	@mkdir -p output
+	cp $< output/$*.fa
+
+output/%.fa.fai: output/%.fa
+	samtools faidx $<
 
 .PHONY: clean
 clean:
