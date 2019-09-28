@@ -317,12 +317,18 @@ private:
     // Object to get genome sequences, which maybe NULL
     Genome *genome_;
 
+    // missing genomic targets
+    bool skip_missing_targets_;
+    
     // target index to target (chrom) name
     vector<string> targets_;
     
     // Map to store the junctions by intron coordinates
     map<JunctionKey, Junction*> junctions_;
 
+    // missing genomic sequence that have been warned about
+    map<string, bool> missing_genomic_warned_;
+    
     // internal functions
     void save_targets(bam_hdr_t *header);
     bool junction_qc(uint32_t anchor_start, uint32_t intron_start,
@@ -339,6 +345,7 @@ private:
                           uint32_t left_mismatch_cnt, uint32_t right_mismatch_cnt);
     char get_junction_strand_XS(bam1_t *aln);
     char get_junction_strand_flag(bam1_t *aln);
+    char get_junction_strand_basic_flag(bam1_t *aln);
     char get_junction_strand(bam1_t *aln);
     int get_num_aligns(bam1_t *aln);
     ReadCategory get_category_from_tag(bam1_t *aln);
@@ -358,8 +365,10 @@ public:
                        uint32_t min_intron_length,
                        uint32_t max_intron_length,
                        Strandness strandness,
-                       Genome *genome):
+                       Genome *genome,
+                       bool skip_missing_targets):
         genome_(genome),
+        skip_missing_targets_(skip_missing_targets),
         min_anchor_length_(min_anchor_length),
         min_intron_length_(min_intron_length),
         max_intron_length_(max_intron_length),

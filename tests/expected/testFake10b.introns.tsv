@@ -1,5 +1,5 @@
 chrom	intron_start	intron_end	strand	uniq_mapped_count	multi_mapped_count	unsure_mapped_count	max_left_overhang	max_right_overhang	confidence	splice_sites
-fake10	34666	35513	-	1	0	0	81	20	0	ca/tc
+fake10	34666	35513	-	1	0	0	81	20	0	GT/AG
 fake10	130577	131433	+	1	0	0	72	29	0	GT/AG
 fake10	131550	132801	+	1	0	0	85	16	0	GT/AG
 fake10	132879	133326	+	1	0	0	80	17	0	GT/AG

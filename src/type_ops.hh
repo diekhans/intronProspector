@@ -26,4 +26,8 @@ inline std::string to_lower(const std::string& str) {
     return lstr;
 }
 
+inline std::string mk_coords_str(const std::string &chrom, int start, int end) {
+    return chrom + ":" + int_to_string(start) + "-" + int_to_string(end);
+}
+
 #endif

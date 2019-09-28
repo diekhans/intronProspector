@@ -37,13 +37,9 @@ string dnaReverseComplement(const string& dna) {
     rcDna.resize(dna.size());
     int j = dna.size() - 1;
     for (int i = 0; i < dna.size(); i++) {
-        rcDna[j--] = dna[i];
+        rcDna[j--] = reverseTbl[dna[i]];
     }
     return rcDna;
-}
-
-static string mk_coords_str(const string &chrom, int start, int end) {
-    return chrom + ":" + int_to_string(start) + "-" + int_to_string(end);
 }
 
 Genome::Genome(const string& genome_fa):
@@ -60,7 +56,11 @@ Genome::~Genome() {
     }
 }
 
-const string Genome::fetch(const string &chrom, int start, int end) {
+bool Genome::has_seq(const string &chrom) const {
+    return faidx_has_seq(faidx, chrom.c_str());
+}
+
+const string Genome::fetch(const string &chrom, int start, int end) const {
     int retlen = 0;
     char *seq = faidx_fetch_seq(faidx, chrom.c_str(), start, end - 1, &retlen);
     if (seq == NULL) {

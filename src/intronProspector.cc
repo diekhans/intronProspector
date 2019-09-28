@@ -85,6 +85,7 @@ class CmdParser {
     float min_confidence_score;
     Strandness strandness;
     string genome_fa;
+    bool skip_missing_targets;
 
     // output
     string junction_bed;
@@ -100,6 +101,7 @@ class CmdParser {
         max_intron_length(DEFAULT_MAX_INTRON_LENGTH),
         min_confidence_score(DEFAULT_MIN_CONFIDENCE_SCORE),
         strandness(DEFAULT_STRANDED),
+        skip_missing_targets(false),
         map_to_ucsc(false) {
 
         struct option long_options[] = {
@@ -111,6 +113,7 @@ class CmdParser {
             {"min-confidence-score", required_argument, NULL, 'C'},
             {"strandness", required_argument, NULL, 's'},
             {"genome-fasta", required_argument, NULL, 'g'},
+            {"skip-missing-targets", no_argument, NULL, 'S'},
             {"junction-bed", required_argument, NULL, 'j'},
             {"intron-bed", required_argument, NULL, 'n'},
             {"intron-calls", required_argument, NULL, 'c'},
@@ -140,6 +143,9 @@ class CmdParser {
                     break;
                 case 'g':
                     genome_fa = string(optarg);
+                    break;
+                case 'S':
+                    skip_missing_targets = true;
                     break;
                 case 'j':
                     junction_bed = optarg;
@@ -228,7 +234,7 @@ static void extract_junctions(CmdParser &opts) {
     }
     JunctionsExtractor je(opts.min_anchor_length,
                           opts.min_intron_length, opts.max_intron_length,
-                          opts.strandness, genome);
+                          opts.strandness, genome, opts.skip_missing_targets);
     je.identify_junctions_from_bam(opts.bam_file, opts.bam_pass_through);
     vector<Junction*> juncs = je.get_junctions_sorted();
     if (opts.junction_bed != "") {

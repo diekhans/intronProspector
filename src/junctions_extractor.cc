@@ -43,6 +43,8 @@ DEALINGS IN THE SOFTWARE.  */
 
 using namespace std;
 
+static const bool DEBUG = false;
+
 float Junction::NULL_CONFIDENCE = nanf("not-a-number");
 
 // lazy calculation of confidence
@@ -103,12 +105,22 @@ bool JunctionsExtractor::junction_qc(uint32_t anchor_start, uint32_t intron_star
     }
 }
 
-// get the splice site strings
+// get the splice site strings, if sequence is not found in genome, return empy and
+// output warning on first miss if instructed to ignore on error
 string JunctionsExtractor::get_splice_sites(const string& chrom, char strand,
                                             uint32_t intron_start, uint32_t intron_end) {
     if ((genome_ == NULL) or (strand == '.')) {
         return "";
     }
+
+    if (skip_missing_targets_ and not genome_->has_seq(chrom)) {
+        if (!missing_genomic_warned_.count(chrom)) {
+            missing_genomic_warned_[chrom] = true;
+            cerr << "Warning: genomic sequence not found for " << chrom << " splice junctions not available" << endl;
+        }
+        return "";
+    }
+
     string splice_site = to_upper(genome_->fetch(chrom, intron_start, intron_start + 2) + "/"
                                   + genome_->fetch(chrom, intron_end - 2, intron_end));
     if (strand == '-') {
@@ -124,9 +136,16 @@ string JunctionsExtractor::get_splice_sites(const string& chrom, char strand,
 void JunctionsExtractor::add_junction(bam1_t *aln, const string& chrom, char strand,
                                       uint32_t anchor_start, uint32_t intron_start,
                                       uint32_t intron_end, uint32_t anchor_end) {
+    
     // Construct key chr:start-end:strand
     JunctionKey key(chrom, intron_start, intron_end, strand);
-
+    if (DEBUG) {
+        cerr << bam_get_qname(aln) << "\t" << (aln->core).flag << "\t" << mk_coords_str(chrom, intron_start, intron_end)
+             << "\t" << strand
+             << "\t" << get_splice_sites(chrom, strand, intron_start, intron_end)
+             << "\t" << anchor_start << "-" << anchor_end
+             << endl;
+    }
     // Check if new junction
     Junction *junc = NULL;
     if (!junctions_.count(key)) {
@@ -184,10 +203,14 @@ char JunctionsExtractor::get_junction_strand_flag(bam1_t *aln) {
     int mate_reversed = bam_is_mrev(aln);
     int first_in_pair = (flag & BAM_FREAD1) != 0;
     int second_in_pair = (flag & BAM_FREAD2) != 0;
-    // strandness_ is 0 for unstranded, 1 for RF, and 2 for FR
-    int bool_strandness = strandness_ - 1;
-    int first_strand = !bool_strandness ^ first_in_pair ^ reversed;
-    int second_strand = !bool_strandness ^ second_in_pair ^ mate_reversed;
+    int first_strand = first_in_pair ^ reversed;
+    int second_strand = second_in_pair ^ mate_reversed;
+    if (strandness_ != UNSTRANDED) {
+        // strandness_ is 0 for unstranded, 1 for RF, and 2 for FR
+        int bool_strandness = strandness_ - 1;  // true for RF only
+        first_strand ^= !bool_strandness;
+        second_strand ^= !bool_strandness;
+    }
     char strand;
     if (first_strand) {
         strand = '+';
@@ -202,10 +225,17 @@ char JunctionsExtractor::get_junction_strand_flag(bam1_t *aln) {
     }
 }
 
+// Get the strand from the the basic bitwise flag
+char JunctionsExtractor::get_junction_strand_basic_flag(bam1_t *aln) {
+    return ((aln->core).flag & BAM_FREVERSE) ? '-' : '+';
+}
+
 // Get the strand
 char JunctionsExtractor::get_junction_strand(bam1_t *aln) {
     if (strandness_ != UNSTRANDED) {
         return get_junction_strand_flag(aln);
+    } else if (bam_aux_get(aln, "XS") == NULL) {
+        get_junction_strand_basic_flag(aln);
     } else {
         return get_junction_strand_XS(aln);
     }
