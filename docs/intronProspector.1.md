@@ -85,6 +85,10 @@ Options
 
 > Pass through input BAM/SAM records to this file, used for constructing pipelines with `/dev/stdout` is specified.  CRAM output is not support, these will be written as BAM.
 
+`-D FILE, --debug-trace=FILE`
+
+> Output records, in TSV format, for reach read intron indicating the information going into classifying it, including read name.  First few columns are BED-like for easy conversion.
+
 EXAMPLES
 ========
 

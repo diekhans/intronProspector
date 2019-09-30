@@ -43,8 +43,6 @@ DEALINGS IN THE SOFTWARE.  */
 
 using namespace std;
 
-static const bool DEBUG = false;
-
 float Junction::NULL_CONFIDENCE = nanf("not-a-number");
 
 // lazy calculation of confidence
@@ -139,12 +137,12 @@ void JunctionsExtractor::add_junction(bam1_t *aln, const string& chrom, char str
     
     // Construct key chr:start-end:strand
     JunctionKey key(chrom, intron_start, intron_end, strand);
-    if (DEBUG) {
-        cerr << bam_get_qname(aln) << "\t" << (aln->core).flag << "\t" << mk_coords_str(chrom, intron_start, intron_end)
-             << "\t" << strand
-             << "\t" << get_splice_sites(chrom, strand, intron_start, intron_end)
-             << "\t" << anchor_start << "-" << anchor_end
-             << endl;
+    if (trace_fh_ != NULL) {
+        *trace_fh_ << chrom << "\t" << intron_start << "\t" << intron_end
+                   << "\t" << bam_get_qname(aln) << "\t" << (aln->core).flag
+                   << "\t" << strand << "\t"
+                   << "\t" << get_splice_sites(chrom, strand, intron_start, intron_end)
+                   << "\t" << anchor_start << "\t" << anchor_end << endl;
     }
     // Check if new junction
     Junction *junc = NULL;
@@ -425,6 +423,13 @@ void JunctionsExtractor::identify_junctions_from_bam(const string& bam,
     }
     bam_hdr_t *in_header = sam_hdr_read(in_sam);
     save_targets(in_header);
+    if (trace_fh_ != NULL) {
+        *trace_fh_ << "chrom" << "\t" << "intron_start" << "\t" << "intron_end"
+                   << "\t" << "qname" << "\t" << "flag"
+                   << "\t" << "strand" << "\t"
+                   << "\t" << "splice_sites"
+                   << "\t" << "anchor_start" << "\t" << "anchor_end" << endl;
+    }
 
     samFile* out_sam = NULL;
     if (bam_pass_through != "") {

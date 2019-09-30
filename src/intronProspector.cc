@@ -93,6 +93,7 @@ class CmdParser {
     string intron_call_tsv;
     string bam_pass_through;
     bool map_to_ucsc;
+    string debug_trace_tsv;
 
     CmdParser(int argc, char *argv[]):
         bam_file("/dev/stdin"),
@@ -119,6 +120,7 @@ class CmdParser {
             {"intron-calls", required_argument, NULL, 'c'},
             {"pass-through", required_argument, NULL, 'p'},
             {"map-to-ucsc", no_argument, NULL, 'U'},
+            {"debug-trace", required_argument, NULL, 'D'},
             {NULL, 0, NULL, 0}
         };
             
@@ -161,6 +163,9 @@ class CmdParser {
                     break;
                 case 'U':
                     map_to_ucsc = true;
+                    break;
+                case 'D':
+                    debug_trace_tsv = optarg;
                     break;
                 case 'h':
                     usage();
@@ -232,10 +237,12 @@ static void extract_junctions(CmdParser &opts) {
     if (opts.genome_fa.size() > 0) {
         genome = new Genome(opts.genome_fa);
     }
+    ofstream *trace_fh = opts.debug_trace_tsv.size() > 0 ? new ofstream(opts.debug_trace_tsv.c_str()) :  NULL;
     JunctionsExtractor je(opts.min_anchor_length,
                           opts.min_intron_length, opts.max_intron_length,
-                          opts.strandness, genome, opts.skip_missing_targets);
+                          opts.strandness, genome, opts.skip_missing_targets, trace_fh);
     je.identify_junctions_from_bam(opts.bam_file, opts.bam_pass_through);
+    delete trace_fh;
     vector<Junction*> juncs = je.get_junctions_sorted();
     if (opts.junction_bed != "") {
         print_anchor_bed(juncs, opts.min_confidence_score, opts.map_to_ucsc, opts.junction_bed);

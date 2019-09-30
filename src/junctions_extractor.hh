@@ -328,6 +328,9 @@ private:
 
     // missing genomic sequence that have been warned about
     map<string, bool> missing_genomic_warned_;
+
+    // debugging trace output if not NULL
+    ostream *trace_fh_;
     
     // internal functions
     void save_targets(bam_hdr_t *header);
@@ -366,13 +369,15 @@ public:
                        uint32_t max_intron_length,
                        Strandness strandness,
                        Genome *genome,
-                       bool skip_missing_targets):
+                       bool skip_missing_targets,
+                       ostream *trace_fh):
         genome_(genome),
         skip_missing_targets_(skip_missing_targets),
         min_anchor_length_(min_anchor_length),
         min_intron_length_(min_intron_length),
         max_intron_length_(max_intron_length),
-        strandness_(strandness) {
+        strandness_(strandness),
+        trace_fh_(trace_fh) {
     }
     
     // Identify exon-exon junctions
