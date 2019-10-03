@@ -113,11 +113,15 @@ static inline void sort_junctions(CollectionType &junctions) {
 }
 
 // Do some basic qc on the junction
-bool JunctionsExtractor::junction_qc(uint32_t anchor_start, uint32_t intron_start,
+bool JunctionsExtractor::junction_qc(bam1_t *aln, uint32_t anchor_start, uint32_t intron_start,
                                      uint32_t intron_end, uint32_t anchor_end,
                                      uint32_t left_mismatch_cnt, uint32_t right_mismatch_cnt) {
-    if ((intron_end - intron_start < min_intron_length_) ||
-        (intron_end - intron_start > max_intron_length_)) {
+    if ((aln->core).flag & BAM_FSECONDARY) {
+        return false;
+    } else if (((excludes_ & EXCLUDE_MULTI) != 0) && (get_num_aligns(aln) > 1)) {
+        return false;
+    } else if ((intron_end - intron_start < min_intron_length_) ||
+               (intron_end - intron_start > max_intron_length_)) {
         return false;
     } else if (((intron_start - anchor_start) - left_mismatch_cnt < min_anchor_length_) ||
                ((anchor_end - intron_end) - right_mismatch_cnt < min_anchor_length_)) {
@@ -237,7 +241,7 @@ void JunctionsExtractor::process_junction(bam1_t *aln, const string& chrom, char
     assert(anchor_start < anchor_end);
     assert(anchor_start < intron_start);
     assert(anchor_end > intron_end);
-    if (junction_qc(anchor_start, intron_start, intron_end, anchor_end, left_mismatch_cnt, right_mismatch_cnt)) {
+    if (junction_qc(aln, anchor_start, intron_start, intron_end, anchor_end, left_mismatch_cnt, right_mismatch_cnt)) {
         add_junction(aln, chrom, strand, anchor_start, intron_start, intron_end, anchor_end);
     }
 }

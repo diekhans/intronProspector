@@ -13,6 +13,7 @@ basic_bam = output/test_basic.bam
 multi_sam = input/test_multi.sam
 fake10_star_sam = input/fake10.star.sam
 fake10_hisat2_sam = input/fake10.hisat2.sam
+fake10_missing_sam = input/fake10.missing.sam
 fake10_fa = output/fake10_genome.fa
 fake10_fai = output/fake10_genome.fa.fai
 
@@ -25,7 +26,7 @@ test: testBasic testMulti testFake10
 ###
 # basic tests
 ##
-testBasic: testBasic1 testBasic2 testBasic3 testBasic4
+testBasic: testBasic1 testBasic2 testBasic3 testBasic4 testBasic5
 
 # basic unstranded
 testBasic1: mkout
@@ -58,6 +59,14 @@ testBasic4: mkout ${basic_bam}
 	${diff} expected/$@.introns.bed output/$@.introns.bed
 	${diff} expected/$@.introns.tsv output/$@.introns.tsv
 
+# test exclude multi filter
+testBasic5: mkout ${basic_bam}
+	${intronProspector} --exclude=multi --junction-bed=output/$@.juncs.bed --intron-bed=output/$@.introns.bed --intron-calls=output/$@.introns.tsv ${basic_bam}
+	${diff} expected/$@.juncs.bed output/$@.juncs.bed
+	${diff} expected/$@.introns.bed output/$@.introns.bed
+	${diff} expected/$@.introns.tsv output/$@.introns.tsv
+
+
 ###
 # multi-introns per read tests
 ##
@@ -72,14 +81,15 @@ testMulti1: mkout
 ##
 # fake10 tests
 ##
-testFake10: testFake10a testFake10b
+testFake10: testFake10a testFake10b testFake10c
 
 # fake10 STAR mappings (SAM doesn't have strand)
 testFake10a: mkout ${fake10_fa} ${fake10_fai}
-	${intronProspector} --genome-fasta=${fake10_fa} --junction-bed=output/$@.juncs.bed --intron-bed=output/$@.introns.bed --intron-calls=output/$@.introns.tsv --pass-through=output/$@.sam ${fake10_star_sam}
+	${intronProspector} --genome-fasta=${fake10_fa} --junction-bed=output/$@.juncs.bed --intron-bed=output/$@.introns.bed --intron-calls=output/$@.introns.tsv --pass-through=output/$@.sam --debug-trace=output/$@.debug.tsv ${fake10_star_sam}
 	${diff} expected/$@.juncs.bed output/$@.juncs.bed
 	${diff} expected/$@.introns.bed output/$@.introns.bed
 	${diff} expected/$@.introns.tsv output/$@.introns.tsv
+	${diff} expected/$@.debug.tsv output/$@.debug.tsv
 	${diff} ${fake10_star_sam} output/$@.sam
 
 # fake10 hisat2 mappings
@@ -89,6 +99,16 @@ testFake10b: mkout ${fake10_fa} ${fake10_fai}
 	${diff} expected/$@.introns.bed output/$@.introns.bed
 	${diff} expected/$@.introns.tsv output/$@.introns.tsv
 	${diff} ${fake10_hisat2_sam} output/$@.sam
+
+# fake10 hisat2 mappings with missing target sequence
+testFake10c: mkout ${fake10_fa} ${fake10_fai}
+	${intronProspector} --genome-fasta=${fake10_fa} --skip-missing-targets --junction-bed=output/$@.juncs.bed --intron-bed=output/$@.introns.bed --intron-calls=output/$@.introns.tsv ${fake10_missing_sam} > output/$@.err 2>&1
+	${diff} expected/$@.err output/$@.err
+	${diff} expected/$@.juncs.bed output/$@.juncs.bed
+	${diff} expected/$@.introns.bed output/$@.introns.bed
+	${diff} expected/$@.introns.tsv output/$@.introns.tsv
+
+
 
 ###
 # other rules

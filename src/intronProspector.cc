@@ -49,10 +49,9 @@ static const char *usage_msg =
 #include "manpage.h"
     ;
 
-// Usage statement for this tool and exit non-zero.
+// Usage statement for this tool
 static void usage() {
     cerr << usage_msg;
-    exit(1);
 }
 
 // convert a specification for strandness to constant.
@@ -73,6 +72,15 @@ static Strandness str_to_strandness(const string s) {
     }
 }
 
+// parse an exclude category
+static unsigned parse_exclude_cat(const string &cat) {
+    if (cat == "multi") {
+        return EXCLUDE_MULTI;
+    } else {
+        cerr << "Error: invalid exclude category '" << cat << "', expected one of: 'multi'" << endl;
+        exit(1);
+    }
+}
 
 // Parse command line
 class CmdParser {
@@ -84,6 +92,7 @@ class CmdParser {
     uint32_t max_intron_length;
     float min_confidence_score;
     Strandness strandness;
+    unsigned excludes;
     string genome_fa;
     bool skip_missing_targets;
 
@@ -102,6 +111,7 @@ class CmdParser {
         max_intron_length(DEFAULT_MAX_INTRON_LENGTH),
         min_confidence_score(DEFAULT_MIN_CONFIDENCE_SCORE),
         strandness(DEFAULT_STRANDED),
+        excludes(EXCLUDE_NONE),
         skip_missing_targets(false),
         map_to_ucsc(false) {
 
@@ -113,6 +123,7 @@ class CmdParser {
             {"max-intron_length", required_argument, NULL, 'I'},
             {"min-confidence-score", required_argument, NULL, 'C'},
             {"strandness", required_argument, NULL, 's'},
+            {"excludes", required_argument, NULL, 'X'},
             {"genome-fasta", required_argument, NULL, 'g'},
             {"skip-missing-targets", no_argument, NULL, 'S'},
             {"junction-bed", required_argument, NULL, 'j'},
@@ -143,6 +154,9 @@ class CmdParser {
                 case 's':
                     strandness = str_to_strandness(optarg);
                     break;
+                case 'X':
+                    excludes |= parse_exclude_cat(optarg);
+                    break;
                 case 'g':
                     genome_fa = string(optarg);
                     break;
@@ -169,7 +183,7 @@ class CmdParser {
                     break;
                 case 'h':
                     usage();
-                    break;
+                    exit(0);
                 case 'v':
                     cerr << PACKAGE_NAME << " " << VERSION << " " << PACKAGE_URL << endl;
                     exit(0);
@@ -177,12 +191,14 @@ class CmdParser {
                 default:
                     cerr << "Error: invalid option '" << c << "'" << endl;
                     usage();
+                    exit(1);
             }
         }
 
         if (argc - optind > 1) {
             cerr << "Error: too many positional arguments" << endl << endl;
             usage();
+            exit(1);
         }
         if (argc - optind == 1) {
             bam_file = string(argv[optind++]);
@@ -238,9 +254,9 @@ static void extract_junctions(CmdParser &opts) {
         genome = new Genome(opts.genome_fa);
     }
     ofstream *trace_fh = opts.debug_trace_tsv.size() > 0 ? new ofstream(opts.debug_trace_tsv.c_str()) :  NULL;
-    JunctionsExtractor je(opts.min_anchor_length,
-                          opts.min_intron_length, opts.max_intron_length,
-                          opts.strandness, genome, opts.skip_missing_targets, trace_fh);
+    JunctionsExtractor je(opts.min_anchor_length, opts.min_intron_length, opts.max_intron_length,
+                          opts.strandness, opts.excludes, genome,
+                          opts.skip_missing_targets, trace_fh);
     je.identify_junctions_from_bam(opts.bam_file, opts.bam_pass_through);
     delete trace_fh;
     vector<Junction*> juncs = je.get_junctions_sorted();

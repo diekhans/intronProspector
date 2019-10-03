@@ -102,6 +102,13 @@ static inline char idx_to_strand(StrandIdx strand_idx) {
 }
 #endif
 
+// categories to exclude
+typedef enum {
+    EXCLUDE_NONE = 0,
+    EXCLUDE_MULTI = 0x01,
+} ExcludeCats;
+
+
 // class used to map Junction objects
 class JunctionKey {
     public:
@@ -346,6 +353,9 @@ private:
     uint32_t max_intron_length_;
     //strandness of data; 0 = unstranded, 1 = RF, 2 = FR
     Strandness strandness_;
+
+    // exclude categories
+    unsigned excludes_;
     
     // Alignment file
     string bam_;
@@ -370,7 +380,7 @@ private:
     
     // internal functions
     void save_targets(bam_hdr_t *header);
-    bool junction_qc(uint32_t anchor_start, uint32_t intron_start,
+    bool junction_qc(bam1_t *aln, uint32_t anchor_start, uint32_t intron_start,
                      uint32_t intron_end, uint32_t anchor_end,
                      uint32_t left_mismatch_cnt, uint32_t right_mismatch_cnt);
     void parse_alignment_into_junctions(bam1_t *aln);
@@ -411,6 +421,7 @@ public:
                        uint32_t min_intron_length,
                        uint32_t max_intron_length,
                        Strandness strandness,
+                       unsigned excludes,
                        Genome *genome,
                        bool skip_missing_targets,
                        ostream *trace_fh):
@@ -420,6 +431,7 @@ public:
         min_intron_length_(min_intron_length),
         max_intron_length_(max_intron_length),
         strandness_(strandness),
+        excludes_(excludes),
         trace_fh_(trace_fh) {
     }
     
