@@ -1,4 +1,4 @@
--*- mode: makefile -*-
+# -*- mode: makefile -*-
 ROOT = ..
 BINDIR = ${ROOT}/bin
 

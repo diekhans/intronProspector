@@ -25,6 +25,6 @@ class Genome {
 };
 
 /* reverse-complement a DNA string */
-string dnaReverseComplement(const string& dna);
+string dna_reverse_complement(const string& dna);
 
 #endif

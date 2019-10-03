@@ -64,19 +64,55 @@ typedef enum {
 } ReadCategory;
 static const unsigned READ_CATEGORY_MAX = UNSURE_READ;
 
+#if 0 // UNUSED
+// index of strand in arrays
+typedef enum {
+    UNKNOWN_IDX = 0,
+    PLUS_IDX = 1,
+    MINUS_IDX = 2,
+    NUM_STRANDS = 3,
+} StrandIdx;
+
+static inline StrandIdx strand_to_idx(char strand) {
+    switch (strand) {
+        case '+':
+            return PLUS_IDX;
+        case '-':
+            return MINUS_IDX;
+        case '.':
+            return UNKNOWN_IDX;
+        default:
+            assert(false);
+            return UNKNOWN_IDX;
+    }
+}
+
+static inline char idx_to_strand(StrandIdx strand_idx) {
+    switch (strand_idx) {
+        case PLUS_IDX:
+            return '+';
+        case MINUS_IDX:
+            return '+';
+        case UNKNOWN_IDX:
+            return '.';
+        default:
+            assert(false);
+            return '.';
+    }
+}
+#endif
+
 // class used to map Junction objects
 class JunctionKey {
     public:
-    const string& chrom;
+    const string chrom;
     const uint32_t intron_start;
     const uint32_t intron_end;
-    const char strand;
 
     JunctionKey(const string& chrom,
                 uint32_t intron_start,
-                uint32_t intron_end,
-                char strand):
-        chrom(chrom), intron_start(intron_start), intron_end(intron_end), strand(strand) {
+                uint32_t intron_end):
+        chrom(chrom), intron_start(intron_start), intron_end(intron_end) {
     }
 
     string to_string() const {
@@ -88,10 +124,10 @@ class JunctionKey {
 
 // comparison key
 static inline bool operator<(const JunctionKey &jk1, const JunctionKey &jk2) {
-    if (jk1.chrom < jk2.chrom){
+    if (jk1.chrom < jk2.chrom) {
         return true;
     }
-    if (jk1.chrom > jk2.chrom){
+    if (jk1.chrom > jk2.chrom) {
         return false;
     }
     // Same chromosome
@@ -109,7 +145,7 @@ static inline bool operator<(const JunctionKey &jk1, const JunctionKey &jk2) {
         return false;
     }
     // Same end
-    return jk1.strand < jk2.strand;
+    return false;
 }
 
 // Data save for an intron
@@ -339,6 +375,14 @@ private:
                      uint32_t left_mismatch_cnt, uint32_t right_mismatch_cnt);
     void parse_alignment_into_junctions(bam1_t *aln);
     void process_alignment(bam1_t *aln);
+    void create_junction(bam1_t *aln, const JunctionKey &key,
+                         const string& chrom, char strand,
+                         uint32_t anchor_start, uint32_t intron_start,
+                         uint32_t intron_end, uint32_t anchor_end);
+    void update_junction(bam1_t *aln, const JunctionKey &key,
+                         const string& chrom, char strand,
+                         uint32_t anchor_start, uint32_t intron_start,
+                         uint32_t intron_end, uint32_t anchor_end);
     void add_junction(bam1_t *aln, const string& chrom, char strand,
                       uint32_t anchor_start, uint32_t intron_start, 
                       uint32_t intron_end, uint32_t anchor_end);
@@ -348,7 +392,6 @@ private:
                           uint32_t left_mismatch_cnt, uint32_t right_mismatch_cnt);
     char get_junction_strand_XS(bam1_t *aln);
     char get_junction_strand_flag(bam1_t *aln);
-    char get_junction_strand_basic_flag(bam1_t *aln);
     char get_junction_strand(bam1_t *aln);
     int get_num_aligns(bam1_t *aln);
     ReadCategory get_category_from_tag(bam1_t *aln);

@@ -10,34 +10,34 @@
 #include "htslib/faidx.h"
 
 /* reverse DNA, index by base */
-static char *reverseTbl = NULL;
+static char *reverse_tbl = NULL;
 
-static void buildReverseTbl() {
-    reverseTbl = new char[128];
+static void build_reverse_tbl() {
+    reverse_tbl = new char[128];
     // fill in with pass-through first
     for (int i = 0; i < 128; i++) {
-        reverseTbl[i] = i;
+        reverse_tbl[i] = i;
     }
-    reverseTbl['A'] = 'T';
-    reverseTbl['T'] = 'A';
-    reverseTbl['G'] = 'C';
-    reverseTbl['C'] = 'G';
-    reverseTbl['a'] = 't';
-    reverseTbl['t'] = 'a';
-    reverseTbl['g'] = 'c';
-    reverseTbl['c'] = 'g';
+    reverse_tbl['A'] = 'T';
+    reverse_tbl['T'] = 'A';
+    reverse_tbl['G'] = 'C';
+    reverse_tbl['C'] = 'G';
+    reverse_tbl['a'] = 't';
+    reverse_tbl['t'] = 'a';
+    reverse_tbl['g'] = 'c';
+    reverse_tbl['c'] = 'g';
 }
 
 /* reverse-complement a DNA string */
-string dnaReverseComplement(const string& dna) {
-    if (reverseTbl == NULL) {
-        buildReverseTbl();
+string dna_reverse_complement(const string& dna) {
+    if (reverse_tbl == NULL) {
+        build_reverse_tbl();
     }
     string rcDna;
     rcDna.resize(dna.size());
     int j = dna.size() - 1;
     for (int i = 0; i < dna.size(); i++) {
-        rcDna[j--] = reverseTbl[dna[i]];
+        rcDna[j--] = reverse_tbl[dna[i]];
     }
     return rcDna;
 }

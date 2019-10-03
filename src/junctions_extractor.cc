@@ -33,6 +33,7 @@ DEALINGS IN THE SOFTWARE.  */
 #include <iostream>
 #include <iomanip>
 #include <stdexcept>
+#include <set>
 #include "junctions_extractor.hh"
 #include "type_ops.hh"
 #include "genome.hh"
@@ -74,12 +75,35 @@ float Junction::calculate_confidence() {
     return (summation == 0.0) ? 0.0 : -summation;
 }
 
+// add all one set of canonical junctions to set
+static void add_canonical(const string& splice_sites,
+                          int pos,
+                          set<string>& canonicals) {
+    canonicals.insert(splice_sites);
+    string splice_sites_mod = splice_sites;
+    for (int i = pos; i < splice_sites_mod.size(); i++) {
+        splice_sites_mod[i] = ::toupper(splice_sites_mod[i]);
+        add_canonical(splice_sites_mod, i + 1, canonicals);
+        splice_sites_mod[i] = ::tolower(splice_sites_mod[i]);
+        add_canonical(splice_sites_mod, i + 1, canonicals);
+    }
+}
+
+
+// build all canonical junctions regardless of case
+static void build_canonical(set<string>& canonicals) {
+    add_canonical("GT/AG", 0, canonicals);
+    add_canonical("GC/AG", 0, canonicals);
+    add_canonical("AT/AC", 0, canonicals);
+}
+
 // determine if a junctions string in the for GT/AG is canonical.
-// they must be upper case.
 bool JunctionsExtractor::is_canonical(const string& junctions) {
-    return (junctions == "GT/AG")
-        or (junctions == "GC/AG")
-        or (junctions == "AT/AC");
+    static set<string> canonicals;  // has all combinations of upper and lower case
+    if (canonicals.size() == 0) {
+        build_canonical(canonicals);
+    }
+    return canonicals.count(junctions) > 0;
 }
 
 // Sort a vector of junctions
@@ -103,11 +127,11 @@ bool JunctionsExtractor::junction_qc(uint32_t anchor_start, uint32_t intron_star
     }
 }
 
-// get the splice site strings, if sequence is not found in genome, return empy and
+// Get the splice site strings, if sequence is not found in genome, return empty and
 // output warning on first miss if instructed to ignore on error
 string JunctionsExtractor::get_splice_sites(const string& chrom, char strand,
                                             uint32_t intron_start, uint32_t intron_end) {
-    if ((genome_ == NULL) or (strand == '.')) {
+    if (genome_ == NULL) {
         return "";
     }
 
@@ -122,7 +146,7 @@ string JunctionsExtractor::get_splice_sites(const string& chrom, char strand,
     string splice_site = to_upper(genome_->fetch(chrom, intron_start, intron_start + 2) + "/"
                                   + genome_->fetch(chrom, intron_end - 2, intron_end));
     if (strand == '-') {
-        splice_site = dnaReverseComplement(splice_site);
+        splice_site = dna_reverse_complement(splice_site);
     }
     if (not is_canonical(splice_site)) {
         splice_site = to_lower(splice_site);
@@ -130,37 +154,78 @@ string JunctionsExtractor::get_splice_sites(const string& chrom, char strand,
     return splice_site;
 }
 
+void JunctionsExtractor::create_junction(bam1_t *aln, const JunctionKey &key,
+                                         const string& chrom, char strand,
+                                         uint32_t anchor_start, uint32_t intron_start,
+                                         uint32_t intron_end, uint32_t anchor_end) {
+    char corrected_strand = strand;
+    string splice_sites = get_splice_sites(chrom, strand, intron_start, intron_end);
+    if ((splice_sites.size() > 0) && (strand == '.')) {
+        // attempt to figure out strand from splice sites
+        if (is_canonical(splice_sites)) {
+            corrected_strand = '+';
+        } else if (is_canonical(dna_reverse_complement(splice_sites))) {
+            corrected_strand = '-';
+            splice_sites = to_upper(dna_reverse_complement(splice_sites));
+        }
+    }
+
+    if (trace_fh_ != NULL) {
+        *trace_fh_ << chrom << "\t" << intron_start << "\t" << intron_end
+                   << "\t" << bam_get_qname(aln) << "\t" << (aln->core).flag
+                   << "\t" << strand << "\t" << corrected_strand
+                   << "\t" << splice_sites
+                   << "\t" << anchor_start << "\t" << anchor_end << endl;
+    }
+    Junction *junc = new Junction(chrom, intron_start, intron_end, anchor_start, anchor_end,
+                                  corrected_strand, splice_sites);
+    junctions_[key] = junc;
+    junc->count_read(get_read_category(aln), intron_start - aln->core.pos);
+}
+
+
+void JunctionsExtractor::update_junction(bam1_t *aln, const JunctionKey &key,
+                                         const string& chrom, char strand,
+                                         uint32_t anchor_start, uint32_t intron_start,
+                                         uint32_t intron_end, uint32_t anchor_end) {
+    Junction *junc = junctions_[key];
+    if (trace_fh_ != NULL) {
+        *trace_fh_ << chrom << "\t" << intron_start << "\t" << intron_end
+                   << "\t" << bam_get_qname(aln) << "\t" << (aln->core).flag
+                   << "\t" << strand << "\t" << junc->strand
+                   << "\t" << junc->splice_sites
+                   << "\t" << anchor_start << "\t" << anchor_end << endl;
+    }
+    // Check if thick starts are any better
+    if (anchor_start < junc->anchor_start)
+        junc->anchor_start = anchor_start;
+    if (anchor_end > junc->anchor_end)
+        junc->anchor_end = anchor_end;
+    junc->count_read(get_read_category(aln), intron_start - aln->core.pos);
+}
+
+
 // Add a junction to the junctions map
 void JunctionsExtractor::add_junction(bam1_t *aln, const string& chrom, char strand,
                                       uint32_t anchor_start, uint32_t intron_start,
                                       uint32_t intron_end, uint32_t anchor_end) {
-    
-    // Construct key chr:start-end:strand
-    JunctionKey key(chrom, intron_start, intron_end, strand);
+    string splice_sites = get_splice_sites(chrom, strand, intron_start, intron_end);
+
     if (trace_fh_ != NULL) {
         *trace_fh_ << chrom << "\t" << intron_start << "\t" << intron_end
                    << "\t" << bam_get_qname(aln) << "\t" << (aln->core).flag
                    << "\t" << strand << "\t"
-                   << "\t" << get_splice_sites(chrom, strand, intron_start, intron_end)
+                   << "\t" << splice_sites
                    << "\t" << anchor_start << "\t" << anchor_end << endl;
     }
+    JunctionKey key(chrom, intron_start, intron_end);
+
     // Check if new junction
-    Junction *junc = NULL;
-    if (!junctions_.count(key)) {
-        junc = new Junction(chrom, intron_start, intron_end, anchor_start, anchor_end, strand,
-                            get_splice_sites(chrom, strand, intron_start, intron_end));
-        junctions_[key] = junc;
+    if (junctions_.count(key) == 0) {
+        create_junction(aln, key, chrom, strand, anchor_start, intron_start, intron_end, anchor_end);
     } else {
-         // existing junction
-        junc = junctions_[key];
-        // Check if thick starts are any better
-        if (anchor_start < junc->anchor_start)
-            junc->anchor_start = anchor_start;
-        if (anchor_end > junc->anchor_end)
-            junc->anchor_end = anchor_end;
+        update_junction(aln, key, chrom, strand, anchor_start, intron_start, intron_end, anchor_end);
     }
-    junc->count_read(get_read_category(aln),
-                     intron_start - aln->core.pos);
 }
 
 // Validate a junction and save if it passes.
@@ -168,6 +233,10 @@ void JunctionsExtractor::process_junction(bam1_t *aln, const string& chrom, char
                                           uint32_t anchor_start, uint32_t intron_start,
                                           uint32_t intron_end, uint32_t anchor_end,
                                           uint32_t left_mismatch_cnt, uint32_t right_mismatch_cnt) {
+    assert(intron_start < intron_end);
+    assert(anchor_start < anchor_end);
+    assert(anchor_start < intron_start);
+    assert(anchor_end > intron_end);
     if (junction_qc(anchor_start, intron_start, intron_end, anchor_end, left_mismatch_cnt, right_mismatch_cnt)) {
         add_junction(aln, chrom, strand, anchor_start, intron_start, intron_end, anchor_end);
     }
@@ -223,19 +292,15 @@ char JunctionsExtractor::get_junction_strand_flag(bam1_t *aln) {
     }
 }
 
-// Get the strand from the the basic bitwise flag
-char JunctionsExtractor::get_junction_strand_basic_flag(bam1_t *aln) {
-    return ((aln->core).flag & BAM_FREVERSE) ? '-' : '+';
-}
-
 // Get the strand
 char JunctionsExtractor::get_junction_strand(bam1_t *aln) {
     if (strandness_ != UNSTRANDED) {
         return get_junction_strand_flag(aln);
-    } else if (bam_aux_get(aln, "XS") == NULL) {
-        get_junction_strand_basic_flag(aln);
-    } else {
+    } else if (bam_aux_get(aln, "XS") != NULL) {
         return get_junction_strand_XS(aln);
+    } else {
+        // otherwise, we can't tell determine strand just from read orientation
+        return '.';
     }
 }
 
@@ -426,7 +491,7 @@ void JunctionsExtractor::identify_junctions_from_bam(const string& bam,
     if (trace_fh_ != NULL) {
         *trace_fh_ << "chrom" << "\t" << "intron_start" << "\t" << "intron_end"
                    << "\t" << "qname" << "\t" << "flag"
-                   << "\t" << "strand" << "\t"
+                   << "\t" << "strand" << "\t" << "corrected"
                    << "\t" << "splice_sites"
                    << "\t" << "anchor_start" << "\t" << "anchor_end" << endl;
     }
