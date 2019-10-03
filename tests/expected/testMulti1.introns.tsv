@@ -1,6 +1,6 @@
 chrom	intron_start	intron_end	strand	uniq_mapped_count	multi_mapped_count	unsure_mapped_count	max_left_overhang	max_right_overhang	confidence
-CM000672.2	14299	16501	-	0	6	0	31	43	2.58
-CM000672.2	16544	20785	-	0	6	0	43	47	2.58
+CM000672.2	14299	16501	-	0	2	0	12	43	1
+CM000672.2	16544	20785	-	0	2	0	43	47	1
 CM000672.2	210048	236837	+	3	1	0	22	78	2
 CM000672.2	820845	825064	-	0	0	1	46	33	0
 CM000672.2	825097	866693	-	0	0	1	33	14	0
