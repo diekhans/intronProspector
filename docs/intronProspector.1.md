@@ -40,7 +40,7 @@ Options
 
 `-C FLOAT, --min-confidence-score=FLOAT`
 
-> Calculate the Shannon-Wiener Diversity Index to use as a confidence score and discard intron calls below this value.  The default is 0.0, which discards no calls. A value of 1.0 is a good threshold for filtering. This methodology it take from JuncBASE DOI: 10.1101/gr.108662.110.
+> Calculate the Shannon-Wiener Diversity Index to use as a confidence score and discard intron calls below this value.  The default is 0.0, which discards no calls. A value of 1.0 is a good threshold for filtering. This methodology it taken from JuncBASE DOI: 10.1101/gr.108662.110.
 
 `-s STRING, --strandness=STRING`
 
