@@ -1,4 +1,6 @@
 # -*- mode: makefile -*-
+PREFIX = @prefix@
+
 
 .PHONY: all
 all:
@@ -10,6 +12,7 @@ test: all
 
 .PHONY: install
 install:
+	cp -f bin/intronProspector ${PREFIX}/bin
 
 
 .PHONY: clean
