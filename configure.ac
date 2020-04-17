@@ -6,6 +6,9 @@ AC_ARG_WITH([htslib],
   [AS_HELP_STRING([--with-htslib=DIR],
     [use the HTSlib source tree or installation in DIR. ])], [])
 
+AC_PROG_CC()
+AC_PROG_CXX()
+
 AC_MSG_NOTICE([checking for location of HTSlib include and library])
 hts_incl_found=no
 hts_lib_found=no
@@ -29,13 +32,13 @@ if test x"${with_htslib}" != "x" ; then
    hts_saved_LDFLAGS=${LDFLAGS}
    HTSLIB_LDFLAGS="-L${with_htslib} -Wl,-rpath,${with_htslib} -lhts"
    LDFLAGS="$LDFLAGS $HTSLIB_LDFLAGS"
-   AC_MSG_NOTICE(checking for HTSlib library using $HTSLIB_LFFLAGS)
+   AC_MSG_NOTICE(checking for HTSlib library using $HTSLIB_LDFLAGS)
    AC_CHECK_LIB(hts, hts_version,
        [hts_lib_found=yes],
        [HTSLIB_LDFLAGS="-L${with_htslib}/lib -Wl,-rpath,${with_htslib} -lhts"
         LDFLAGS="$LDFLAGS $HTSLIB_LDFLAGS"
         unset ac_cv_lib_hts_hts_version  # avoid cache
-        AC_MSG_NOTICE(checking for HTSlib library using $HTSLIB_LFFLAGS)
+        AC_MSG_NOTICE(checking for HTSlib library using $HTSLIB_LDFLAGS)
         AC_CHECK_LIB(hts, hts_version,
             [hts_lib_found=yes])])
    LDFLAGS=${hts_saved_LDFLAGS}
@@ -59,8 +62,8 @@ fi
 
 
 CXXFLAGS="-O3 -g"
-CPPFLAGS="${HTSLIB_CPPFLAGS}"
-LDFLAGS="${HTSLIB_LDFLAGS}"
+CPPFLAGS="${HTSLIB_CPPFLAGS} ${CPPFLAGS}"
+LDFLAGS="${HTSLIB_LDFLAGS} ${LDFLAGS}"
 LIBS="-lhts -lcurl -lbz2 -lz -llzma"
 AC_SUBST([CXXFLAGS])
 AC_SUBST([CPPFLAGS])
