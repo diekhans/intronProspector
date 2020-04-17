@@ -240,6 +240,27 @@ public:
             return chrom;
         }
     }
+
+    // color-code to use for splice-sites
+    const string& getBedColor() const {
+        static const string NO_INFO_COLOR = "64,128,64";
+        static const string U2_COLOR = "0,128,0";
+        static const string U12_COLOR = "0,0,128";
+        static const string UNKNOWN_COLOR = "128,0,0";
+        if (splice_sites == "") {
+            return NO_INFO_COLOR;
+        }
+        if (splice_sites == "GT/AG") {
+            return U2_COLOR;
+        }
+        if ((splice_sites == "AT/AC") or
+            (splice_sites == "AT/AG") or 
+            (splice_sites == "GT/AC") or
+            (splice_sites == "GT/AG")) {
+            return U12_COLOR;
+        }
+        return UNKNOWN_COLOR;
+    }
     
     // Print BED with anchors as blocks and intron as gap.  ijunc is used to
     // make the BED name.
@@ -258,7 +279,7 @@ public:
         }
         out << "\t" << read_count_to_bed_score(total_read_count()) << "\t" << strand
             << "\t" << anchor_start << "\t" << anchor_end
-            << "\t" << "255,0,0" << "\t" << 2
+            << "\t" << getBedColor() << "\t" << 2
             << "\t" << intron_start - anchor_start << "," << anchor_end - intron_end
             << "\t" << "0," << intron_end - anchor_start << endl;
     }
@@ -278,7 +299,8 @@ public:
         if (splice_sites != "") {
             out << '_' << splice_sites;
         }
-        out << "\t" << read_count_to_bed_score(total_read_count()) << "\t" << strand << endl;
+        out << "\t" << read_count_to_bed_score(total_read_count()) << "\t" << strand
+            << "\t" << intron_start << "\t" << intron_end << "\t" << getBedColor() << endl;
     }
 
     // Print header for junction call TSV
