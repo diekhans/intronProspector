@@ -135,7 +135,7 @@ class CmdParser {
             {NULL, 0, NULL, 0}
         };
             
-        const char *short_options = "hva:i:I:s:j:n:c:p:U";
+        const char *short_options = "hva:i:I:C:s:X:g:S:j:n:c:p:UD:";
         int c;
         while ((c = getopt_long(argc, argv, short_options, long_options, NULL)) != -1) {
             switch (c) {
@@ -189,7 +189,7 @@ class CmdParser {
                     exit(0);
                 case '?':
                 default:
-                    cerr << "Error: invalid option '" << c << "'" << endl;
+                    cerr << "Error: invalid option" << endl;
                     usage();
                     exit(1);
             }
