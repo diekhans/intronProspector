@@ -335,33 +335,6 @@ public:
 
 };
 
-// Compare two junctions
-static inline bool compare_junctions(const Junction *j1,
-                                     const Junction *j2) {
-    if (j1->chrom < j2->chrom){
-        return true;
-    }
-    if (j1->chrom > j2->chrom){
-        return false;
-    }
-    // Same chromosome
-    if (j1->anchor_start < j2->anchor_start) {
-        return true;
-    }
-    if (j1->anchor_start > j2->anchor_start) {
-        return false;
-    }
-    // Same start
-    if (j1->anchor_end < j2->anchor_end) {
-        return true;
-    }
-    if (j1->anchor_end > j2->anchor_end) {
-        return false;
-    }
-    // Same end
-    return j1->strand < j2->strand;
-}
-
 // The class that deals with creating the junctions
 class JunctionsExtractor {
 private:
@@ -468,6 +441,13 @@ public:
     void print_intron_bed(ostream& out);
 
     // Get a vector of all the junctions
-    vector<Junction*> get_junctions_sorted();
+    vector<Junction*> get_junctions();
 };
+
+// sort by anchor start
+void sort_by_anchors(vector<Junction*>& junctions);
+
+// sort by intron start
+void sort_by_introns(vector<Junction*>& junctions);
+
 #endif

@@ -106,12 +106,6 @@ bool JunctionsExtractor::is_canonical(const string& junctions) {
     return canonicals.count(junctions) > 0;
 }
 
-// Sort a vector of junctions
-template <class CollectionType>
-static inline void sort_junctions(CollectionType &junctions) {
-    sort(junctions.begin(), junctions.end(), compare_junctions);
-}
-
 // Do some basic qc on the junction
 bool JunctionsExtractor::junction_qc(bam1_t *aln, uint32_t anchor_start, uint32_t intron_start,
                                      uint32_t intron_end, uint32_t anchor_end,
@@ -246,15 +240,79 @@ void JunctionsExtractor::process_junction(bam1_t *aln, const string& chrom, char
     }
 }
 
-// Print all the junctions - this function needs work
-vector<Junction*> JunctionsExtractor::get_junctions_sorted() {
+// get all junctions
+vector<Junction*> JunctionsExtractor::get_junctions() {
     vector<Junction*> juncs;
     for (map<JunctionKey, Junction*>::iterator it = junctions_.begin(); it != junctions_.end(); it++) {
         juncs.push_back(it->second);
     }
-    sort_junctions(juncs);
     return juncs;
 }
+
+// Compare two junctions
+static inline bool junctions_lt(const Junction *j1,
+                                const Junction *j2) {
+    if (j1->chrom < j2->chrom){
+        return true;
+    }
+    if (j1->chrom > j2->chrom){
+        return false;
+    }
+    // Same chromosome
+    if (j1->anchor_start < j2->anchor_start) {
+        return true;
+    }
+    if (j1->anchor_start > j2->anchor_start) {
+        return false;
+    }
+    // Same start
+    if (j1->anchor_end < j2->anchor_end) {
+        return true;
+    }
+    if (j1->anchor_end > j2->anchor_end) {
+        return false;
+    }
+    // Same end
+    return j1->strand < j2->strand;
+}
+
+// sort by anchor start
+void sort_by_anchors(vector<Junction*>& junctions) {
+    sort(junctions.begin(), junctions.end(), junctions_lt);
+}
+
+// Compare two introns
+static inline bool introns_lt(const Junction *j1,
+                                const Junction *j2) {
+    if (j1->chrom < j2->chrom){
+        return true;
+    }
+    if (j1->chrom > j2->chrom){
+        return false;
+    }
+    // Same chromosome
+    if (j1->intron_start < j2->intron_start) {
+        return true;
+    }
+    if (j1->intron_start > j2->intron_start) {
+        return false;
+    }
+    // Same start
+    if (j1->intron_end < j2->intron_end) {
+        return true;
+    }
+    if (j1->intron_end > j2->intron_end) {
+        return false;
+    }
+    // Same end
+    return j1->strand < j2->strand;
+}
+
+// sort by introns start
+void sort_by_introns(vector<Junction*>& junctions) {
+    sort(junctions.begin(), junctions.end(), introns_lt);
+}
+
 
 // Get the strand from the XS aux tag
 char JunctionsExtractor::get_junction_strand_XS(bam1_t *aln) {

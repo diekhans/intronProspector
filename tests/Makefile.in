@@ -21,7 +21,7 @@ fake10_fai = output/fake10_genome.fa.fai
 all:
 
 .PHONY: test
-test: testBasic testMulti testFake10
+test: testBasic testMulti testFake10 testRegress
 
 ###
 # basic tests
@@ -109,6 +109,13 @@ testFake10c: mkout ${fake10_fa} ${fake10_fai}
 	${diff} expected/$@.introns.tsv output/$@.introns.tsv
 
 
+testRegress: testSortBug
+
+# bug where bed was incorrectly sort by always using anchors
+testSortBug: mkout
+	${intronProspector} --junction-bed=output/$@.juncs.bed --intron-bed=output/$@.introns.bed input/sort-bug.sam
+	bedToBigBed -type=bed12 -tab output/$@.juncs.bed input/sort-bug.size output/$@.juncs.bigBed
+	bedToBigBed -type=bed9 -tab output/$@.introns.bed input/sort-bug.size output/$@.introns.bigBed
 
 ###
 # other rules

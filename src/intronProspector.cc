@@ -259,16 +259,20 @@ static void extract_junctions(CmdParser &opts) {
                           opts.skip_missing_targets, trace_fh);
     je.identify_junctions_from_bam(opts.bam_file, opts.bam_pass_through);
     delete trace_fh;
-    vector<Junction*> juncs = je.get_junctions_sorted();
+    vector<Junction*> juncs = je.get_junctions();
     if (opts.junction_bed != "") {
+        sort_by_anchors(juncs);
         print_anchor_bed(juncs, opts.min_confidence_score, opts.map_to_ucsc, opts.junction_bed);
     }
-    if (opts.intron_bed != "") {
-        print_intron_bed(juncs, opts.min_confidence_score, opts.map_to_ucsc, opts.intron_bed);
-    }
-    if (opts.intron_call_tsv != "") {
-        print_intron_call_tsv(juncs, opts.min_confidence_score, genome != NULL,
-                              opts.map_to_ucsc, opts.intron_call_tsv);
+    if ((opts.intron_bed != "") or (opts.intron_call_tsv != "")) {
+        sort_by_introns(juncs);
+        if (opts.intron_bed != "") {
+            print_intron_bed(juncs, opts.min_confidence_score, opts.map_to_ucsc, opts.intron_bed);
+        }
+        if (opts.intron_call_tsv != "") {
+            print_intron_call_tsv(juncs, opts.min_confidence_score, genome != NULL,
+                                  opts.map_to_ucsc, opts.intron_call_tsv);
+        }
     }
     delete genome;
  }
