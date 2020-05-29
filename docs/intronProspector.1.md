@@ -94,6 +94,17 @@ Options
 > Exclude reads or introns from this category.  Current categories are:
 > *multi* - excluding multi-mapped reads.
 
+`--set-XS-strand-tag`
+
+> Set the XS:A tag to the strand if stand for a read can be determined from the
+> introns based on a count of recognized vs unrecognized splice sites.
+> If the strand can't be determined, the tags are not modified, possible leaving
+> an existing XS:A tag in place. Requires `--pass-through` and `--genome-fasta`.
+
+`--set-TS-strand-tag`
+
+> Set the TS:A tag in the same manner as `--set-XS-strand-tag`.
+
 NOTES
 =====
 The computation of strand is problematic.  If the strandness of the experiment is specified, then that is used to determine stand.  If the alignment provides the XS attribute, that is used.  Otherwise, the strand can't be determined from the BAM.  If the genome is provided and a known splice sites are detected, this is then used if the stand is not identified by other methods.

@@ -223,6 +223,12 @@ public:
         }
         return confidence;
     }
+
+    // is this a canonical intron?
+    bool is_canonical() const {
+        return (splice_sites.size() > 0) and (splice_sites[0] >= 'A')
+            and (splice_sites[0] <= 'Z');
+    }
     
     // Trim read counts to fit in BED score restriction or 0..1000
     static unsigned read_count_to_bed_score(uint64_t read_count) {
@@ -370,6 +376,10 @@ private:
     // missing genomic sequence that have been warned about
     map<string, bool> missing_genomic_warned_;
 
+    // update tags from observed orientation
+    bool set_XS_strand_tag_;
+    bool set_TS_strand_tag_;
+    
     // debugging trace output if not NULL
     ostream *trace_fh_;
     
@@ -378,23 +388,28 @@ private:
     bool junction_qc(bam1_t *aln, uint32_t anchor_start, uint32_t intron_start,
                      uint32_t intron_end, uint32_t anchor_end,
                      uint32_t left_mismatch_cnt, uint32_t right_mismatch_cnt);
-    void parse_alignment_into_junctions(bam1_t *aln);
-    void process_alignment(bam1_t *aln);
-    void create_junction(bam1_t *aln, const JunctionKey &key,
-                         const string& chrom, char strand,
-                         uint32_t anchor_start, uint32_t intron_start,
-                         uint32_t intron_end, uint32_t anchor_end);
-    void update_junction(bam1_t *aln, const JunctionKey &key,
-                         const string& chrom, char strand,
-                         uint32_t anchor_start, uint32_t intron_start,
-                         uint32_t intron_end, uint32_t anchor_end);
-    void add_junction(bam1_t *aln, const string& chrom, char strand,
-                      uint32_t anchor_start, uint32_t intron_start, 
-                      uint32_t intron_end, uint32_t anchor_end);
+    void parse_alignment_into_junctions(bam1_t *aln,
+                                        int *orientCnt);
+    void process_alignment(bam1_t *aln,
+                           bam_hdr_t *in_header,
+                           samFile* out_sam);
+    Junction *create_junction(bam1_t *aln, const JunctionKey &key,
+                              const string& chrom, char strand,
+                              uint32_t anchor_start, uint32_t intron_start,
+                              uint32_t intron_end, uint32_t anchor_end);
+    Junction * update_junction(bam1_t *aln, const JunctionKey &key,
+                               const string& chrom, char strand,
+                               uint32_t anchor_start, uint32_t intron_start,
+                               uint32_t intron_end, uint32_t anchor_end);
+    Junction *add_junction(bam1_t *aln, const string& chrom, char strand,
+                           uint32_t anchor_start, uint32_t intron_start, 
+                           uint32_t intron_end, uint32_t anchor_end);
+    void update_strand_tag(const char* tag, char valType, int orientCnt, bam1_t *aln);
     void process_junction(bam1_t *aln, const string& chrom, char strand,
                           uint32_t anchor_start, uint32_t intron_start,
                           uint32_t intron_end, uint32_t anchor_end,
-                          uint32_t left_mismatch_cnt, uint32_t right_mismatch_cnt);
+                          uint32_t left_mismatch_cnt, uint32_t right_mismatch_cnt,
+                          int *orientCnt);
     char get_junction_strand_XS(bam1_t *aln);
     char get_junction_strand_flag(bam1_t *aln);
     char get_junction_strand(bam1_t *aln);
@@ -419,6 +434,8 @@ public:
                        unsigned excludes,
                        Genome *genome,
                        bool skip_missing_targets,
+                       bool set_XS_strand_tag,
+                       bool set_TS_strand_tag,
                        ostream *trace_fh):
         genome_(genome),
         skip_missing_targets_(skip_missing_targets),
@@ -427,6 +444,8 @@ public:
         max_intron_length_(max_intron_length),
         strandness_(strandness),
         excludes_(excludes),
+        set_XS_strand_tag_(set_XS_strand_tag),
+        set_TS_strand_tag_(set_TS_strand_tag),
         trace_fh_(trace_fh) {
     }
     

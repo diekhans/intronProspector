@@ -75,7 +75,7 @@ float Junction::calculate_confidence() {
     return (summation == 0.0) ? 0.0 : -summation;
 }
 
-// add all one set of canonical junctions to set
+// add all versions of one of  canonical junctions to set
 static void add_canonical(const string& splice_sites,
                           int pos,
                           set<string>& canonicals) {
@@ -152,10 +152,10 @@ string JunctionsExtractor::get_splice_sites(const string& chrom, char strand,
     return splice_site;
 }
 
-void JunctionsExtractor::create_junction(bam1_t *aln, const JunctionKey &key,
-                                         const string& chrom, char strand,
-                                         uint32_t anchor_start, uint32_t intron_start,
-                                         uint32_t intron_end, uint32_t anchor_end) {
+Junction *JunctionsExtractor::create_junction(bam1_t *aln, const JunctionKey &key,
+                                              const string& chrom, char strand,
+                                              uint32_t anchor_start, uint32_t intron_start,
+                                              uint32_t intron_end, uint32_t anchor_end) {
     char corrected_strand = strand;
     string splice_sites = get_splice_sites(chrom, strand, intron_start, intron_end);
     if ((splice_sites.size() > 0) && (strand == '.')) {
@@ -179,13 +179,13 @@ void JunctionsExtractor::create_junction(bam1_t *aln, const JunctionKey &key,
                                   corrected_strand, splice_sites);
     junctions_[key] = junc;
     junc->count_read(get_read_category(aln), intron_start - aln->core.pos);
+    return junc;
 }
 
-
-void JunctionsExtractor::update_junction(bam1_t *aln, const JunctionKey &key,
-                                         const string& chrom, char strand,
-                                         uint32_t anchor_start, uint32_t intron_start,
-                                         uint32_t intron_end, uint32_t anchor_end) {
+Junction *JunctionsExtractor::update_junction(bam1_t *aln, const JunctionKey &key,
+                                              const string& chrom, char strand,
+                                              uint32_t anchor_start, uint32_t intron_start,
+                                              uint32_t intron_end, uint32_t anchor_end) {
     Junction *junc = junctions_[key];
     if (trace_fh_ != NULL) {
         *trace_fh_ << chrom << "\t" << intron_start << "\t" << intron_end
@@ -200,13 +200,13 @@ void JunctionsExtractor::update_junction(bam1_t *aln, const JunctionKey &key,
     if (anchor_end > junc->anchor_end)
         junc->anchor_end = anchor_end;
     junc->count_read(get_read_category(aln), intron_start - aln->core.pos);
+    return junc;
 }
 
-
 // Add a junction to the junctions map
-void JunctionsExtractor::add_junction(bam1_t *aln, const string& chrom, char strand,
-                                      uint32_t anchor_start, uint32_t intron_start,
-                                      uint32_t intron_end, uint32_t anchor_end) {
+Junction *JunctionsExtractor::add_junction(bam1_t *aln, const string& chrom, char strand,
+                                           uint32_t anchor_start, uint32_t intron_start,
+                                           uint32_t intron_end, uint32_t anchor_end) {
     string splice_sites = get_splice_sites(chrom, strand, intron_start, intron_end);
 
     if (trace_fh_ != NULL) {
@@ -220,9 +220,9 @@ void JunctionsExtractor::add_junction(bam1_t *aln, const string& chrom, char str
 
     // Check if new junction
     if (junctions_.count(key) == 0) {
-        create_junction(aln, key, chrom, strand, anchor_start, intron_start, intron_end, anchor_end);
+        return create_junction(aln, key, chrom, strand, anchor_start, intron_start, intron_end, anchor_end);
     } else {
-        update_junction(aln, key, chrom, strand, anchor_start, intron_start, intron_end, anchor_end);
+        return update_junction(aln, key, chrom, strand, anchor_start, intron_start, intron_end, anchor_end);
     }
 }
 
@@ -230,13 +230,17 @@ void JunctionsExtractor::add_junction(bam1_t *aln, const string& chrom, char str
 void JunctionsExtractor::process_junction(bam1_t *aln, const string& chrom, char strand,
                                           uint32_t anchor_start, uint32_t intron_start,
                                           uint32_t intron_end, uint32_t anchor_end,
-                                          uint32_t left_mismatch_cnt, uint32_t right_mismatch_cnt) {
+                                          uint32_t left_mismatch_cnt, uint32_t right_mismatch_cnt,
+                                          int *orientCnt) {
     assert(intron_start < intron_end);
     assert(anchor_start < anchor_end);
     assert(anchor_start < intron_start);
     assert(anchor_end > intron_end);
     if (junction_qc(aln, anchor_start, intron_start, intron_end, anchor_end, left_mismatch_cnt, right_mismatch_cnt)) {
-        add_junction(aln, chrom, strand, anchor_start, intron_start, intron_end, anchor_end);
+        Junction *junc = add_junction(aln, chrom, strand, anchor_start, intron_start, intron_end, anchor_end);
+        if (junc->is_canonical()) {
+            *orientCnt += (junc->strand == '+') ? 1 : -1;
+        }
     }
 }
 
@@ -418,7 +422,8 @@ ReadCategory JunctionsExtractor::get_read_category(bam1_t *aln) {
 }
 
 // Parse junctions from the read and store in junction map
-void JunctionsExtractor::parse_alignment_into_junctions(bam1_t *aln) {
+void JunctionsExtractor::parse_alignment_into_junctions(bam1_t *aln,
+                                                        int *orientCnt) {
     const string& chrom = targets_[aln->core.tid];
     char strand = get_junction_strand(aln);
     int read_pos = aln->core.pos;
@@ -443,7 +448,7 @@ void JunctionsExtractor::parse_alignment_into_junctions(bam1_t *aln) {
                     started_junction = true;
                 } else {
                     // Add the previous junction
-                    process_junction(aln, chrom, strand, anchor_start, intron_start, intron_end, anchor_end, left_mismatch_cnt, right_mismatch_cnt);
+                    process_junction(aln, chrom, strand, anchor_start, intron_start, intron_end, anchor_end, left_mismatch_cnt, right_mismatch_cnt, orientCnt);
                     anchor_start = intron_end;
                     intron_start = anchor_end;
                     intron_end = intron_start + len;
@@ -474,7 +479,7 @@ void JunctionsExtractor::parse_alignment_into_junctions(bam1_t *aln) {
                     intron_start += len;
                     anchor_start = intron_start;
                 } else {
-                    process_junction(aln, chrom, strand, anchor_start, intron_start, intron_end, anchor_end, left_mismatch_cnt, right_mismatch_cnt);
+                    process_junction(aln, chrom, strand, anchor_start, intron_start, intron_end, anchor_end, left_mismatch_cnt, right_mismatch_cnt, orientCnt);
                     // Don't include these in the next anchor
                     intron_start = anchor_end + len;
                     anchor_start = intron_start;
@@ -486,7 +491,7 @@ void JunctionsExtractor::parse_alignment_into_junctions(bam1_t *aln) {
                 if (!started_junction) {
                     anchor_start = intron_start;
                 } else {
-                    process_junction(aln, chrom, strand, anchor_start, intron_start, intron_end, anchor_end, left_mismatch_cnt, right_mismatch_cnt);
+                    process_junction(aln, chrom, strand, anchor_start, intron_start, intron_end, anchor_end, left_mismatch_cnt, right_mismatch_cnt, orientCnt);
                     // Don't include these in the next anchor
                     intron_start = anchor_end;
                     anchor_start = intron_start;
@@ -500,16 +505,48 @@ void JunctionsExtractor::parse_alignment_into_junctions(bam1_t *aln) {
         }
     }
     if (started_junction) {
-        process_junction(aln, chrom, strand, anchor_start, intron_start, intron_end, anchor_end, left_mismatch_cnt, right_mismatch_cnt);
+        process_junction(aln, chrom, strand, anchor_start, intron_start, intron_end, anchor_end, left_mismatch_cnt, right_mismatch_cnt, orientCnt);
+    }
+}
+
+// update the specific strand tag from the observed orientation
+void JunctionsExtractor::update_strand_tag(const char* tag, char valType, int orientCnt, bam1_t *aln) {
+    const uint8_t strand = (orientCnt > 0) ? '+' : '-';
+    uint8_t *existing = bam_aux_get(aln, tag);
+    if (existing != NULL) {
+        int err = bam_aux_del(aln, existing);
+        if (err != 0) {
+            throw runtime_error("Error deleting read tag");
+        }
+    }
+    int err = bam_aux_append(aln, tag, valType, 1, &strand);
+    if (err != 0) {
+        throw runtime_error("Error adding read tag");
     }
 }
 
 // Process an alignment
-void JunctionsExtractor::process_alignment(bam1_t *aln) {
+void JunctionsExtractor::process_alignment(bam1_t *aln,
+                                           bam_hdr_t *in_header,
+                                           samFile* out_sam) {
     // skip if unmapped, only one cigar operation exists (likely all matches),
     // low-quality or duplicate
+    int orientCnt = 0;
     if (!((aln->core.n_cigar <= 1) || (aln->core.tid < 0) || (aln->core.flag & (BAM_FQCFAIL | BAM_FDUP)))) {
-        parse_alignment_into_junctions(aln);
+        parse_alignment_into_junctions(aln, &orientCnt);
+    }
+    if (orientCnt != 0) {
+        if (set_XS_strand_tag_) {
+            update_strand_tag("XS", 'A', orientCnt, aln);
+        }
+        if (set_TS_strand_tag_) {
+            update_strand_tag("TS", 'A', orientCnt, aln);
+        }
+    }
+    if (out_sam != NULL) {
+        if (sam_write1(out_sam, in_header, aln) < 0) {
+            throw runtime_error("Error writing BAM record to pass-through file");
+        }
     }
 }
 
@@ -566,12 +603,7 @@ void JunctionsExtractor::identify_junctions_from_bam(const string& bam,
     bam1_t *aln = bam_init1();
     int stat;
     while((stat = sam_read1(in_sam, in_header, aln)) >= 0) {
-        process_alignment(aln);
-        if (out_sam != NULL) {
-            if (sam_write1(out_sam, in_header, aln) < 0) {
-                throw runtime_error("Error writing BAM record: " + bam_pass_through);
-            }
-        }
+        process_alignment(aln, in_header, out_sam);
     }
     if (stat < -1) {
         throw runtime_error("Error reader BAM record: " + bam);

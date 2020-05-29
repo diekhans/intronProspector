@@ -103,6 +103,8 @@ class CmdParser {
     string bam_pass_through;
     bool map_to_ucsc;
     string debug_trace_tsv;
+    bool set_XS_strand_tag;
+    bool set_TS_strand_tag;
 
     CmdParser(int argc, char *argv[]):
         bam_file("/dev/stdin"),
@@ -113,8 +115,14 @@ class CmdParser {
         strandness(DEFAULT_STRANDED),
         excludes(EXCLUDE_NONE),
         skip_missing_targets(false),
-        map_to_ucsc(false) {
+        map_to_ucsc(false),
+        set_XS_strand_tag(false),
+        set_TS_strand_tag(false) {
 
+        // definitions for long-only options
+        static const int OPT_SET_XS_STRAND_TAG = 256;
+        static const int OPT_SET_TS_STRAND_TAG = 257;
+        
         struct option long_options[] = {
             {"help", no_argument, NULL, 'h'},
             {"version", no_argument, NULL, 'v'},
@@ -132,6 +140,8 @@ class CmdParser {
             {"pass-through", required_argument, NULL, 'p'},
             {"map-to-ucsc", no_argument, NULL, 'U'},
             {"debug-trace", required_argument, NULL, 'D'},
+            {"set-XS-strand-tag", no_argument, NULL, OPT_SET_XS_STRAND_TAG},
+            {"set-TS-strand-tag", no_argument, NULL, OPT_SET_TS_STRAND_TAG},
             {NULL, 0, NULL, 0}
         };
             
@@ -181,6 +191,12 @@ class CmdParser {
                 case 'D':
                     debug_trace_tsv = optarg;
                     break;
+                case OPT_SET_XS_STRAND_TAG:
+                    set_XS_strand_tag = true;
+                    break;
+                case OPT_SET_TS_STRAND_TAG:
+                    set_TS_strand_tag = true;
+                    break;
                 case 'h':
                     usage();
                     exit(0);
@@ -202,6 +218,11 @@ class CmdParser {
         }
         if (argc - optind == 1) {
             bam_file = string(argv[optind++]);
+        }
+        if ((set_XS_strand_tag or set_TS_strand_tag)
+            and ((bam_pass_through.size() == 0) or (genome_fa.size() == 0))) {
+            cerr << "Error: --set-XS-strand-tag and --set-TS-strand-tag require --pass-through and --genome-fasta" << endl;
+            exit(1);
         }
     }
 };
@@ -256,7 +277,9 @@ static void extract_junctions(CmdParser &opts) {
     ofstream *trace_fh = opts.debug_trace_tsv.size() > 0 ? new ofstream(opts.debug_trace_tsv.c_str()) :  NULL;
     JunctionsExtractor je(opts.min_anchor_length, opts.min_intron_length, opts.max_intron_length,
                           opts.strandness, opts.excludes, genome,
-                          opts.skip_missing_targets, trace_fh);
+                          opts.skip_missing_targets,
+                          opts.set_XS_strand_tag, opts.set_TS_strand_tag,
+                          trace_fh);
     je.identify_junctions_from_bam(opts.bam_file, opts.bam_pass_through);
     delete trace_fh;
     vector<Junction*> juncs = je.get_junctions();
