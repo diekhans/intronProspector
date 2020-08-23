@@ -49,7 +49,7 @@ testBasic3: mkout ${basic_bam}
 	${diff} expected/testBasic1.juncs.bed output/$@.juncs.bed
 	${diff} expected/testBasic1.introns.bed output/$@.introns.bed
 	${diff} expected/$@.introns.tsv output/$@.introns.tsv
-	samtools view -h output/$@.bam >output/$@.sam
+	samtools view -h --no-PG output/$@.bam >output/$@.sam
 	${diff} ${basic_sam} output/$@.sam
 
 # test confidence score filter
@@ -126,7 +126,7 @@ mkout:
 
 output/%.bam: input/%.sam
 	@mkdir -p output
-	samtools view -b $< >$@.tmp
+	samtools view -b --no-PG $< >$@.tmp
 	mv -f $@.tmp $@
 
 output/%.fa: input/%.fa
