@@ -95,7 +95,7 @@ class Tsv {
     }
 
     // get the specified column as a float
-    int get_col_float(const string& col_name) const {
+    float get_col_float(const string& col_name) const {
         return string_to_float(get_col(col_name));
     }
 

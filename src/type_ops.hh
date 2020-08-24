@@ -6,6 +6,8 @@
 #define type_ops_hh
 #include <sstream>
 #include <algorithm>
+#include <stdint.h>
+#include <stdexcept>
 
 inline std::string int_to_string(int n) {
     std::stringstream s1;
@@ -14,27 +16,27 @@ inline std::string int_to_string(int n) {
 }
 
 inline uint32_t string_to_uint(const std::string& s) {
-    size_t iend;
-    uint32_t n = std::stol(s, &iend);
-    if (iend != s.size()) {
+    char *end;
+    uint32_t n = strtoul(s.c_str(), &end, 10);
+    if ((end == s.c_str()) || (*end != '\0')) {
         throw std::runtime_error("invalid integer \"" + s + "\"");
     }
     return n;
 }
 
 inline uint64_t string_to_uint64(const std::string& s) {
-    size_t iend;
-    uint64_t n = std::stoll(s, &iend);
-    if (iend != s.size()) {
+    char *end;
+    uint64_t n = strtoull(s.c_str(), &end, 10);
+    if ((end == s.c_str()) || (*end != '\0')) {
         throw std::runtime_error("invalid integer \"" + s + "\"");
     }
     return n;
 }
 
 inline float string_to_float(const std::string& s) {
-    size_t iend;
-    float n = std::stof(s, &iend);
-    if (iend != s.size()) {
+    char *end;
+    float n = strtof(s.c_str(), &end);
+    if ((end == s.c_str()) || (*end != '\0')) {
         throw std::runtime_error("invalid float \"" + s + "\"");
     }
     return n;

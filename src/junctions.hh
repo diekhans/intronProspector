@@ -39,6 +39,7 @@ DEALINGS IN THE SOFTWARE.  */
 #include <stdio.h>
 #include <map>
 #include <vector>
+#include <algorithm>
 #include <math.h>
 #include "htslib/sam.h"
 
@@ -105,7 +106,7 @@ class Junction {
 public:
     static float NULL_CONFIDENCE;
     
-    const string& chrom;
+    const string chrom;
     uint32_t intron_start;
     uint32_t intron_end;
     uint32_t anchor_start;  // This is the intron_start - max overhang
@@ -141,7 +142,7 @@ public:
         strand(src.strand), read_offsets(src.read_offsets), confidence(src.confidence),
         splice_sites(src.splice_sites)  {
         for (unsigned i = 0; i <= READ_CATEGORY_MAX; i++) {
-            read_counts[i] = 0;
+            read_counts[i] = src.read_counts[i];
         }
     }
 

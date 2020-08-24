@@ -33,6 +33,7 @@ DEALINGS IN THE SOFTWARE.  */
 #include "junctions.hh"
 #include <fstream>
 #include "type_ops.hh"
+#include <assert.h>
 #include <stdexcept>
 
 using namespace std;
@@ -84,9 +85,9 @@ void Junction::merge(const Junction& j1) {
     }
     anchor_start = min(j1.anchor_start, anchor_start);
     anchor_end = max(j1.anchor_end, anchor_end);
-    read_counts[SINGLE_MAPPED_READ] = j1.read_counts[SINGLE_MAPPED_READ];
-    read_counts[MULTI_MAPPED_READ] = j1.read_counts[MULTI_MAPPED_READ];
-    read_counts[UNSURE_READ] = j1.read_counts[UNSURE_READ];
+    read_counts[SINGLE_MAPPED_READ] += j1.read_counts[SINGLE_MAPPED_READ];
+    read_counts[MULTI_MAPPED_READ] += j1.read_counts[MULTI_MAPPED_READ];
+    read_counts[UNSURE_READ] += j1.read_counts[UNSURE_READ];
     confidence = max(j1.confidence, confidence);
 }
 
@@ -278,7 +279,7 @@ void print_intron_call_tsv(const JunctionVector& juncs,
                            const string& outfile) {
     ofstream out(outfile.c_str());
     Junction::print_junction_call_header(out);
-    out << std::setprecision(3);
+    out.precision(3);
     for (unsigned ijunc = 0; ijunc < juncs.size(); ijunc++) {
         if (juncs[ijunc]->get_confidence() >= min_confidence_score) {
             juncs[ijunc]->print_junction_call_row(map_to_ucsc, out);

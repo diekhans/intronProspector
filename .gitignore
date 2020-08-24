@@ -31,5 +31,13 @@
 *.out
 *.app
 
+# autoconf
+config.log
+config.status
+Makefile
+*.depend
+autom4te.cache
+
 # unique to this tree or markd
 .emacs.bak
+
