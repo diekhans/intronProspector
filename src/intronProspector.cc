@@ -228,7 +228,7 @@ class CmdParser {
 };
 
 // Print BED with anchors as blocks and intron as gap.
-static void print_anchor_bed(const vector<Junction*>& juncs,
+static void print_anchor_bed(const JunctionVector& juncs,
                              float min_confidence_score,
                              bool map_to_ucsc,
                              const string& outfile) {
@@ -241,7 +241,7 @@ static void print_anchor_bed(const vector<Junction*>& juncs,
 }
 
 // Print BED with intron as block
-static void print_intron_bed(const vector<Junction*>& juncs,
+static void print_intron_bed(const JunctionVector& juncs,
                              float min_confidence_score,
                              bool map_to_ucsc,
                              const string& outfile) {
@@ -254,7 +254,7 @@ static void print_intron_bed(const vector<Junction*>& juncs,
 }
 
 // Print TSV with intron information
-static void print_intron_call_tsv(const vector<Junction*>& juncs,
+static void print_intron_call_tsv(const JunctionVector& juncs,
                                   float min_confidence_score,
                                   bool have_genome,
                                   bool map_to_ucsc,
@@ -282,13 +282,13 @@ static void extract_junctions(CmdParser &opts) {
                           trace_fh);
     je.identify_junctions_from_bam(opts.bam_file, opts.bam_pass_through);
     delete trace_fh;
-    vector<Junction*> juncs = je.get_junctions();
+    JunctionVector juncs = je.get_junctions();
     if (opts.junction_bed != "") {
-        sort_by_anchors(juncs);
+        juncs.sort_by_anchors();
         print_anchor_bed(juncs, opts.min_confidence_score, opts.map_to_ucsc, opts.junction_bed);
     }
     if ((opts.intron_bed != "") or (opts.intron_call_tsv != "")) {
-        sort_by_introns(juncs);
+        juncs.sort_by_introns();
         if (opts.intron_bed != "") {
             print_intron_bed(juncs, opts.min_confidence_score, opts.map_to_ucsc, opts.intron_bed);
         }
