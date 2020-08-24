@@ -4,8 +4,17 @@ OBJDIR = ${ROOT}/objs
 BINDIR = ${ROOT}/bin
 
 intronProspector = ${BINDIR}/intronProspector
-SRCS = junctions.cc junctions_extractor.cc genome.cc intronProspector.cc
-OBJS = ${SRCS:%.cc=${OBJDIR}/%.o}
+intronProspectorMerge = ${BINDIR}/intronProspectorMerge
+
+shared_SRCS = junctions.cc junctions_extractor.cc genome.cc
+intronProspector_SRCS =  intronProspector.cc
+intronProspectorMerge_SRCS = intronProspectorMerge.cc
+SRCS = ${shared_SRCS} ${intronProspector_SRCS} ${intronProspectorMerge_SRCS}
+
+shared_OBJS = ${shared_SRCS:%.cc=${OBJDIR}/%.o}
+intronProspector_OBJS = ${intronProspector_SRCS:%.cc=${OBJDIR}/%.o}
+intronProspectorMerge_OBJS = ${intronProspectorMerge_SRCS:%.cc=${OBJDIR}/%.o}
+
 DEPENDS = ${SRCS:%.cc=%.depend}
 
 CXXFLAGS = @CXXFLAGS@
@@ -14,11 +23,15 @@ LDFLAGS = @LDFLAGS@
 LIBS = @LIBS@
 
 .PHONY: all
-all: ${intronProspector}
+all: ${intronProspector} ${intronProspectorMerge}
 
-${intronProspector}: ${OBJS}
+${intronProspector}: ${shared_OBJS} ${intronProspector_OBJS}
 	@mkdir -p $(dir $@)
-	${CXX} ${CXXFLAGS} ${LDFLAGS} -o $@ ${OBJS} ${LIBS}
+	${CXX} ${CXXFLAGS} ${LDFLAGS} -o $@ $^ ${LIBS}
+
+${intronProspectorMerge}: ${shared_OBJS} ${intronProspectorMerge_OBJS}
+	@mkdir -p $(dir $@)
+	${CXX} ${CXXFLAGS} ${LDFLAGS} -o $@ $^ ${LIBS}
 
 # dependency file is generate as part of compile
 ${OBJDIR}/%.o: %.cc Makefile
@@ -37,10 +50,9 @@ distclean: clean
 # Generate manpage.h, which is included to generate help message.  This
 # requires pandoc, so it is checked in and only genereated by developers.
 .PHONY: doc
-doc:  manpage.h
+doc:  intronProspector.man.h intronProspectorMerge.man.h
 
-
-manpage.h: ../docs/intronProspector.1.md
+%.man.h: ../docs/%.1.md
 	pandoc -f markdown -t plain  $< >$@.txt.tmp
 	awk -f mkManHelp.awk $@.txt.tmp > $@.tmp
 	mv $@.tmp $@

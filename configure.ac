@@ -1,4 +1,4 @@
-AC_INIT([intronProspector], 1.0)
+AC_INIT([intronProspector], 1.0.0)
 AC_LANG([C++])
 
 # Could not get ax_with_htslib.m4 from autoconf archive to work, so just hand

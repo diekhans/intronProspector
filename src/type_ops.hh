@@ -7,11 +7,37 @@
 #include <sstream>
 #include <algorithm>
 
-// convert an integer to a string (newer version of C++ have std::to_string)
-inline std::string int_to_string(int num) {
+inline std::string int_to_string(int n) {
     std::stringstream s1;
-    s1 << num;
+    s1 << n;
     return s1.str();
+}
+
+inline uint32_t string_to_uint(const std::string& s) {
+    size_t iend;
+    uint32_t n = std::stol(s, &iend);
+    if (iend != s.size()) {
+        throw std::runtime_error("invalid integer \"" + s + "\"");
+    }
+    return n;
+}
+
+inline uint64_t string_to_uint64(const std::string& s) {
+    size_t iend;
+    uint64_t n = std::stoll(s, &iend);
+    if (iend != s.size()) {
+        throw std::runtime_error("invalid integer \"" + s + "\"");
+    }
+    return n;
+}
+
+inline float string_to_float(const std::string& s) {
+    size_t iend;
+    float n = std::stof(s, &iend);
+    if (iend != s.size()) {
+        throw std::runtime_error("invalid float \"" + s + "\"");
+    }
+    return n;
 }
 
 inline std::string to_upper(const std::string& str) {

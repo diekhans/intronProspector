@@ -1,7 +1,7 @@
 NAME
 ====
 
-**intronProspector** — Extract putative junctions from RNA-Seq alignments
+**intronProspector** — Extract putative intron junctions from RNA-Seq alignments
 
 SYNOPSIS
 ========
@@ -13,7 +13,7 @@ DESCRIPTION
 
 Find putative intron junctions in a RNA-Seq alignment. The *readaligns* file maybe in SAM, BAM, or CRAM format and does not need to be sorted or indexed and maybe streamed. If omitted, stdin is used.
 
-This program allows for calling splice junctions indebtedness of the alignment program.  It maybe used in a pipeline, copying the alignment file on `stdin` to `stdout`.  It can sit between an aligner outputting SAM and `samtools` to convert to BAM/CRAM.
+This program allows for integrating splice junction calling into an alignment pipeline.  Pass-through mode copys the alignment file on `stdin` to `stdout`.  It can then sit between an aligner outputting SAM and `samtools` that converts to BAM/CRAM.
 
 Options
 -------

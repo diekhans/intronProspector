@@ -145,6 +145,19 @@ public:
         }
     }
 
+    string get_description() const;
+    
+    void set_read_counts(ReadCategory read_category,
+                         uint32_t count) {
+        read_counts[read_category] = count;
+    }
+
+    void set_confidence(float confidence1) {
+        confidence = confidence1;
+    }
+
+    void merge(const Junction& j1);
+    
     // add a read to the counts and offsets
     void count_read(ReadCategory read_category,
                     uint32_t read_offset) {
@@ -188,11 +201,10 @@ public:
                           ostream& out) const;
 
     // Print header for junction call TSV
-    static void print_junction_call_header(bool have_genome,ostream& out);
+    static void print_junction_call_header(ostream& out);
 
     // Print row to junction call TSV
-    void print_junction_call_row(bool have_genome,
-                                 bool map_to_ucsc,
+    void print_junction_call_row(bool map_to_ucsc,
                                  ostream& out) const;
 };
 
@@ -229,6 +241,24 @@ class JunctionTable: public map<JunctionKey, Junction*> {
         return juncs;
     }
 };
+
+// Print BED with anchors as blocks and intron as gap.
+void print_anchor_bed(const JunctionVector& juncs,
+                      float min_confidence_score,
+                      bool map_to_ucsc,
+                      const string& outfile);
+
+// Print BED with intron as block
+void print_intron_bed(const JunctionVector& juncs,
+                      float min_confidence_score,
+                      bool map_to_ucsc,
+                      const string& outfile);
+
+// Print TSV with intron information
+void print_intron_call_tsv(const JunctionVector& juncs,
+                           float min_confidence_score,
+                           bool map_to_ucsc,
+                           const string& outfile);
 
 #endif
 

@@ -46,7 +46,7 @@ static const float DEFAULT_MIN_CONFIDENCE_SCORE = 0.0;
 static const Strandness DEFAULT_STRANDED = UNSTRANDED;
 
 static const char *usage_msg =
-#include "manpage.h"
+#include "intronProspector.man.h"
     ;
 
 // Usage statement for this tool
@@ -227,48 +227,6 @@ class CmdParser {
     }
 };
 
-// Print BED with anchors as blocks and intron as gap.
-static void print_anchor_bed(const JunctionVector& juncs,
-                             float min_confidence_score,
-                             bool map_to_ucsc,
-                             const string& outfile) {
-    ofstream out(outfile.c_str());
-    for (unsigned ijunc = 0; ijunc < juncs.size(); ijunc++) {
-        if (juncs[ijunc]->get_confidence() >= min_confidence_score) {
-            juncs[ijunc]->print_anchor_bed(ijunc, map_to_ucsc, out);
-        }
-    }
-}
-
-// Print BED with intron as block
-static void print_intron_bed(const JunctionVector& juncs,
-                             float min_confidence_score,
-                             bool map_to_ucsc,
-                             const string& outfile) {
-    ofstream out(outfile.c_str());
-    for (unsigned ijunc = 0; ijunc < juncs.size(); ijunc++) {
-        if (juncs[ijunc]->get_confidence() >= min_confidence_score) {
-            juncs[ijunc]->print_intron_bed(ijunc, map_to_ucsc, out);
-        }
-    }
-}
-
-// Print TSV with intron information
-void print_intron_call_tsv(const JunctionVector& juncs,
-                           float min_confidence_score,
-                           bool have_genome,
-                           bool map_to_ucsc,
-                           const string& outfile) {
-    ofstream out(outfile.c_str());
-    Junction::print_junction_call_header(have_genome, out);
-    out << std::setprecision(3);
-    for (unsigned ijunc = 0; ijunc < juncs.size(); ijunc++) {
-        if (juncs[ijunc]->get_confidence() >= min_confidence_score) {
-            juncs[ijunc]->print_junction_call_row(have_genome, map_to_ucsc, out);
-        }
-    }
-}
-
 static void extract_junctions(CmdParser &opts) {
     Genome *genome = NULL;
     if (opts.genome_fa.size() > 0) {
@@ -293,8 +251,7 @@ static void extract_junctions(CmdParser &opts) {
             print_intron_bed(juncs, opts.min_confidence_score, opts.map_to_ucsc, opts.intron_bed);
         }
         if (opts.intron_call_tsv != "") {
-            print_intron_call_tsv(juncs, opts.min_confidence_score, genome != NULL,
-                                  opts.map_to_ucsc, opts.intron_call_tsv);
+            print_intron_call_tsv(juncs, opts.min_confidence_score, opts.map_to_ucsc, opts.intron_call_tsv);
         }
     }
     delete genome;

@@ -3,6 +3,7 @@ ROOT = ..
 BINDIR = ${ROOT}/bin
 
 intronProspector = ${BINDIR}/intronProspector
+intronProspectorMerge = ${BINDIR}/intronProspectorMerge
 
 # Test run command in various ways and compares to expected output
 
@@ -21,12 +22,18 @@ fake10_fai = output/fake10_genome.fa.fai
 all:
 
 .PHONY: test
-test: testBasic testMulti testFake10 testRegress
+test: intronProspctorTests intronProspctorMergeTests
+
+
+#####
+# intronProspctor tests
+#####
+intronProspctorTests: basicTests multiTest fake10Tests regressTests
 
 ###
 # basic tests
 ##
-testBasic: testBasic1 testBasic2 testBasic3 testBasic4 testBasic5
+basicTests: testBasic1 testBasic2 testBasic3 testBasic4 testBasic5
 
 # basic unstranded
 testBasic1: mkout
@@ -70,7 +77,7 @@ testBasic5: mkout ${basic_bam}
 ###
 # multi-introns per read tests
 ##
-testMulti: testMulti1
+multiTests: testMulti1
 
 testMulti1: mkout
 	${intronProspector} --junction-bed=output/$@.juncs.bed --intron-bed=output/$@.introns.bed --intron-calls=output/$@.introns.tsv ${multi_sam}
@@ -81,7 +88,7 @@ testMulti1: mkout
 ##
 # fake10 tests
 ##
-testFake10: testFake10a testFake10b testFake10c
+fake10Tests: testFake10a testFake10b testFake10c
 
 # fake10 STAR mappings (SAM doesn't have strand)
 testFake10a: mkout ${fake10_fa} ${fake10_fai}
@@ -109,13 +116,27 @@ testFake10c: mkout ${fake10_fa} ${fake10_fai}
 	${diff} expected/$@.introns.tsv output/$@.introns.tsv
 
 
-testRegress: testSortBug
+regressTests: testSortBug
 
-# bug where bed was incorrectly sort by always using anchors
+# bug where bed was incorrectly sorted
 testSortBug: mkout
 	${intronProspector} --junction-bed=output/$@.juncs.bed --intron-bed=output/$@.introns.bed input/sort-bug.sam
 	bedToBigBed -type=bed12 -tab output/$@.juncs.bed input/sort-bug.size output/$@.juncs.bigBed
 	bedToBigBed -type=bed9 -tab output/$@.introns.bed input/sort-bug.size output/$@.introns.bigBed
+
+#####
+# intronProspctorMerge tests
+#####
+intronProspctorMergeTests: testBasic123Merge
+
+testBasic123Merge: mkout
+	${intronProspectorMerge} --junction-bed=output/$@.juncs.bed --intron-bed=output/$@.introns.bed --intron-calls=output/$@.introns.tsv \
+	    expected/testBasic1.introns.tsv expected/testBasic2.introns.tsv expected/testBasic3.introns.tsv
+	${diff} expected/$@.juncs.bed output/$@.juncs.bed
+	${diff} expected/$@.introns.bed output/$@.introns.bed
+	${diff} expected/$@.introns.tsv output/$@.introns.tsv
+
+
 
 ###
 # other rules

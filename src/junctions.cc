@@ -31,6 +31,65 @@ FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.  */
 
 #include "junctions.hh"
+#include <fstream>
+#include "type_ops.hh"
+#include <stdexcept>
+
+using namespace std;
+
+float Junction::NULL_CONFIDENCE = nanf("not-a-number");
+
+// lazy calculation of confidence
+void Junction::lazy_get_confidence() {
+    assert(isnan(confidence));
+    if (total_read_count() == 0) {
+        confidence = 0.0;
+    } else {
+        confidence = calculate_confidence();
+    }
+}
+
+// calculation of confidence
+float Junction::calculate_confidence() {
+    // put in order for counting
+    std::sort(read_offsets.begin(), read_offsets.end());
+    float summation = 0.0;
+    for (unsigned i = 0; i < read_offsets.size(); ) {
+        uint16_t pos = read_offsets[i];
+        unsigned cnt = 0;
+        for (; (i < read_offsets.size()) && (read_offsets[i] == pos); i++) {
+            cnt++;
+        }
+        float p = float(cnt) / read_offsets.size();
+        if (p != 0.0) {
+            summation += p * log2f(p);
+        }
+    }
+    return (summation == 0.0) ? 0.0 : -summation;
+}
+
+string Junction::get_description() const {
+    return mk_coords_str(chrom, intron_start, intron_end) + "[" + strand + "/" + splice_sites + "]";
+}
+
+void Junction::merge(const Junction& j1) {
+    if ((j1.chrom != chrom) || (j1.intron_start != intron_start) || (j1.intron_end != intron_end)) {
+        throw logic_error("attempt to merge different introns:" + j1.get_description() + " with " + get_description());
+    }
+    if (j1.strand != strand) {
+        throw runtime_error("intron records have different strand:" + j1.get_description() + " with " + get_description());
+    }
+    if (j1.splice_sites != splice_sites) {
+        throw runtime_error("intron records have different splice sites:" + j1.get_description() + " with " + get_description());
+    }
+    anchor_start = min(j1.anchor_start, anchor_start);
+    anchor_end = max(j1.anchor_end, anchor_end);
+    read_counts[SINGLE_MAPPED_READ] = j1.read_counts[SINGLE_MAPPED_READ];
+    read_counts[MULTI_MAPPED_READ] = j1.read_counts[MULTI_MAPPED_READ];
+    read_counts[UNSURE_READ] = j1.read_counts[UNSURE_READ];
+    confidence = max(j1.confidence, confidence);
+}
+
 // Compare two junctions
 bool JunctionVector::junctions_lt(const Junction *j1,
                                   const Junction *j2) {
@@ -165,19 +224,15 @@ void Junction::print_intron_bed(unsigned ijunc,
 }
 
 // Print header for junction call TSV
-void Junction::print_junction_call_header(bool have_genome,ostream& out) {
+void Junction::print_junction_call_header(ostream& out) {
     out << "chrom" << "\t" << "intron_start" << "\t" << "intron_end" << "\t" << "strand"
         << "\t" << "uniq_mapped_count" << "\t" << "multi_mapped_count" << "\t" << "unsure_mapped_count"
-        << "\t" << "max_left_overhang" << "\t" << "max_right_overhang" << "\t" << "confidence";
-    if (have_genome) {
-        out << "\t" << "splice_sites";
-    }
-    out << endl;
+        << "\t" << "max_left_overhang" << "\t" << "max_right_overhang" << "\t" << "confidence"
+        << "\t" << "splice_sites" << endl;
 }
 
 // Print row to junction call TSV
-void Junction::print_junction_call_row(bool have_genome,
-                                       bool map_to_ucsc,
+void Junction::print_junction_call_row(bool map_to_ucsc,
                                        ostream& out) const {
     if (map_to_ucsc) {
         out << make_ucsc_chrom(chrom);
@@ -187,10 +242,47 @@ void Junction::print_junction_call_row(bool have_genome,
     out << "\t" << intron_start << "\t" << intron_end << "\t" << strand
         << "\t" << read_counts[SINGLE_MAPPED_READ] << "\t" << read_counts[MULTI_MAPPED_READ] << "\t" << read_counts[UNSURE_READ]
         << "\t" << intron_start - anchor_start << "\t" << anchor_end - intron_end
-        << "\t" << get_confidence();
-    if (have_genome) {
-        out << "\t" << splice_sites;
+        << "\t" << get_confidence() << "\t" << splice_sites << endl;
+}
+
+// Print BED with anchors as blocks and intron as gap.
+void print_anchor_bed(const JunctionVector& juncs,
+                      float min_confidence_score,
+                      bool map_to_ucsc,
+                      const string& outfile) {
+    ofstream out(outfile.c_str());
+    for (unsigned ijunc = 0; ijunc < juncs.size(); ijunc++) {
+        if (juncs[ijunc]->get_confidence() >= min_confidence_score) {
+            juncs[ijunc]->print_anchor_bed(ijunc, map_to_ucsc, out);
+        }
     }
-    out << endl;
+}
+
+// Print BED with intron as block
+void print_intron_bed(const JunctionVector& juncs,
+                      float min_confidence_score,
+                      bool map_to_ucsc,
+                      const string& outfile) {
+    ofstream out(outfile.c_str());
+    for (unsigned ijunc = 0; ijunc < juncs.size(); ijunc++) {
+        if (juncs[ijunc]->get_confidence() >= min_confidence_score) {
+            juncs[ijunc]->print_intron_bed(ijunc, map_to_ucsc, out);
+        }
+    }
+}
+
+// Print TSV with intron information
+void print_intron_call_tsv(const JunctionVector& juncs,
+                           float min_confidence_score,
+                           bool map_to_ucsc,
+                           const string& outfile) {
+    ofstream out(outfile.c_str());
+    Junction::print_junction_call_header(out);
+    out << std::setprecision(3);
+    for (unsigned ijunc = 0; ijunc < juncs.size(); ijunc++) {
+        if (juncs[ijunc]->get_confidence() >= min_confidence_score) {
+            juncs[ijunc]->print_junction_call_row(map_to_ucsc, out);
+        }
+    }
 }
 
