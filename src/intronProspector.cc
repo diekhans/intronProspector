@@ -254,11 +254,11 @@ static void print_intron_bed(const JunctionVector& juncs,
 }
 
 // Print TSV with intron information
-static void print_intron_call_tsv(const JunctionVector& juncs,
-                                  float min_confidence_score,
-                                  bool have_genome,
-                                  bool map_to_ucsc,
-                                  const string& outfile) {
+void print_intron_call_tsv(const JunctionVector& juncs,
+                           float min_confidence_score,
+                           bool have_genome,
+                           bool map_to_ucsc,
+                           const string& outfile) {
     ofstream out(outfile.c_str());
     Junction::print_junction_call_header(have_genome, out);
     out << std::setprecision(3);

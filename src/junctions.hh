@@ -175,115 +175,25 @@ public:
             and (splice_sites[0] <= 'Z');
     }
     
-    // Trim read counts to fit in BED score restriction or 0..1000
-    static unsigned read_count_to_bed_score(uint64_t read_count) {
-        return (read_count <= 1000) ? read_count : 1000;
-    }
-
-    // naive mapping to ucsc chrom name
-    const string make_ucsc_chrom(const string& chrom) const {
-        if ((chrom.find_first_not_of("0123456789") == std::string::npos)
-            || (chrom == "X") || (chrom == "Y")) {
-            return string("chr") + chrom;
-        } else if (chrom == "MT") {
-            return "chrM";
-        } else {
-            return chrom;
-        }
-    }
-
-    // color-code to use for splice-sites
-    const string& getBedColor() const {
-        static const string NO_INFO_COLOR = "64,128,64";
-        static const string U2_COLOR = "0,128,0";
-        static const string U12_COLOR = "0,0,128";
-        static const string UNKNOWN_COLOR = "128,0,0";
-        if (splice_sites == "") {
-            return NO_INFO_COLOR;
-        }
-        if (splice_sites == "GT/AG") {
-            return U2_COLOR;
-        }
-        if ((splice_sites == "AT/AC") or
-            (splice_sites == "AT/AG") or 
-            (splice_sites == "GT/AC") or
-            (splice_sites == "GT/AG")) {
-            return U12_COLOR;
-        }
-        return UNKNOWN_COLOR;
-    }
-    
     // Print BED with anchors as blocks and intron as gap.  ijunc is used to
     // make the BED name.
     void print_anchor_bed(unsigned ijunc,
                           bool map_to_ucsc,
-                          ostream& out) const {
-        if (map_to_ucsc) {
-            out << make_ucsc_chrom(chrom);
-        } else {
-            out << chrom;
-        }        
-        out << "\t" << anchor_start << "\t" << anchor_end
-            << "\t" << "sj" << ijunc;
-        if (splice_sites != "") {
-            out << '_' << splice_sites;
-        }
-        out << "\t" << read_count_to_bed_score(total_read_count()) << "\t" << strand
-            << "\t" << anchor_start << "\t" << anchor_end
-            << "\t" << getBedColor() << "\t" << 2
-            << "\t" << intron_start - anchor_start << "," << anchor_end - intron_end
-            << "\t" << "0," << intron_end - anchor_start << endl;
-    }
+                          ostream& out) const;
 
     // Print BED with intron as block  ijunc is used to
     // make the BED name.
     void print_intron_bed(unsigned ijunc,
                           bool map_to_ucsc,
-                          ostream& out) const {
-        if (map_to_ucsc) {
-            out << make_ucsc_chrom(chrom);
-        } else {
-            out << chrom;
-        }        
-        out << "\t" << intron_start << "\t" << intron_end
-            << "\t" << "sj" << ijunc;
-        if (splice_sites != "") {
-            out << '_' << splice_sites;
-        }
-        out << "\t" << read_count_to_bed_score(total_read_count()) << "\t" << strand
-            << "\t" << intron_start << "\t" << intron_end << "\t" << getBedColor() << endl;
-    }
+                          ostream& out) const;
 
     // Print header for junction call TSV
-    static void print_junction_call_header(bool have_genome,ostream& out) {
-        out << "chrom" << "\t" << "intron_start" << "\t" << "intron_end" << "\t" << "strand"
-            << "\t" << "uniq_mapped_count" << "\t" << "multi_mapped_count" << "\t" << "unsure_mapped_count"
-            << "\t" << "max_left_overhang" << "\t" << "max_right_overhang" << "\t" << "confidence";
-        if (have_genome) {
-            out << "\t" << "splice_sites";
-        }
-        out << endl;
-    }
+    static void print_junction_call_header(bool have_genome,ostream& out);
 
     // Print row to junction call TSV
     void print_junction_call_row(bool have_genome,
                                  bool map_to_ucsc,
-                                 ostream& out) const {
-        if (map_to_ucsc) {
-            out << make_ucsc_chrom(chrom);
-        } else {
-            out << chrom;
-        }        
-        out << "\t" << intron_start << "\t" << intron_end << "\t" << strand
-            << "\t" << read_counts[SINGLE_MAPPED_READ] << "\t" << read_counts[MULTI_MAPPED_READ] << "\t" << read_counts[UNSURE_READ]
-            << "\t" << intron_start - anchor_start << "\t" << anchor_end - intron_end
-            << "\t" << get_confidence();
-        if (have_genome) {
-            out << "\t" << splice_sites;
-        }
-        out << endl;
-    }
-
+                                 ostream& out) const;
 };
 
 // Vector of pointers to junctions
