@@ -19,13 +19,18 @@ install:
 clean:
 	cd src && ${MAKE} clean
 	cd tests && ${MAKE} clean
-	rm -rf bin objs
+	rm -rf bin objs dist
 
 .PHONY: distclean
 distclean: clean
 	cd src && ${MAKE} distclean
 	cd tests && ${MAKE} distclean
 	rm -rf Makefile config.status config.log autom4te.cache
+
+.PHONY: bindist
+bindist:
+	rm -rf dist
+	./misc/buildDist
 
 
 # requires pandoc

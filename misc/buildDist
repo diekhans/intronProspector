@@ -1,0 +1,31 @@
+#!/bin/bash -e
+set -beEu -o pipefail
+
+# build binary distribution, creating wrappers and copying programs and libraries
+
+version=$(./bin/intronProspector -v 2>&1| awk '{print $2}')
+distdir=dist/intronProspector.${version}
+
+libexecdir=${distdir}/libexec
+libexeclib=${libexecdir}/lib
+libexecbin=${libexecdir}/bin
+bindir=${distdir}/bin
+
+disttar=dist/intronProspector-bin.${version}.tar.gz
+
+rm -rf ${distdir}
+mkdir -p ${libexeclib} ${libexecbin} ${bindir}
+
+cp -fp bin/intronProspector ${libexecbin}/
+cp -fp bin/intronProspectorMerge ${libexecbin}/
+
+for l in $(ldd bin/intronProspector | awk '/=>/{print $3}') ; do
+    cp -fp $l ${libexeclib}/
+done
+
+cp -fp misc/wrapper.sh ${bindir}/intronProspector
+cp -fp misc/wrapper.sh ${bindir}/intronProspectorMerge
+
+tar -zcf ${disttar} -C dist $(basename $distdir)
+
+echo Built ${disttar}

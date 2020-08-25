@@ -7,12 +7,23 @@
   - htslib
     - from https://github.com/samtools/htslib or package
     - can compile against either built source tree or installed package
+  - tests require
+    - samtools
+    - bedToBigBed from UCSC browser
 
 - Building
   ./configure --with-htslib=<htsdir>
   make
   make test
+
+- Binary distribution
+  WARNING: this usually doesn't produce a some that will run due to library
+  and system compatiblity issues.
   
+  To build a binary distribution that includes all shared libraries and wrapper
+  scripts that run the programs:
+
+    make bindist
   
 - Developer
   The configure script and built documentation files are checked into the source tree,
