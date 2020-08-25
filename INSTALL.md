@@ -16,15 +16,6 @@
   make
   make test
 
-- Binary distribution
-  WARNING: this usually doesn't produce a some that will run due to library
-  and system compatiblity issues.
-  
-  To build a binary distribution that includes all shared libraries and wrapper
-  scripts that run the programs:
-
-    make bindist
-  
 - Developer
   The configure script and built documentation files are checked into the source tree,
   as they are only modified by developers, with many users wanting to build from a
