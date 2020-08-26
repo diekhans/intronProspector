@@ -170,17 +170,17 @@ static void intron_prospector_merge(CmdParser &opts) {
     JunctionVector juncs = junction_tbl.get_junctions();
     if (opts.junction_bed != "") {
         juncs.sort_by_anchors();
-        ofstream out(opts.junction_bed);
+        ofstream out(opts.junction_bed.c_str());
         print_anchor_bed(juncs, 0.0, opts.map_to_ucsc, out);
     }
     if ((opts.intron_bed != "") or (opts.intron_call_tsv != "")) {
         juncs.sort_by_introns();
         if (opts.intron_bed != "") {
-            ofstream out(opts.intron_bed);
+            ofstream out(opts.intron_bed.c_str());
             print_intron_bed(juncs, 0.0, opts.map_to_ucsc, out);
         }
         if (opts.intron_call_tsv != "") {
-            ofstream out(opts.intron_call_tsv);
+            ofstream out(opts.intron_call_tsv.c_str());
             print_junction_call_header(out);
             print_intron_call_tsv(juncs, 0.0, opts.map_to_ucsc, out);
         }

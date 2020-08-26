@@ -232,7 +232,7 @@ public:
 
 // open a output file if not empty, otherwise return NULL
 static ostream* open_out_or_null(const string& fname) {
-    return (fname != "") ? new ofstream(fname) : NULL;
+    return (fname != "") ? new ofstream(fname.c_str()) : NULL;
 }
 
 #endif
