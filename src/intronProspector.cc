@@ -238,7 +238,8 @@ static void extract_junctions(CmdParser &opts) {
                           opts.skip_missing_targets,
                           opts.set_XS_strand_tag, opts.set_TS_strand_tag,
                           trace_fh);
-    je.identify_junctions_from_bam(opts.bam_file, opts.bam_pass_through);
+    je.open(opts.bam_file, opts.bam_pass_through);
+    je.identify_junctions_from_bam();
     delete trace_fh;
     JunctionVector juncs = je.get_junctions();
     if (opts.junction_bed != "") {

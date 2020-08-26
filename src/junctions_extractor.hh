@@ -64,7 +64,10 @@ typedef enum {
 } ExcludeCats;
 
 
-// The class that deals with creating the junctions
+// The class that deals with creating the junctions.
+// With a coordinate-sorted BAM, partitions of non-overlapping regions
+// are process and then can be written the object cleared.  This can
+// great reduce memory usage.
 class JunctionsExtractor {
 private:
     // Minimum anchor length for junctions
@@ -102,6 +105,11 @@ private:
     // update tags from observed orientation
     bool set_XS_strand_tag_;
     bool set_TS_strand_tag_;
+
+    // BAM files
+    samFile *in_sam_;
+    bam_hdr_t *in_header_;
+    samFile *out_sam_;
     
     // debugging trace output if not NULL
     ostream *trace_fh_;
@@ -169,12 +177,26 @@ public:
         excludes_(excludes),
         set_XS_strand_tag_(set_XS_strand_tag),
         set_TS_strand_tag_(set_TS_strand_tag),
+        in_sam_(NULL),
+        in_header_(NULL),
+        out_sam_(NULL),
         trace_fh_(trace_fh) {
     }
+
+    ~JunctionsExtractor();
+
+    // free junctions found so far
+    void clear() {
+        junctions_.clear();
+    }
     
+    // Open BAMs
+    void open(const string& bam,
+              const string& bam_pass_through);
+
+
     // Identify exon-exon junctions
-    void identify_junctions_from_bam(const string& bam,
-                                     const string& bam_pass_through);
+    void identify_junctions_from_bam();
 
     // Print BED with anchors as blocks and intron as gap.
     void print_anchor_bed(ostream& out);

@@ -66,6 +66,19 @@ static void build_canonical(set<string>& canonicals) {
     add_canonical("AT/AC", 0, canonicals);
 }
 
+// Destructor
+JunctionsExtractor::~JunctionsExtractor() {
+    if (trace_fh_ != NULL) {
+        delete trace_fh_;
+    }
+    if (out_sam_ != NULL) {
+        sam_close(out_sam_);
+    }
+    bam_hdr_destroy(in_header_);
+    sam_close(in_sam_);
+}
+
+
 // determine if a junctions string in the for GT/AG is canonical.
 bool JunctionsExtractor::is_canonical(const string& junctions) {
     static set<string> canonicals;  // has all combinations of upper and lower case
@@ -472,16 +485,16 @@ samFile* JunctionsExtractor::open_pass_through(samFile *in_sam,
     return out_sam;
 }
 
-// The workhorse - identifies junctions from BAM
-void JunctionsExtractor::identify_junctions_from_bam(const string& bam,
-                                                     const string& bam_pass_through) {
+// Open BAMs
+void JunctionsExtractor::open(const string& bam,
+                              const string& bam_pass_through) {
     bam_ = bam;
-    samFile *in_sam = sam_open(bam_.c_str(), "r");
-    if (in_sam == NULL) {
+    in_sam_ = sam_open(bam_.c_str(), "r");
+    if (in_sam_ == NULL) {
         throw runtime_error("Error opening BAM/SAM/CRAM file: " + bam_);
     }
-    bam_hdr_t *in_header = sam_hdr_read(in_sam);
-    save_targets(in_header);
+    in_header_ = sam_hdr_read(in_sam_);
+    save_targets(in_header_);
     if (trace_fh_ != NULL) {
         *trace_fh_ << "chrom" << "\t" << "intron_start" << "\t" << "intron_end"
                    << "\t" << "qname" << "\t" << "flag"
@@ -489,24 +502,22 @@ void JunctionsExtractor::identify_junctions_from_bam(const string& bam,
                    << "\t" << "splice_sites"
                    << "\t" << "anchor_start" << "\t" << "anchor_end" << endl;
     }
-
-    samFile* out_sam = NULL;
     if (bam_pass_through != "") {
-        out_sam = open_pass_through(in_sam, in_header, bam_pass_through);
+        out_sam_ = open_pass_through(in_sam_, in_header_, bam_pass_through);
     }
+}
 
+
+// The workhorse - identifies junctions from BAM
+void JunctionsExtractor::identify_junctions_from_bam() {
+    bam_ = bam;
     bam1_t *aln = bam_init1();
     int stat;
-    while((stat = sam_read1(in_sam, in_header, aln)) >= 0) {
-        process_alignment(aln, in_header, out_sam);
+    while((stat = sam_read1(in_sam_, in_header_, aln)) >= 0) {
+        process_alignment(aln, in_header_, out_sam_);
     }
     if (stat < -1) {
         throw runtime_error("Error reader BAM record: " + bam);
     }
     bam_destroy1(aln);
-    if (out_sam != NULL) {
-        sam_close(out_sam);
-    }
-    bam_hdr_destroy(in_header);
-    sam_close(in_sam);
 }
