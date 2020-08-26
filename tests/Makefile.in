@@ -84,6 +84,8 @@ testMulti1: mkout
 	${diff} expected/$@.introns.tsv output/$@.introns.tsv
 	${diff} expected/$@.juncs.bed output/$@.juncs.bed
 	${diff} expected/$@.introns.bed output/$@.introns.bed
+	bedToBigBed output/$@.juncs.bed input/test_multi.size output/$@.juncs.bigBed
+	bedToBigBed output/$@.introns.bed input/test_multi.size output/$@.introns.bigBed
 
 ##
 # fake10 tests
