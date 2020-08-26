@@ -3717,7 +3717,6 @@ if test "${hts_lib_found}" != "yes" ; then
 fi
 
 
-CXXFLAGS="-O3 -g"
 CPPFLAGS="${HTSLIB_CPPFLAGS} ${CPPFLAGS}"
 LDFLAGS="${HTSLIB_LDFLAGS} ${LDFLAGS}"
 LIBS="-lhts -lcurl -lbz2 -lz -llzma"
