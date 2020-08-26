@@ -144,7 +144,7 @@ public:
         anchor_start(src.anchor_start), anchor_end(src.anchor_end),
         strand(src.strand), read_offsets(src.read_offsets), confidence(src.confidence),
         splice_sites(src.splice_sites),
-        ijunc(ijunc) {
+        ijunc(src.ijunc) {
         for (unsigned i = 0; i <= READ_CATEGORY_MAX; i++) {
             read_counts[i] = src.read_counts[i];
         }

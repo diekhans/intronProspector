@@ -116,17 +116,23 @@ class CmdParser {
     }
 };
 
+// convert name (sj1234) to number
+static uint32_t parse_name(const Tsv& tsv) {
+    const string& name = tsv.get_col("name");
+    if ((name.find("sj") != 0) || (name.size() < 3)) {
+        throw runtime_error("invalid splice junction name in TSV: '" + name + "'");
+    }
+    return string_to_uint(name.substr(2));
+ }
+    
 // current row as Junction
 static Junction read_junction(const Tsv& tsv) {
     uint32_t start = tsv.get_col_int("intron_start");
     uint32_t end = tsv.get_col_int("intron_end");
-    // convert name (sj1234) to number
-    uint32_t ijunc = string_to_uint(tsv.get_col("name").substr(2));
-    
     Junction junc(tsv.get_col("chrom"), start, end,
                   start - tsv.get_col_int("max_left_overhang"),
                   end + tsv.get_col_int("max_right_overhang"),
-                  tsv.get_col("strand")[0], tsv.get_col("splice_sites"), ijunc);
+                  tsv.get_col("strand")[0], tsv.get_col("splice_sites"), parse_name(tsv));
     junc.set_read_counts(SINGLE_MAPPED_READ, tsv.get_col_int("uniq_mapped_count"));
     junc.set_read_counts(MULTI_MAPPED_READ, tsv.get_col_int("multi_mapped_count"));
     junc.set_read_counts(UNSURE_READ, tsv.get_col_int("unsure_mapped_count"));
