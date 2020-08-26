@@ -184,13 +184,13 @@ public:
                        bool set_XS_strand_tag,
                        bool set_TS_strand_tag,
                        ostream *trace_fh):
-        genome_(genome),
-        skip_missing_targets_(skip_missing_targets),
         min_anchor_length_(min_anchor_length),
         min_intron_length_(min_intron_length),
         max_intron_length_(max_intron_length),
         strandness_(strandness),
         excludes_(excludes),
+        genome_(genome),
+        skip_missing_targets_(skip_missing_targets),
         set_XS_strand_tag_(set_XS_strand_tag),
         set_TS_strand_tag_(set_TS_strand_tag),
         aln_buf_(NULL),
@@ -231,7 +231,7 @@ public:
 };
 
 // open a output file if not empty, otherwise return NULL
-static ostream* open_out_or_null(const string& fname) {
+inline ostream* open_out_or_null(const string& fname) {
     return (fname != "") ? new ofstream(fname.c_str()) : NULL;
 }
 

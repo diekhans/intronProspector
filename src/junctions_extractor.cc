@@ -68,13 +68,13 @@ static void build_canonical(set<string>& canonicals) {
 
 // Destructor
 JunctionsExtractor::~JunctionsExtractor() {
+    clear();
     if (out_sam_ != NULL) {
         sam_close(out_sam_);
     }
     bam_destroy1(aln_buf_);
     bam_hdr_destroy(in_header_);
     sam_close(in_sam_);
-    
 }
 
 

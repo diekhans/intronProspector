@@ -18,14 +18,14 @@ static void build_reverse_tbl() {
     for (int i = 0; i < 128; i++) {
         reverse_tbl[i] = i;
     }
-    reverse_tbl['A'] = 'T';
-    reverse_tbl['T'] = 'A';
-    reverse_tbl['G'] = 'C';
-    reverse_tbl['C'] = 'G';
-    reverse_tbl['a'] = 't';
-    reverse_tbl['t'] = 'a';
-    reverse_tbl['g'] = 'c';
-    reverse_tbl['c'] = 'g';
+    reverse_tbl[int('A')] = 'T';
+    reverse_tbl[int('T')] = 'A';
+    reverse_tbl[int('G')] = 'C';
+    reverse_tbl[int('C')] = 'G';
+    reverse_tbl[int('a')] = 't';
+    reverse_tbl[int('t')] = 'a';
+    reverse_tbl[int('g')] = 'c';
+    reverse_tbl[int('c')] = 'g';
 }
 
 /* reverse-complement a DNA string */
@@ -37,7 +37,7 @@ string dna_reverse_complement(const string& dna) {
     rcDna.resize(dna.size());
     int j = dna.size() - 1;
     for (int i = 0; i < dna.size(); i++) {
-        rcDna[j--] = reverse_tbl[dna[i]];
+        rcDna[j--] = reverse_tbl[int(dna[i])];
     }
     return rcDna;
 }

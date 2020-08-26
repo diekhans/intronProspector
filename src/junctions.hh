@@ -129,12 +129,11 @@ public:
     public:
     Junction(const string& chrom1, uint32_t intron_start1, uint32_t intron_end1,
              uint32_t anchor_start1, uint32_t anchor_end1,
-             char strand1, const string& splice_sites,
-             uint32_t ijunc):
+             char strand1, const string& splice_sites, uint32_t ijunc):
         chrom(chrom1), intron_start(intron_start1), intron_end(intron_end1),
         anchor_start(anchor_start1), anchor_end(anchor_end1),
-        strand(strand1), confidence(NULL_CONFIDENCE), splice_sites(splice_sites),
-        ijunc(ijunc) {
+        strand(strand1), splice_sites(splice_sites),
+        ijunc(ijunc), confidence(NULL_CONFIDENCE) {
         for (unsigned i = 0; i <= READ_CATEGORY_MAX; i++) {
             read_counts[i] = 0;
         }
@@ -142,9 +141,8 @@ public:
     Junction(const Junction& src):
         chrom(src.chrom), intron_start(src.intron_start), intron_end(src.intron_end),
         anchor_start(src.anchor_start), anchor_end(src.anchor_end),
-        strand(src.strand), read_offsets(src.read_offsets), confidence(src.confidence),
-        splice_sites(src.splice_sites),
-        ijunc(src.ijunc) {
+        strand(src.strand), splice_sites(src.splice_sites), ijunc(src.ijunc),
+        read_offsets(src.read_offsets), confidence(src.confidence) {
         for (unsigned i = 0; i <= READ_CATEGORY_MAX; i++) {
             read_counts[i] = src.read_counts[i];
         }
@@ -229,14 +227,24 @@ class JunctionVector: public vector<Junction*> {
 // Table of junctions, indexed by key
 class JunctionTable: public map<JunctionKey, Junction*> {
     public:
+    ~JunctionTable() {
+        clear();
+    }
 
     // get all junctions
     JunctionVector get_junctions() {
         JunctionVector juncs;
-        for (map<JunctionKey, Junction*>::iterator it = begin(); it != end(); it++) {
+        for (JunctionTable::iterator it = begin(); it != end(); it++) {
             juncs.push_back(it->second);
         }
         return juncs;
+    }
+
+    void clear() {
+        for (JunctionTable::iterator it = begin(); it != end(); it++) {
+            delete it->second;
+        }
+        map<JunctionKey, Junction*>::clear();
     }
 };
 
