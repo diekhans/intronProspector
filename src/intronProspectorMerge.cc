@@ -120,10 +120,13 @@ class CmdParser {
 static Junction read_junction(const Tsv& tsv) {
     uint32_t start = tsv.get_col_int("intron_start");
     uint32_t end = tsv.get_col_int("intron_end");
+    // convert name (sj1234) to number
+    uint32_t ijunc = string_to_uint(tsv.get_col("name").substr(2));
+    
     Junction junc(tsv.get_col("chrom"), start, end,
                   start - tsv.get_col_int("max_left_overhang"),
                   end + tsv.get_col_int("max_right_overhang"),
-                  tsv.get_col("strand")[0], tsv.get_col("splice_sites"));
+                  tsv.get_col("strand")[0], tsv.get_col("splice_sites"), ijunc);
     junc.set_read_counts(SINGLE_MAPPED_READ, tsv.get_col_int("uniq_mapped_count"));
     junc.set_read_counts(MULTI_MAPPED_READ, tsv.get_col_int("multi_mapped_count"));
     junc.set_read_counts(UNSURE_READ, tsv.get_col_int("unsure_mapped_count"));
@@ -161,15 +164,19 @@ static void intron_prospector_merge(CmdParser &opts) {
     JunctionVector juncs = junction_tbl.get_junctions();
     if (opts.junction_bed != "") {
         juncs.sort_by_anchors();
-        print_anchor_bed(juncs, 0.0, opts.map_to_ucsc, opts.junction_bed);
+        ofstream out(opts.junction_bed);
+        print_anchor_bed(juncs, 0.0, opts.map_to_ucsc, out);
     }
     if ((opts.intron_bed != "") or (opts.intron_call_tsv != "")) {
         juncs.sort_by_introns();
         if (opts.intron_bed != "") {
-            print_intron_bed(juncs, 0.0, opts.map_to_ucsc, opts.intron_bed);
+            ofstream out(opts.intron_bed);
+            print_intron_bed(juncs, 0.0, opts.map_to_ucsc, out);
         }
         if (opts.intron_call_tsv != "") {
-            print_intron_call_tsv(juncs, 0.0, opts.map_to_ucsc, opts.intron_call_tsv);
+            ofstream out(opts.intron_call_tsv);
+            print_junction_call_header(out);
+            print_intron_call_tsv(juncs, 0.0, opts.map_to_ucsc, out);
         }
     }
  }

@@ -227,34 +227,59 @@ class CmdParser {
     }
 };
 
+
+static void output_junctions_for_target(JunctionsExtractor& extractor,
+                                         float min_confidence_score,
+                                         bool map_to_ucsc,
+                                         ostream* junction_bed_fh,
+                                         ostream* intron_bed_fh,
+                                         ostream* intron_call_fh) {
+    JunctionVector juncs = extractor.get_junctions();
+    if (junction_bed_fh != NULL) {
+        juncs.sort_by_anchors();
+        print_anchor_bed(juncs, min_confidence_score, map_to_ucsc, *junction_bed_fh);
+    }
+    if ((intron_bed_fh != NULL) or (intron_call_fh != NULL)) {
+        juncs.sort_by_introns();
+        if (intron_bed_fh != NULL) {
+            print_intron_bed(juncs, min_confidence_score, map_to_ucsc, *intron_bed_fh);
+        }
+        if (intron_call_fh != NULL) {
+            print_intron_call_tsv(juncs, min_confidence_score, map_to_ucsc, *intron_call_fh);
+        }
+    }
+}
+
+
 static void extract_junctions(CmdParser &opts) {
     Genome *genome = NULL;
     if (opts.genome_fa.size() > 0) {
         genome = new Genome(opts.genome_fa);
     }
     ofstream *trace_fh = opts.debug_trace_tsv.size() > 0 ? new ofstream(opts.debug_trace_tsv.c_str()) :  NULL;
-    JunctionsExtractor je(opts.min_anchor_length, opts.min_intron_length, opts.max_intron_length,
-                          opts.strandness, opts.excludes, genome,
-                          opts.skip_missing_targets,
-                          opts.set_XS_strand_tag, opts.set_TS_strand_tag,
-                          trace_fh);
-    je.open(opts.bam_file, opts.bam_pass_through);
-    je.identify_junctions_from_bam();
+    JunctionsExtractor extractor(opts.min_anchor_length, opts.min_intron_length, opts.max_intron_length,
+                                 opts.strandness, opts.excludes, genome,
+                                 opts.skip_missing_targets,
+                                 opts.set_XS_strand_tag, opts.set_TS_strand_tag,
+                                 trace_fh);
+    extractor.open(opts.bam_file, opts.bam_pass_through);
+    ostream* junction_bed_fh = open_out_or_null(opts.junction_bed);
+    ostream* intron_bed_fh = open_out_or_null(opts.intron_bed);
+    ostream* intron_call_fh = open_out_or_null(opts.intron_call_tsv);
+    if (intron_call_fh != NULL) {
+        print_junction_call_header(*intron_call_fh);
+    }
+    for (int target_index = 0; target_index < extractor.get_num_targets(); target_index++) {
+        extractor.identify_junctions_for_target(target_index);
+        output_junctions_for_target(extractor, opts.min_confidence_score, opts.map_to_ucsc,
+                                    junction_bed_fh, intron_bed_fh, intron_call_fh);
+        extractor.clear();
+    }
+    extractor.copy_unaligned_reads();
+    delete junction_bed_fh;
+    delete intron_bed_fh;
+    delete intron_call_fh;
     delete trace_fh;
-    JunctionVector juncs = je.get_junctions();
-    if (opts.junction_bed != "") {
-        juncs.sort_by_anchors();
-        print_anchor_bed(juncs, opts.min_confidence_score, opts.map_to_ucsc, opts.junction_bed);
-    }
-    if ((opts.intron_bed != "") or (opts.intron_call_tsv != "")) {
-        juncs.sort_by_introns();
-        if (opts.intron_bed != "") {
-            print_intron_bed(juncs, opts.min_confidence_score, opts.map_to_ucsc, opts.intron_bed);
-        }
-        if (opts.intron_call_tsv != "") {
-            print_intron_call_tsv(juncs, opts.min_confidence_score, opts.map_to_ucsc, opts.intron_call_tsv);
-        }
-    }
     delete genome;
  }
 

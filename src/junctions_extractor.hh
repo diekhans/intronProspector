@@ -37,9 +37,11 @@ DEALINGS IN THE SOFTWARE.  */
 #include <algorithm>
 #include <iomanip>
 #include <iostream>
+#include <fstream>
 #include <sstream>
 #include <stdio.h>
 #include <map>
+#include <set>
 #include <vector>
 #include "htslib/sam.h"
 #include "junctions.hh"
@@ -65,9 +67,8 @@ typedef enum {
 
 
 // The class that deals with creating the junctions.
-// With a coordinate-sorted BAM, partitions of non-overlapping regions
-// are process and then can be written the object cleared.  This can
-// great reduce memory usage.
+// Coordinate-sorted BAM are require to process one target
+// at a time, reducing memory usage.
 class JunctionsExtractor {
 private:
     // Minimum anchor length for junctions
@@ -100,11 +101,21 @@ private:
     JunctionTable junctions_;
 
     // missing genomic sequence that have been warned about
-    map<string, bool> missing_genomic_warned_;
+    set<string> missing_genomic_warned_;
 
     // update tags from observed orientation
     bool set_XS_strand_tag_;
     bool set_TS_strand_tag_;
+
+    // checking for not sorted
+    set<int> done_targets_;
+
+    // alignment buffer, used to handle one level of read-ahead
+    bam1_t *aln_buf_;
+    bool aln_pending_;
+
+    // used for generate BED names
+    uint32_t ijunc_;
 
     // BAM files
     samFile *in_sam_;
@@ -121,9 +132,11 @@ private:
                      uint32_t left_mismatch_cnt, uint32_t right_mismatch_cnt);
     void parse_alignment_into_junctions(bam1_t *aln,
                                         int *orientCnt);
-    void process_alignment(bam1_t *aln,
-                           bam_hdr_t *in_header,
-                           samFile* out_sam);
+    void process_alignment(bam1_t *aln);
+    void write_pass_through(bam1_t *aln,
+                            bam_hdr_t *in_header,
+                            samFile* out_sam);
+    
     Junction *create_junction(bam1_t *aln, const JunctionKey &key,
                               const string& chrom, char strand,
                               uint32_t anchor_start, uint32_t intron_start,
@@ -154,6 +167,9 @@ private:
     string get_splice_sites(const string& chrom, char strand,
                             uint32_t intron_start, uint32_t intron_end);
 
+    bam1_t* read_align();
+    void check_new_target(bam1_t *aln);
+
     JunctionsExtractor() {
         assert(false); // Default constructor not allowed
     }
@@ -177,6 +193,9 @@ public:
         excludes_(excludes),
         set_XS_strand_tag_(set_XS_strand_tag),
         set_TS_strand_tag_(set_TS_strand_tag),
+        aln_buf_(NULL),
+        aln_pending_(false),
+        ijunc_(0),
         in_sam_(NULL),
         in_header_(NULL),
         out_sam_(NULL),
@@ -194,20 +213,26 @@ public:
     void open(const string& bam,
               const string& bam_pass_through);
 
-
+    // get the number of targets
+    int get_num_targets() const {
+        return targets_.size();
+    }
+    
     // Identify exon-exon junctions
-    void identify_junctions_from_bam();
+    void identify_junctions_for_target(int target_index);
 
-    // Print BED with anchors as blocks and intron as gap.
-    void print_anchor_bed(ostream& out);
-
-    // Print BED with intron as block
-    void print_intron_bed(ostream& out);
+    // Copy remaining reads (unaligned) to pass-through, if it is open
+    void copy_unaligned_reads();
 
     // Get a vector of all the junctions
     JunctionVector get_junctions() {
         return junctions_.get_junctions();
     }
 };
+
+// open a output file if not empty, otherwise return NULL
+static ostream* open_out_or_null(const string& fname) {
+    return (fname != "") ? new ofstream(fname) : NULL;
+}
 
 #endif

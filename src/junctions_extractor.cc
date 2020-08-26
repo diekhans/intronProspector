@@ -68,14 +68,13 @@ static void build_canonical(set<string>& canonicals) {
 
 // Destructor
 JunctionsExtractor::~JunctionsExtractor() {
-    if (trace_fh_ != NULL) {
-        delete trace_fh_;
-    }
     if (out_sam_ != NULL) {
         sam_close(out_sam_);
     }
+    bam_destroy1(aln_buf_);
     bam_hdr_destroy(in_header_);
     sam_close(in_sam_);
+    
 }
 
 
@@ -116,8 +115,8 @@ string JunctionsExtractor::get_splice_sites(const string& chrom, char strand,
     }
 
     if (skip_missing_targets_ and not genome_->has_seq(chrom)) {
-        if (!missing_genomic_warned_.count(chrom)) {
-            missing_genomic_warned_[chrom] = true;
+        if (missing_genomic_warned_.find(chrom) == missing_genomic_warned_.end()) {
+            missing_genomic_warned_.insert(chrom);
             cerr << "Warning: genomic sequence not found for " << chrom << " splice junctions not available" << endl;
         }
         return "";
@@ -158,7 +157,8 @@ Junction *JunctionsExtractor::create_junction(bam1_t *aln, const JunctionKey &ke
                    << "\t" << anchor_start << "\t" << anchor_end << endl;
     }
     Junction *junc = new Junction(chrom, intron_start, intron_end, anchor_start, anchor_end,
-                                  corrected_strand, splice_sites);
+                                  corrected_strand, splice_sites, ijunc_);
+    ijunc_++;
     junctions_[key] = junc;
     junc->count_read(get_read_category(aln), intron_start - aln->core.pos);
     return junc;
@@ -434,9 +434,7 @@ void JunctionsExtractor::update_strand_tag(const char* tag, char valType, int or
 }
 
 // Process an alignment
-void JunctionsExtractor::process_alignment(bam1_t *aln,
-                                           bam_hdr_t *in_header,
-                                           samFile* out_sam) {
+void JunctionsExtractor::process_alignment(bam1_t *aln) {
     // skip if unmapped, only one cigar operation exists (likely all matches),
     // low-quality or duplicate
     int orientCnt = 0;
@@ -451,6 +449,12 @@ void JunctionsExtractor::process_alignment(bam1_t *aln,
             update_strand_tag("TS", 'A', orientCnt, aln);
         }
     }
+}
+
+// write aligment to pass through
+void JunctionsExtractor::write_pass_through(bam1_t *aln,
+                                            bam_hdr_t *in_header,
+                                            samFile* out_sam) {
     if (out_sam != NULL) {
         if (sam_write1(out_sam, in_header, aln) < 0) {
             throw runtime_error("Error writing BAM record to pass-through file");
@@ -505,19 +509,57 @@ void JunctionsExtractor::open(const string& bam,
     if (bam_pass_through != "") {
         out_sam_ = open_pass_through(in_sam_, in_header_, bam_pass_through);
     }
+    aln_buf_ = bam_init1();
 }
 
+// return pending or next
+bam1_t* JunctionsExtractor::read_align() {
+    if (aln_pending_) {
+        aln_pending_ = false;
+        return aln_buf_;
+    } else {
+        int stat = sam_read1(in_sam_, in_header_, aln_buf_);
+        if (stat < -1) {
+            throw runtime_error("Error reader BAM record: " + bam_);
+        } else if (stat == -1) {
+            return NULL;
+        } else {
+            return aln_buf_;
+        }
+    }
+}
+
+// check if an chrom has already been processed, indicating an unsorted BAM
+void JunctionsExtractor::check_new_target(bam1_t *aln) {
+    if (done_targets_.find(aln->core.tid) != done_targets_.end()) {
+        throw runtime_error(targets_[aln->core.tid] + " already process, BAM appears to not be coordinate sorted");
+    }
+    done_targets_.insert(aln->core.tid);
+}
 
 // The workhorse - identifies junctions from BAM
-void JunctionsExtractor::identify_junctions_from_bam() {
-    bam_ = bam;
-    bam1_t *aln = bam_init1();
-    int stat;
-    while((stat = sam_read1(in_sam_, in_header_, aln)) >= 0) {
-        process_alignment(aln, in_header_, out_sam_);
+void JunctionsExtractor::identify_junctions_for_target(int target_index) {
+    bam1_t *aln;
+    while((aln = read_align()) != NULL) {
+        if (aln->core.tid != target_index) {
+            aln_pending_ = true;
+            check_new_target(aln);
+            break;
+        } else {
+            process_alignment(aln);
+            if (out_sam_ != NULL) {
+                write_pass_through(aln, in_header_, out_sam_);
+            }
+        }
     }
-    if (stat < -1) {
-        throw runtime_error("Error reader BAM record: " + bam);
+}
+
+// Copy remaining reads (unaligned) to pass-through, if it is open
+void JunctionsExtractor::copy_unaligned_reads() {
+    if (out_sam_ != NULL) {
+        bam1_t *aln;
+        while((aln = read_align()) != NULL) {
+            write_pass_through(aln, in_header_, out_sam_);
+        }
     }
-    bam_destroy1(aln);
 }

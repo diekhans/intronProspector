@@ -113,6 +113,7 @@ public:
     uint32_t anchor_end;    // This is the end + max overhang
     char strand;
     string splice_sites;    // splite sites in the form GT/AG if genome available
+    uint32_t ijunc;         // used for generate BED names
 
     private:
     // Number of reads supporting the junction, by category
@@ -128,10 +129,12 @@ public:
     public:
     Junction(const string& chrom1, uint32_t intron_start1, uint32_t intron_end1,
              uint32_t anchor_start1, uint32_t anchor_end1,
-             char strand1, const string& splice_sites):
+             char strand1, const string& splice_sites,
+             uint32_t ijunc):
         chrom(chrom1), intron_start(intron_start1), intron_end(intron_end1),
         anchor_start(anchor_start1), anchor_end(anchor_end1),
-        strand(strand1), confidence(NULL_CONFIDENCE), splice_sites(splice_sites) {
+        strand(strand1), confidence(NULL_CONFIDENCE), splice_sites(splice_sites),
+        ijunc(ijunc) {
         for (unsigned i = 0; i <= READ_CATEGORY_MAX; i++) {
             read_counts[i] = 0;
         }
@@ -140,7 +143,8 @@ public:
         chrom(src.chrom), intron_start(src.intron_start), intron_end(src.intron_end),
         anchor_start(src.anchor_start), anchor_end(src.anchor_end),
         strand(src.strand), read_offsets(src.read_offsets), confidence(src.confidence),
-        splice_sites(src.splice_sites)  {
+        splice_sites(src.splice_sites),
+        ijunc(ijunc) {
         for (unsigned i = 0; i <= READ_CATEGORY_MAX; i++) {
             read_counts[i] = src.read_counts[i];
         }
@@ -189,20 +193,13 @@ public:
             and (splice_sites[0] <= 'Z');
     }
     
-    // Print BED with anchors as blocks and intron as gap.  ijunc is used to
-    // make the BED name.
-    void print_anchor_bed(unsigned ijunc,
-                          bool map_to_ucsc,
+    // Print BED with anchors as blocks and intron as gap.
+    void print_anchor_bed(bool map_to_ucsc,
                           ostream& out) const;
 
-    // Print BED with intron as block  ijunc is used to
-    // make the BED name.
-    void print_intron_bed(unsigned ijunc,
-                          bool map_to_ucsc,
+    // Print BED with intron as block 
+    void print_intron_bed(bool map_to_ucsc,
                           ostream& out) const;
-
-    // Print header for junction call TSV
-    static void print_junction_call_header(ostream& out);
 
     // Print row to junction call TSV
     void print_junction_call_row(bool map_to_ucsc,
@@ -247,19 +244,22 @@ class JunctionTable: public map<JunctionKey, Junction*> {
 void print_anchor_bed(const JunctionVector& juncs,
                       float min_confidence_score,
                       bool map_to_ucsc,
-                      const string& outfile);
+                      ostream& out);
 
 // Print BED with intron as block
 void print_intron_bed(const JunctionVector& juncs,
                       float min_confidence_score,
                       bool map_to_ucsc,
-                      const string& outfile);
+                      ostream& out);
+
+// Print header for junction call TSV
+void print_junction_call_header(ostream& out);
 
 // Print TSV with intron information
 void print_intron_call_tsv(const JunctionVector& juncs,
                            float min_confidence_score,
                            bool map_to_ucsc,
-                           const string& outfile);
+                           ostream& out);
 
 #endif
 
