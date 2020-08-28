@@ -75,6 +75,12 @@ class Tsv {
         return true;
     }
 
+    // does column exist?
+    bool have_col(const string& col_name) const {
+        ColMap::const_iterator it = col_map_.find(col_name);
+        return (it != col_map_.end());
+    }
+    
     // get the specified column
     const string& get_col(const string& col_name) const {
         ColMap::const_iterator it = col_map_.find(col_name);

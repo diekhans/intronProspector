@@ -116,23 +116,15 @@ class CmdParser {
     }
 };
 
-// convert name (sj1234) to number
-static uint32_t parse_name(const Tsv& tsv) {
-    const string& name = tsv.get_col("name");
-    if ((name.find("sj") != 0) || (name.size() < 3)) {
-        throw runtime_error("invalid splice junction name in TSV: '" + name + "'");
-    }
-    return string_to_uint(name.substr(2));
- }
-    
 // current row as Junction
 static Junction read_junction(const Tsv& tsv) {
+    // ijunc is ignored
     uint32_t start = tsv.get_col_int("intron_start");
     uint32_t end = tsv.get_col_int("intron_end");
     Junction junc(tsv.get_col("chrom"), start, end,
                   start - tsv.get_col_int("max_left_overhang"),
                   end + tsv.get_col_int("max_right_overhang"),
-                  tsv.get_col("strand")[0], tsv.get_col("splice_sites"), parse_name(tsv));
+                  tsv.get_col("strand")[0], tsv.get_col("splice_sites"), 0);
     junc.set_read_counts(SINGLE_MAPPED_READ, tsv.get_col_int("uniq_mapped_count"));
     junc.set_read_counts(MULTI_MAPPED_READ, tsv.get_col_int("multi_mapped_count"));
     junc.set_read_counts(UNSURE_READ, tsv.get_col_int("unsure_mapped_count"));
@@ -159,6 +151,12 @@ static void process_calls_tsv(JunctionTable& junction_tbl,
     }
 }
 
+static void renumber_junctions(JunctionVector& juncs) {
+    for (int i = 0; i < juncs.size(); i++) {
+        juncs[i]->ijunc = i;
+    }
+}
+
 static void intron_prospector_merge(CmdParser &opts) {
     // load and merge
     JunctionTable junction_tbl;
@@ -168,8 +166,9 @@ static void intron_prospector_merge(CmdParser &opts) {
 
     // output
     JunctionVector juncs = junction_tbl.get_junctions();
+    juncs.sort_by_anchors();
+    renumber_junctions(juncs);
     if (opts.junction_bed != "") {
-        juncs.sort_by_anchors();
         ofstream out(opts.junction_bed.c_str());
         print_anchor_bed(juncs, 0.0, opts.map_to_ucsc, out);
     }
