@@ -1,0 +1,2 @@
+chrom	intron_start	intron_end	strand	uniq_mapped_count	multi_mapped_count	unsure_mapped_count	max_left_overhang	max_right_overhang	confidence	splice_sites	name
+chr13	113114752	113115707	.	347	2	0	41	73	4.16	at/at	sj51513

@@ -77,10 +77,16 @@ void Junction::merge(const Junction& j1) {
     if ((j1.chrom != chrom) || (j1.intron_start != intron_start) || (j1.intron_end != intron_end)) {
         throw logic_error("attempt to merge different introns:" + j1.get_description() + " with " + get_description());
     }
-    if (j1.strand != strand) {
+    // if one doesn't have strand ('.') and the other does, update to use the specified strand and splice site.
+    bool updateStrand = false;
+
+    if ((j1.strand != '.') and (strand == '.')) {
+        updateStrand = true;
+    } else if ((j1.strand == '.') and (strand != '.')) {
+        // leave as-is
+    }else if (j1.strand != strand) {
         throw runtime_error("intron records have different strand:" + j1.get_description() + " with " + get_description());
-    }
-    if (j1.splice_sites != splice_sites) {
+    } else if (j1.splice_sites != splice_sites) {
         throw runtime_error("intron records have different splice sites:" + j1.get_description() + " with " + get_description());
     }
     anchor_start = min(j1.anchor_start, anchor_start);
@@ -90,6 +96,10 @@ void Junction::merge(const Junction& j1) {
     read_counts[UNSURE_READ] += j1.read_counts[UNSURE_READ];
     confidence = max(j1.confidence, confidence);
     // keep original ijunc
+    if (updateStrand) {
+        strand = j1.strand;
+        splice_sites = j1.splice_sites;
+    }
 }
 
 // Compare two junctions
