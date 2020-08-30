@@ -84,7 +84,7 @@ void Junction::merge(const Junction& j1) {
         updateStrand = true;
     } else if ((j1.strand == '.') and (strand != '.')) {
         // leave as-is
-    }else if (j1.strand != strand) {
+    } else if (j1.strand != strand) {
         throw runtime_error("intron records have different strand:" + j1.get_description() + " with " + get_description());
     } else if (j1.splice_sites != splice_sites) {
         throw runtime_error("intron records have different splice sites:" + j1.get_description() + " with " + get_description());
