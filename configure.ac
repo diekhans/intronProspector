@@ -1,4 +1,8 @@
-AC_INIT([intronProspector], 1.0.0)
+AC_INIT([intronProspector], 1.0.1)
+PACKAGE_URL='https://github.com/diekhans/intronProspector'
+AC_SUBST([PACKAGE_NAME])
+AC_SUBST([PACKAGE_URL])
+AC_SUBST([PACKAGE_VERSION])
 AC_LANG([C++])
 
 # Could not get ax_with_htslib.m4 from autoconf archive to work, so just hand

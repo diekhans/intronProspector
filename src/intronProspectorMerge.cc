@@ -95,7 +95,7 @@ class CmdParser {
                     usage();
                     exit(0);
                 case 'v':
-                    cerr << PACKAGE_NAME << " " << VERSION << " " << PACKAGE_URL << endl;
+                    cerr << PACKAGE_NAME << " " << PACKAGE_VERSION << " " << PACKAGE_URL << endl;
                     exit(0);
                 case '?':
                 default:

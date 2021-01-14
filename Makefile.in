@@ -1,6 +1,8 @@
 # -*- mode: makefile -*-
 PREFIX = @prefix@
 
+BINDIR = ${PREFIX}/bin
+DOCDIR = ${PREFIX}/share/doc/intronProspector-@PACKAGE_VERSION@
 
 .PHONY: all
 all:
@@ -10,10 +12,16 @@ all:
 test: all
 	cd tests && ${MAKE} test
 
-.PHONY: install
-install:
-	cp -f bin/intronProspector ${PREFIX}/bin
+.PHONY: install install-bin install-doc
+install: install-bin install-doc
 
+install-bin:
+	mkdir -p ${BINDIR}
+	cp -f bin/intronProspector bin/intronProspectorMerge ${BINDIR}
+
+install-doc:
+	mkdir -p ${DOCDIR}
+	cp -f docs/intronProspector.1.md docs/intronProspectorMerge.1.md ${DOCDIR}
 
 .PHONY: clean
 clean:
