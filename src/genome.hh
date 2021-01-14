@@ -7,7 +7,7 @@
 #define GENOME_HH
 #include <string>
 
-typedef struct __faidx_t faidx_t;
+#include "htslib/faidx.h"
 
 using namespace std;
 
