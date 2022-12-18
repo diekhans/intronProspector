@@ -7,7 +7,6 @@
 #include "type_ops.hh"
 #include <stdexcept>
 #include <stdlib.h>
-#include "htslib/faidx.h"
 
 /* reverse DNA, index by base */
 static char *reverse_tbl = NULL;
