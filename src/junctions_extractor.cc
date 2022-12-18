@@ -88,8 +88,8 @@ bool JunctionsExtractor::is_canonical(const string& junctions) {
 }
 
 // Do some basic qc on the junction
-bool JunctionsExtractor::junction_qc(bam1_t *aln, uint32_t anchor_start, uint32_t intron_start,
-                                     uint32_t intron_end, uint32_t anchor_end,
+bool JunctionsExtractor::junction_qc(bam1_t *aln, hts_pos_t anchor_start, hts_pos_t intron_start,
+                                     hts_pos_t intron_end, hts_pos_t anchor_end,
                                      uint32_t left_mismatch_cnt, uint32_t right_mismatch_cnt) {
     if ((aln->core).flag & BAM_FSECONDARY) {
         return false;
@@ -109,7 +109,7 @@ bool JunctionsExtractor::junction_qc(bam1_t *aln, uint32_t anchor_start, uint32_
 // Get the splice site strings, if sequence is not found in genome, return empty and
 // output warning on first miss if instructed to ignore on error
 string JunctionsExtractor::get_splice_sites(const string& chrom, char strand,
-                                            uint32_t intron_start, uint32_t intron_end) {
+                                            hts_pos_t intron_start, hts_pos_t intron_end) {
     if (genome_ == NULL) {
         return "";
     }
@@ -135,8 +135,8 @@ string JunctionsExtractor::get_splice_sites(const string& chrom, char strand,
 
 Junction *JunctionsExtractor::create_junction(bam1_t *aln, const JunctionKey &key,
                                               const string& chrom, char strand,
-                                              uint32_t anchor_start, uint32_t intron_start,
-                                              uint32_t intron_end, uint32_t anchor_end) {
+                                              hts_pos_t anchor_start, hts_pos_t intron_start,
+                                              hts_pos_t intron_end, hts_pos_t anchor_end) {
     char corrected_strand = strand;
     string splice_sites = get_splice_sites(chrom, strand, intron_start, intron_end);
     if ((splice_sites.size() > 0) && (strand == '.')) {
@@ -166,8 +166,8 @@ Junction *JunctionsExtractor::create_junction(bam1_t *aln, const JunctionKey &ke
 
 Junction *JunctionsExtractor::update_junction(bam1_t *aln, const JunctionKey &key,
                                               const string& chrom, char strand,
-                                              uint32_t anchor_start, uint32_t intron_start,
-                                              uint32_t intron_end, uint32_t anchor_end) {
+                                              hts_pos_t anchor_start, hts_pos_t intron_start,
+                                              hts_pos_t intron_end, hts_pos_t anchor_end) {
     Junction *junc = junctions_[key];
     if (trace_fh_ != NULL) {
         *trace_fh_ << chrom << "\t" << intron_start << "\t" << intron_end
@@ -187,8 +187,8 @@ Junction *JunctionsExtractor::update_junction(bam1_t *aln, const JunctionKey &ke
 
 // Add a junction to the junctions map
 Junction *JunctionsExtractor::add_junction(bam1_t *aln, const string& chrom, char strand,
-                                           uint32_t anchor_start, uint32_t intron_start,
-                                           uint32_t intron_end, uint32_t anchor_end) {
+                                           hts_pos_t anchor_start, hts_pos_t intron_start,
+                                           hts_pos_t intron_end, hts_pos_t anchor_end) {
     string splice_sites = get_splice_sites(chrom, strand, intron_start, intron_end);
 
     if (trace_fh_ != NULL) {
@@ -210,14 +210,15 @@ Junction *JunctionsExtractor::add_junction(bam1_t *aln, const string& chrom, cha
 
 // Validate a junction and save if it passes.
 void JunctionsExtractor::process_junction(bam1_t *aln, const string& chrom, char strand,
-                                          uint32_t anchor_start, uint32_t intron_start,
-                                          uint32_t intron_end, uint32_t anchor_end,
+                                          hts_pos_t anchor_start, hts_pos_t intron_start,
+                                          hts_pos_t intron_end, hts_pos_t anchor_end,
                                           uint32_t left_mismatch_cnt, uint32_t right_mismatch_cnt,
                                           int *orientCnt) {
+    assert((anchor_start >= 0) && (anchor_end >= 0));
+    assert((intron_start >= 0) && (intron_end >= 0));
     assert(intron_start < intron_end);
     assert(anchor_start < anchor_end);
-    assert(anchor_start < intron_start);
-    assert(anchor_end > intron_end);
+    assert((anchor_start < intron_start) && (intron_end < anchor_end));
     if (junction_qc(aln, anchor_start, intron_start, intron_end, anchor_end, left_mismatch_cnt, right_mismatch_cnt)) {
         Junction *junc = add_junction(aln, chrom, strand, anchor_start, intron_start, intron_end, anchor_end);
         if (junc->is_canonical()) {
@@ -337,41 +338,39 @@ void JunctionsExtractor::parse_alignment_into_junctions(bam1_t *aln,
     int read_pos = aln->core.pos;
     int n_cigar = aln->core.n_cigar;
     uint32_t *cigar = bam_get_cigar(aln);
-    uint32_t anchor_start = read_pos;
-    uint32_t intron_start = read_pos;
-    uint32_t intron_end = 0;
-    uint32_t anchor_end = 0;
+    hts_pos_t anchor_start = -1;   // -1 when not in anchor/intron
+    hts_pos_t intron_start = -1;
+    hts_pos_t intron_end = -1;
+    hts_pos_t anchor_end = -1;
     uint32_t left_mismatch_cnt = 0;   // mismatches in left anchor
     uint32_t right_mismatch_cnt = 0;  // mismatches in right anchor
-    bool started_junction = false;
+    bool started_junction = false;    // 
     for (int i = 0; i < n_cigar; ++i) {
         char op = bam_cigar_opchr(cigar[i]);
         int len = bam_cigar_oplen(cigar[i]);
         switch(op) {
-            case 'N': // skipped region from the reference
+            case 'N': // skipped region from the reference (intron)
                 if (!started_junction) {
                     intron_end = intron_start + len;
                     anchor_end = intron_end;
-                    // Start the first one and remains started
-                    started_junction = true;
                 } else {
                     // Add the previous junction
                     process_junction(aln, chrom, strand, anchor_start, intron_start, intron_end, anchor_end, left_mismatch_cnt, right_mismatch_cnt, orientCnt);
                     anchor_start = intron_end;
                     intron_start = anchor_end;
-                    intron_end = intron_start + len;
-                    anchor_end = intron_end;
-                    // For clarity - the next junction is now open
-                    started_junction = true;
                 }
+                intron_end = intron_start + len;
+                anchor_end = intron_end;
+                started_junction = true; // the next junction is now open
+                read_pos += len;
                 break;
             case '=':  // sequence match
             case 'M':  // alignment match (can be a sequence match or mismatch)
-                if (!started_junction) {
-                    intron_start += len;
-                } else {
-                    anchor_end += len;
+                if (anchor_start < 0) {
+                    anchor_start = read_pos;
                 }
+                anchor_end = anchor_start + len;
+                read_pos += len;
                 break;
             case 'X':  // sequence mismatch
                 if (!started_junction) {
@@ -381,21 +380,21 @@ void JunctionsExtractor::parse_alignment_into_junctions(bam1_t *aln,
                     right_mismatch_cnt += len;
                     anchor_end += len;
                 }
+                read_pos += len;
                 break;
             case 'D':  // deletion from the reference
                 if (!started_junction) {
                     intron_start += len;
-                    anchor_start = intron_start;
                 } else {
                     process_junction(aln, chrom, strand, anchor_start, intron_start, intron_end, anchor_end, left_mismatch_cnt, right_mismatch_cnt, orientCnt);
                     // Don't include these in the next anchor
                     intron_start = anchor_end + len;
-                    anchor_start = intron_start;
                 }
+                anchor_start = intron_start;
                 started_junction = false;
+                read_pos += len;
                 break;
             case 'I':  // insertion to the reference
-            case 'S':  // soft clipping (clipped sequences present in SEQ)
                 if (!started_junction) {
                     anchor_start = intron_start;
                 } else {
@@ -406,11 +405,25 @@ void JunctionsExtractor::parse_alignment_into_junctions(bam1_t *aln,
                 }
                 started_junction = false;
                 break;
+            case 'S':  // soft clipping (clipped sequences present in SEQ)
+                if (!started_junction) {
+                    intron_start += len;
+                } else {
+                    anchor_end += len;
+                }
+                started_junction = false;
+                break;
             case 'H':  // hard clipping (clipped sequences NOT present in SEQ)
                 break;
             default:
                 throw std::invalid_argument("Unknown cigar operation '" + string(1, op) + "' found in " + bam_);
         }
+#if 0
+        assert(intron_start <= read_pos);
+        assert(intron_end <= read_pos);
+        assert(anchor_start <= read_pos);
+        assert(anchor_end <= read_pos);
+#endif
     }
     if (started_junction) {
         process_junction(aln, chrom, strand, anchor_start, intron_start, intron_end, anchor_end, left_mismatch_cnt, right_mismatch_cnt, orientCnt);

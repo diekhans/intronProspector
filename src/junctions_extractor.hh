@@ -127,8 +127,8 @@ private:
     
     // internal functions
     void save_targets(bam_hdr_t *header);
-    bool junction_qc(bam1_t *aln, uint32_t anchor_start, uint32_t intron_start,
-                     uint32_t intron_end, uint32_t anchor_end,
+    bool junction_qc(bam1_t *aln, hts_pos_t anchor_start, hts_pos_t intron_start,
+                     hts_pos_t intron_end, hts_pos_t anchor_end,
                      uint32_t left_mismatch_cnt, uint32_t right_mismatch_cnt);
     void parse_alignment_into_junctions(bam1_t *aln,
                                         int *orientCnt);
@@ -139,19 +139,19 @@ private:
     
     Junction *create_junction(bam1_t *aln, const JunctionKey &key,
                               const string& chrom, char strand,
-                              uint32_t anchor_start, uint32_t intron_start,
-                              uint32_t intron_end, uint32_t anchor_end);
+                              hts_pos_t anchor_start, hts_pos_t intron_start,
+                              hts_pos_t intron_end, hts_pos_t anchor_end);
     Junction *update_junction(bam1_t *aln, const JunctionKey &key,
                               const string& chrom, char strand,
-                              uint32_t anchor_start, uint32_t intron_start,
-                              uint32_t intron_end, uint32_t anchor_end);
+                              hts_pos_t anchor_start, hts_pos_t intron_start,
+                              hts_pos_t intron_end, hts_pos_t anchor_end);
     Junction *add_junction(bam1_t *aln, const string& chrom, char strand,
-                           uint32_t anchor_start, uint32_t intron_start, 
-                           uint32_t intron_end, uint32_t anchor_end);
+                           hts_pos_t anchor_start, hts_pos_t intron_start, 
+                           hts_pos_t intron_end, hts_pos_t anchor_end);
     void update_strand_tag(const char* tag, char valType, int orientCnt, bam1_t *aln);
     void process_junction(bam1_t *aln, const string& chrom, char strand,
-                          uint32_t anchor_start, uint32_t intron_start,
-                          uint32_t intron_end, uint32_t anchor_end,
+                          hts_pos_t anchor_start, hts_pos_t intron_start,
+                          hts_pos_t intron_end, hts_pos_t anchor_end,
                           uint32_t left_mismatch_cnt, uint32_t right_mismatch_cnt,
                           int *orientCnt);
     char get_junction_strand_XS(bam1_t *aln);
@@ -165,7 +165,7 @@ private:
                                const string& bam_pass_through);
     bool is_canonical(const string& junctions);
     string get_splice_sites(const string& chrom, char strand,
-                            uint32_t intron_start, uint32_t intron_end);
+                            hts_pos_t intron_start, hts_pos_t intron_end);
 
     bam1_t* read_align();
     void check_new_target(bam1_t *aln);
