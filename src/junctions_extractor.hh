@@ -130,8 +130,6 @@ private:
     bool junction_qc(bam1_t *aln, hts_pos_t anchor_start, hts_pos_t intron_start,
                      hts_pos_t intron_end, hts_pos_t anchor_end,
                      uint32_t left_mismatch_cnt, uint32_t right_mismatch_cnt);
-    void parse_alignment_into_junctions(bam1_t *aln,
-                                        int *orientCnt);
     void process_alignment(bam1_t *aln);
     void write_pass_through(bam1_t *aln,
                             bam_hdr_t *in_header,
@@ -148,22 +146,11 @@ private:
     Junction *add_junction(bam1_t *aln, const string& chrom, char strand,
                            hts_pos_t anchor_start, hts_pos_t intron_start, 
                            hts_pos_t intron_end, hts_pos_t anchor_end);
-    void update_strand_tag(const char* tag, char valType, int orientCnt, bam1_t *aln);
-    void process_junction(bam1_t *aln, const string& chrom, char strand,
-                          hts_pos_t anchor_start, hts_pos_t intron_start,
-                          hts_pos_t intron_end, hts_pos_t anchor_end,
-                          uint32_t left_mismatch_cnt, uint32_t right_mismatch_cnt,
-                          int *orientCnt);
     char get_junction_strand_XS(bam1_t *aln);
     char get_junction_strand_flag(bam1_t *aln);
-    char get_junction_strand(bam1_t *aln);
-    int get_num_aligns(bam1_t *aln);
-    ReadCategory get_category_from_tag(bam1_t *aln);
-    ReadCategory get_read_category(bam1_t *aln);
     samFile* open_pass_through(samFile *in_sam,
                                bam_hdr_t *in_header,
                                const string& bam_pass_through);
-    bool is_canonical(const string& junctions);
     string get_splice_sites(const string& chrom, char strand,
                             hts_pos_t intron_start, hts_pos_t intron_end);
 
@@ -203,6 +190,16 @@ public:
     }
 
     ~JunctionsExtractor();
+
+    // Get the strand
+    char get_junction_strand(bam1_t *aln);
+
+    // Validate a junction and save if it passes.
+    void process_junction(bam1_t *aln, const string& chrom, char strand,
+                          hts_pos_t anchor_start, hts_pos_t intron_start,
+                          hts_pos_t intron_end, hts_pos_t anchor_end,
+                          uint32_t left_mismatch_cnt, uint32_t right_mismatch_cnt,
+                          int *orientCnt);
 
     // free junctions found so far
     void clear() {

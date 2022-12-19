@@ -66,6 +66,255 @@ static void build_canonical(set<string>& canonicals) {
     add_canonical("AT/AC", 0, canonicals);
 }
 
+static bool is_canonical(const string& junctions) {
+    static set<string> canonicals;  // has all combinations of upper and lower case
+    if (canonicals.size() == 0) {
+        build_canonical(canonicals);
+    }
+    return canonicals.count(junctions) > 0;
+}
+
+// get number of alignments for current read (NH tag), or -1 if not set,
+// and 0 if there is some other issue (don't check error, just ignored).
+static int get_num_aligns(bam1_t *aln) {
+    uint8_t *tag = bam_aux_get(aln, "NH");
+    if (tag == NULL) {
+        return -1;
+    } else {
+        return bam_aux2i(tag);
+    }
+}
+
+// Determine category base on tag
+static ReadCategory get_category_from_tag(bam1_t *aln) {
+    int num_aligns = get_num_aligns(aln);
+    if (num_aligns <= 0) {
+        return UNSURE_READ;
+    } else if (num_aligns == 1) {
+        return SINGLE_MAPPED_READ;
+    } else {
+        return MULTI_MAPPED_READ;
+    }
+}
+
+// Determine the category of read.  Logic from samtools flagstat
+static ReadCategory get_read_category(bam1_t *aln) {
+    unsigned flag = aln->core.flag;
+    if (flag & (BAM_FQCFAIL | BAM_FUNMAP | BAM_FDUP)) {
+        throw logic_error("should never look at FQCAIL, FUNMAP, FDUP reads");
+    } else if (flag & BAM_FSECONDARY) {
+        return MULTI_MAPPED_READ;  // secondary alignment
+    } else if (flag & BAM_FSUPPLEMENTARY ) {
+        return MULTI_MAPPED_READ;  // supplementary alignment
+    } else {
+        if (flag & BAM_FPAIRED) {
+            // paired reads
+            if ((flag & BAM_FPROPER_PAIR) && !(flag & BAM_FUNMAP)) {
+                return get_category_from_tag(aln); // proper pair
+            } else if (flag & BAM_FMUNMAP) {
+                return UNSURE_READ; // mate unmapped
+            } else if (aln->core.mtid != aln->core.tid) {
+                return UNSURE_READ; // mapped to different chromosomes
+            } else {
+                return UNSURE_READ; // mapped to same chromosome, but not a proper pair
+            }
+        } else {
+            return get_category_from_tag(aln);  // mapped, unpaired read
+        }
+    }
+}
+
+// update the specific strand tag from the observed orientation
+static void update_strand_tag(const char* tag, char valType, int orientCnt, bam1_t *aln) {
+    const uint8_t strand = (orientCnt > 0) ? '+' : '-';
+    uint8_t *existing = bam_aux_get(aln, tag);
+    if (existing != NULL) {
+        int err = bam_aux_del(aln, existing);
+        if (err != 0) {
+            throw runtime_error("Error deleting read tag");
+        }
+    }
+    int err = bam_aux_append(aln, tag, valType, 1, &strand);
+    if (err != 0) {
+        throw runtime_error("Error adding read tag");
+    }
+}
+
+
+typedef enum {
+    IN_OTHER = 0,
+    IN_LEFT_ANCHOR = 1,
+    IN_INTRON = 3,
+    IN_RIGHT_ANCHOR = 3
+} State;
+
+/*
+ * state machine for calling introns from a read.
+ */
+class ReadJunctionExtractor {
+    private:
+    bam1_t *aln_;
+    JunctionsExtractor *juncExtractor_;
+    State state_;
+    hts_pos_t read_pos_;
+    hts_pos_t anchor_start_;   // -1 when not in anchor/intron
+    hts_pos_t intron_start_;
+    hts_pos_t intron_end_;
+    hts_pos_t anchor_end_;
+    uint32_t left_mismatch_cnt_;   // mismatches in left anchor
+    uint32_t right_mismatch_cnt_;  // mismatches in right anchor
+
+    public:
+    ReadJunctionExtractor(bam1_t *aln,
+                          JunctionsExtractor *juncExtractor):
+        aln_(aln),
+        juncExtractor_(juncExtractor),
+        state_(IN_OTHER),
+        read_pos_(aln->core.pos),
+        anchor_start_(aln->core.pos),
+        intron_start_(aln->core.pos),
+        intron_end_(0),
+        anchor_end_(0),
+        left_mismatch_cnt_(0),
+        right_mismatch_cnt_(0) {
+    }
+    void parse_read(const string& chrom,
+                    int *orientCnt) {
+        char strand = juncExtractor_->get_junction_strand(aln_);
+        int n_cigar = aln_->core.n_cigar;
+        uint32_t *cigar = bam_get_cigar(aln_);
+        bool started_junction = false;
+
+        for (int i = 0; i < n_cigar; ++i) {
+            char op = bam_cigar_opchr(cigar[i]);
+            int len = bam_cigar_oplen(cigar[i]);
+            switch(op) {
+                case 'N': // skipped region from the reference (intron)
+                    if (started_junction) {
+                        // Add the previous junction
+                        juncExtractor_->process_junction(aln_, chrom, strand, anchor_start_, intron_start_, intron_end_, anchor_end_, left_mismatch_cnt_, right_mismatch_cnt_, orientCnt);
+                        anchor_start_ = intron_end_;
+                        intron_start_ = anchor_end_;
+                    }
+                    intron_end_ = intron_start_ + len;
+                    anchor_end_ = intron_end_;
+                    started_junction = true; // the next junction is now open
+                    read_pos_ += len;
+                    break;
+                case '=':  // sequence match
+                case 'M':  // alignment match (can be a sequence match or mismatch)
+                    if (!started_junction) {
+                        intron_start_ += len;
+                    } else {
+                        anchor_end_ += len;
+                    }
+                    read_pos_ += len;
+                    break;
+                case 'X':  // sequence mismatch
+                    if (!started_junction) {
+                        intron_start_ += len;
+                        left_mismatch_cnt_ += len;
+                    } else {
+                        right_mismatch_cnt_ += len;
+                        anchor_end_ += len;
+                    }
+                    read_pos_ += len;
+                    break;
+                case 'D':  // deletion from the reference
+                    if (!started_junction) {
+                        intron_start_ += len;
+                    } else {
+                        juncExtractor_->process_junction(aln_, chrom, strand, anchor_start_, intron_start_, intron_end_, anchor_end_, left_mismatch_cnt_, right_mismatch_cnt_, orientCnt);
+                        // Don't include these in the next anchor
+                        intron_start_ = anchor_end_ + len;
+                    }
+                    anchor_start_ = intron_start_;
+                    started_junction = false;
+                    read_pos_ += len;
+                    break;
+                case 'I':  // insertion to the reference
+                case 'S':  // soft clipping (clipped sequences present in SEQ)
+                    if (!started_junction) {
+                        anchor_start_ = intron_start_;
+                    } else {
+                        juncExtractor_->process_junction(aln_, chrom, strand, anchor_start_, intron_start_, intron_end_, anchor_end_, left_mismatch_cnt_, right_mismatch_cnt_, orientCnt);
+                        // Don't include these in the next anchor
+                        intron_start_ = anchor_end_;
+                        anchor_start_ = intron_start_;
+                    }
+                    started_junction = false;
+                    break;
+                case 'H':  // hard clipping (clipped sequences NOT present in SEQ)
+                    break;
+                default:
+                    throw std::invalid_argument("Unknown cigar operation '" + string(1, op) + "'");
+            }
+    #if 0
+            assert(intron_start_ <= read_pos_);
+            assert(intron_end_ <= read_pos_);
+            assert(anchor_start_ <= read_pos_);
+            assert(anchor_end <= read_pos);
+    #endif
+        }
+        if (started_junction) {
+            juncExtractor_->process_junction(aln_, chrom, strand, anchor_start_, intron_start_, intron_end_, anchor_end_, left_mismatch_cnt_, right_mismatch_cnt_, orientCnt);
+        }
+    }
+};
+
+// Get the strand from the XS aux tag
+char JunctionsExtractor::get_junction_strand_XS(bam1_t *aln) {
+    uint8_t *p = bam_aux_get(aln, "XS");
+    if (p != NULL) {
+        char strand = bam_aux2A(p);
+        return strand ? strand : '.';
+    } else {
+        return '.';
+    }
+}
+
+// Get the strand from the bitwise flag
+char JunctionsExtractor::get_junction_strand_flag(bam1_t *aln) {
+    uint32_t flag = (aln->core).flag;
+    int reversed = bam_is_rev(aln);
+    int mate_reversed = bam_is_mrev(aln);
+    int first_in_pair = (flag & BAM_FREAD1) != 0;
+    int second_in_pair = (flag & BAM_FREAD2) != 0;
+    int first_strand = first_in_pair ^ reversed;
+    int second_strand = second_in_pair ^ mate_reversed;
+    if (strandness_ != UNSTRANDED) {
+        // strandness_ is 0 for unstranded, 1 for RF, and 2 for FR
+        int bool_strandness = strandness_ - 1;  // true for RF only
+        first_strand ^= !bool_strandness;
+        second_strand ^= !bool_strandness;
+    }
+    char strand;
+    if (first_strand) {
+        strand = '+';
+    } else {
+        strand = '-';
+    }
+    // if strand inferences from first and second in pair don't agree, we've got a problem
+    if (first_strand == second_strand) {
+        return strand;
+    } else {
+        return '.';
+    }
+}
+
+// Get the strand
+char JunctionsExtractor::get_junction_strand(bam1_t *aln) {
+    if (strandness_ != UNSTRANDED) {
+        return get_junction_strand_flag(aln);
+    } else if (bam_aux_get(aln, "XS") != NULL) {
+        return get_junction_strand_XS(aln);
+    } else {
+        // otherwise, we can't tell determine strand just from read orientation
+        return '.';
+    }
+}
+
+
 // Destructor
 JunctionsExtractor::~JunctionsExtractor() {
     clear();
@@ -79,14 +328,6 @@ JunctionsExtractor::~JunctionsExtractor() {
 
 
 // determine if a junctions string in the for GT/AG is canonical.
-bool JunctionsExtractor::is_canonical(const string& junctions) {
-    static set<string> canonicals;  // has all combinations of upper and lower case
-    if (canonicals.size() == 0) {
-        build_canonical(canonicals);
-    }
-    return canonicals.count(junctions) > 0;
-}
-
 // Do some basic qc on the junction
 bool JunctionsExtractor::junction_qc(bam1_t *aln, hts_pos_t anchor_start, hts_pos_t intron_start,
                                      hts_pos_t intron_end, hts_pos_t anchor_end,
@@ -227,261 +468,22 @@ void JunctionsExtractor::process_junction(bam1_t *aln, const string& chrom, char
     }
 }
 
-// Get the strand from the XS aux tag
-char JunctionsExtractor::get_junction_strand_XS(bam1_t *aln) {
-    uint8_t *p = bam_aux_get(aln, "XS");
-    if (p != NULL) {
-        char strand = bam_aux2A(p);
-        return strand ? strand : '.';
-    } else {
-        return '.';
-    }
-}
-
-// Get the strand from the bitwise flag
-char JunctionsExtractor::get_junction_strand_flag(bam1_t *aln) {
-    uint32_t flag = (aln->core).flag;
-    int reversed = bam_is_rev(aln);
-    int mate_reversed = bam_is_mrev(aln);
-    int first_in_pair = (flag & BAM_FREAD1) != 0;
-    int second_in_pair = (flag & BAM_FREAD2) != 0;
-    int first_strand = first_in_pair ^ reversed;
-    int second_strand = second_in_pair ^ mate_reversed;
-    if (strandness_ != UNSTRANDED) {
-        // strandness_ is 0 for unstranded, 1 for RF, and 2 for FR
-        int bool_strandness = strandness_ - 1;  // true for RF only
-        first_strand ^= !bool_strandness;
-        second_strand ^= !bool_strandness;
-    }
-    char strand;
-    if (first_strand) {
-        strand = '+';
-    } else {
-        strand = '-';
-    }
-    // if strand inferences from first and second in pair don't agree, we've got a problem
-    if (first_strand == second_strand) {
-        return strand;
-    } else {
-        return '.';
-    }
-}
-
-// Get the strand
-char JunctionsExtractor::get_junction_strand(bam1_t *aln) {
-    if (strandness_ != UNSTRANDED) {
-        return get_junction_strand_flag(aln);
-    } else if (bam_aux_get(aln, "XS") != NULL) {
-        return get_junction_strand_XS(aln);
-    } else {
-        // otherwise, we can't tell determine strand just from read orientation
-        return '.';
-    }
-}
-
-// get number of alignments for current read (NH tag), or -1 if not set,
-// and 0 if there is some other issue (don't check error, just ignored).
-int JunctionsExtractor::get_num_aligns(bam1_t *aln) {
-    uint8_t *tag = bam_aux_get(aln, "NH");
-    if (tag == NULL) {
-        return -1;
-    } else {
-        return bam_aux2i(tag);
-    }
-}
-
-// Determine category base on tag
-ReadCategory JunctionsExtractor::get_category_from_tag(bam1_t *aln) {
-    int num_aligns = get_num_aligns(aln);
-    if (num_aligns <= 0) {
-        return UNSURE_READ;
-    } else if (num_aligns == 1) {
-        return SINGLE_MAPPED_READ;
-    } else {
-        return MULTI_MAPPED_READ;
-    }
-}
-
-
-// Determine the category of read.  Logic from samtools flagstat
-ReadCategory JunctionsExtractor::get_read_category(bam1_t *aln) {
-    unsigned flag = aln->core.flag;
-    if (flag & (BAM_FQCFAIL | BAM_FUNMAP | BAM_FDUP)) {
-        throw logic_error("should never look at FQCAIL, FUNMAP, FDUP reads");
-    } else if (flag & BAM_FSECONDARY) {
-        return MULTI_MAPPED_READ;  // secondary alignment
-    } else if (flag & BAM_FSUPPLEMENTARY ) {
-        return MULTI_MAPPED_READ;  // supplementary alignment
-    } else {
-        if (flag & BAM_FPAIRED) {
-            // paired reads
-            if ((flag & BAM_FPROPER_PAIR) && !(flag & BAM_FUNMAP)) {
-                return get_category_from_tag(aln); // proper pair
-            } else if (flag & BAM_FMUNMAP) {
-                return UNSURE_READ; // mate unmapped
-            } else if (aln->core.mtid != aln->core.tid) {
-                return UNSURE_READ; // mapped to different chromosomes
-            } else {
-                return UNSURE_READ; // mapped to same chromosome, but not a proper pair
-            }
-        } else {
-            return get_category_from_tag(aln);  // mapped, unpaired read
-        }
-    }
-}
-
-typedef enum {
-    IN_OTHER = 0,
-    IN_LEFT_ANCHOR = 1,
-    IN_INTRON = 3,
-    IN_RIGHT_ANCHOR = 3
-} State;
-
-/* state machine for calling introns from a read */
-class JunctionStateMachine {
-    private:
-    State state;
-    hts_pos_t read_pos;
-    hts_pos_t anchor_start;   // -1 when not in anchor/intron
-    hts_pos_t intron_start;
-    hts_pos_t intron_end;
-    hts_pos_t anchor_end;
-    uint32_t left_mismatch_cnt;   // mismatches in left anchor
-    uint32_t right_mismatch_cnt;  // mismatches in right anchor
-
-    JunctionStateMachine(bam1_t *aln):
-        state(IN_OTHER),
-        read_pos(aln->core.pos),
-        anchor_start(-1),
-        intron_start(-1),
-        intron_end(-1),
-        anchor_end(-1),
-        left_mismatch_cnt(0),
-        right_mismatch_cnt(0) {
-    }
-};
-
-// Parse junctions from the read and store in junction map
-void JunctionsExtractor::parse_alignment_into_junctions(bam1_t *aln,
-                                                        int *orientCnt) {
-    const string& chrom = targets_[aln->core.tid];
-    char strand = get_junction_strand(aln);
-    hts_pos_t read_pos = aln->core.pos;
-    int n_cigar = aln->core.n_cigar;
-    uint32_t *cigar = bam_get_cigar(aln);
-    hts_pos_t anchor_start = read_pos;
-    hts_pos_t intron_start = read_pos;
-    hts_pos_t intron_end = 00;
-    hts_pos_t anchor_end = 00;
-    uint32_t left_mismatch_cnt = 0;   // mismatches in left anchor
-    uint32_t right_mismatch_cnt = 0;  // mismatches in right anchor
-    bool started_junction = false;
-    for (int i = 0; i < n_cigar; ++i) {
-        char op = bam_cigar_opchr(cigar[i]);
-        int len = bam_cigar_oplen(cigar[i]);
-        switch(op) {
-            case 'N': // skipped region from the reference (intron)
-                if (started_junction) {
-                    // Add the previous junction
-                    process_junction(aln, chrom, strand, anchor_start, intron_start, intron_end, anchor_end, left_mismatch_cnt, right_mismatch_cnt, orientCnt);
-                    anchor_start = intron_end;
-                    intron_start = anchor_end;
-                }
-                intron_end = intron_start + len;
-                anchor_end = intron_end;
-                started_junction = true; // the next junction is now open
-                read_pos += len;
-                break;
-            case '=':  // sequence match
-            case 'M':  // alignment match (can be a sequence match or mismatch)
-                if (!started_junction) {
-                    intron_start += len;
-                } else {
-                    anchor_end += len;
-                }
-                read_pos += len;
-                break;
-            case 'X':  // sequence mismatch
-                if (!started_junction) {
-                    intron_start += len;
-                    left_mismatch_cnt += len;
-                } else {
-                    right_mismatch_cnt += len;
-                    anchor_end += len;
-                }
-                read_pos += len;
-                break;
-            case 'D':  // deletion from the reference
-                if (!started_junction) {
-                    intron_start += len;
-                } else {
-                    process_junction(aln, chrom, strand, anchor_start, intron_start, intron_end, anchor_end, left_mismatch_cnt, right_mismatch_cnt, orientCnt);
-                    // Don't include these in the next anchor
-                    intron_start = anchor_end + len;
-                }
-                anchor_start = intron_start;
-                started_junction = false;
-                read_pos += len;
-                break;
-            case 'I':  // insertion to the reference
-            case 'S':  // soft clipping (clipped sequences present in SEQ)
-                if (!started_junction) {
-                    anchor_start = intron_start;
-                } else {
-                    process_junction(aln, chrom, strand, anchor_start, intron_start, intron_end, anchor_end, left_mismatch_cnt, right_mismatch_cnt, orientCnt);
-                    // Don't include these in the next anchor
-                    intron_start = anchor_end;
-                    anchor_start = intron_start;
-                }
-                started_junction = false;
-                break;
-            case 'H':  // hard clipping (clipped sequences NOT present in SEQ)
-                break;
-            default:
-                throw std::invalid_argument("Unknown cigar operation '" + string(1, op) + "' found in " + bam_);
-        }
-#if 0
-        assert(intron_start <= read_pos);
-        assert(intron_end <= read_pos);
-        assert(anchor_start <= read_pos);
-        assert(anchor_end <= read_pos);
-#endif
-    }
-    if (started_junction) {
-        process_junction(aln, chrom, strand, anchor_start, intron_start, intron_end, anchor_end, left_mismatch_cnt, right_mismatch_cnt, orientCnt);
-    }
-}
-
-// update the specific strand tag from the observed orientation
-void JunctionsExtractor::update_strand_tag(const char* tag, char valType, int orientCnt, bam1_t *aln) {
-    const uint8_t strand = (orientCnt > 0) ? '+' : '-';
-    uint8_t *existing = bam_aux_get(aln, tag);
-    if (existing != NULL) {
-        int err = bam_aux_del(aln, existing);
-        if (err != 0) {
-            throw runtime_error("Error deleting read tag");
-        }
-    }
-    int err = bam_aux_append(aln, tag, valType, 1, &strand);
-    if (err != 0) {
-        throw runtime_error("Error adding read tag");
-    }
-}
-
 // Process an alignment
 void JunctionsExtractor::process_alignment(bam1_t *aln) {
     // skip if unmapped, only one cigar operation exists (likely all matches),
     // low-quality or duplicate
-    int orientCnt = 0;
     if (!((aln->core.n_cigar <= 1) || (aln->core.tid < 0) || (aln->core.flag & (BAM_FQCFAIL | BAM_FDUP)))) {
-        parse_alignment_into_junctions(aln, &orientCnt);
-    }
-    if (orientCnt != 0) {
-        if (set_XS_strand_tag_) {
-            update_strand_tag("XS", 'A', orientCnt, aln);
-        }
-        if (set_TS_strand_tag_) {
-            update_strand_tag("TS", 'A', orientCnt, aln);
+        const string& chrom = targets_[aln->core.tid];
+        int orientCnt = 0;
+        ReadJunctionExtractor readJuncExtract(aln, this);
+        readJuncExtract.parse_read(chrom, &orientCnt);
+        if (orientCnt != 0) {
+            if (set_XS_strand_tag_) {
+                update_strand_tag("XS", 'A', orientCnt, aln);
+            }
+            if (set_TS_strand_tag_) {
+                update_strand_tag("TS", 'A', orientCnt, aln);
+            }
         }
     }
 }
@@ -598,3 +600,4 @@ void JunctionsExtractor::copy_unaligned_reads() {
         }
     }
 }
+
