@@ -330,30 +330,58 @@ ReadCategory JunctionsExtractor::get_read_category(bam1_t *aln) {
     }
 }
 
+typedef enum {
+    IN_OTHER = 0,
+    IN_LEFT_ANCHOR = 1,
+    IN_INTRON = 3,
+    IN_RIGHT_ANCHOR = 3
+} State;
+
+/* state machine for calling introns from a read */
+class JunctionStateMachine {
+    private:
+    State state;
+    hts_pos_t read_pos;
+    hts_pos_t anchor_start;   // -1 when not in anchor/intron
+    hts_pos_t intron_start;
+    hts_pos_t intron_end;
+    hts_pos_t anchor_end;
+    uint32_t left_mismatch_cnt;   // mismatches in left anchor
+    uint32_t right_mismatch_cnt;  // mismatches in right anchor
+
+    JunctionStateMachine(bam1_t *aln):
+        state(IN_OTHER),
+        read_pos(aln->core.pos),
+        anchor_start(-1),
+        intron_start(-1),
+        intron_end(-1),
+        anchor_end(-1),
+        left_mismatch_cnt(0),
+        right_mismatch_cnt(0) {
+    }
+};
+
 // Parse junctions from the read and store in junction map
 void JunctionsExtractor::parse_alignment_into_junctions(bam1_t *aln,
                                                         int *orientCnt) {
     const string& chrom = targets_[aln->core.tid];
     char strand = get_junction_strand(aln);
-    int read_pos = aln->core.pos;
+    hts_pos_t read_pos = aln->core.pos;
     int n_cigar = aln->core.n_cigar;
     uint32_t *cigar = bam_get_cigar(aln);
-    hts_pos_t anchor_start = -1;   // -1 when not in anchor/intron
-    hts_pos_t intron_start = -1;
-    hts_pos_t intron_end = -1;
-    hts_pos_t anchor_end = -1;
+    hts_pos_t anchor_start = read_pos;
+    hts_pos_t intron_start = read_pos;
+    hts_pos_t intron_end = 00;
+    hts_pos_t anchor_end = 00;
     uint32_t left_mismatch_cnt = 0;   // mismatches in left anchor
     uint32_t right_mismatch_cnt = 0;  // mismatches in right anchor
-    bool started_junction = false;    // 
+    bool started_junction = false;
     for (int i = 0; i < n_cigar; ++i) {
         char op = bam_cigar_opchr(cigar[i]);
         int len = bam_cigar_oplen(cigar[i]);
         switch(op) {
             case 'N': // skipped region from the reference (intron)
-                if (!started_junction) {
-                    intron_end = intron_start + len;
-                    anchor_end = intron_end;
-                } else {
+                if (started_junction) {
                     // Add the previous junction
                     process_junction(aln, chrom, strand, anchor_start, intron_start, intron_end, anchor_end, left_mismatch_cnt, right_mismatch_cnt, orientCnt);
                     anchor_start = intron_end;
@@ -366,10 +394,11 @@ void JunctionsExtractor::parse_alignment_into_junctions(bam1_t *aln,
                 break;
             case '=':  // sequence match
             case 'M':  // alignment match (can be a sequence match or mismatch)
-                if (anchor_start < 0) {
-                    anchor_start = read_pos;
+                if (!started_junction) {
+                    intron_start += len;
+                } else {
+                    anchor_end += len;
                 }
-                anchor_end = anchor_start + len;
                 read_pos += len;
                 break;
             case 'X':  // sequence mismatch
@@ -395,6 +424,7 @@ void JunctionsExtractor::parse_alignment_into_junctions(bam1_t *aln,
                 read_pos += len;
                 break;
             case 'I':  // insertion to the reference
+            case 'S':  // soft clipping (clipped sequences present in SEQ)
                 if (!started_junction) {
                     anchor_start = intron_start;
                 } else {
@@ -402,14 +432,6 @@ void JunctionsExtractor::parse_alignment_into_junctions(bam1_t *aln,
                     // Don't include these in the next anchor
                     intron_start = anchor_end;
                     anchor_start = intron_start;
-                }
-                started_junction = false;
-                break;
-            case 'S':  // soft clipping (clipped sequences present in SEQ)
-                if (!started_junction) {
-                    intron_start += len;
-                } else {
-                    anchor_end += len;
                 }
                 started_junction = false;
                 break;

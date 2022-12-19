@@ -17,6 +17,7 @@ fake10_hisat2_sam = input/fake10.hisat2.sam
 fake10_missing_sam = input/fake10.missing.sam
 fake10_fa = output/fake10_genome.fa
 fake10_fai = output/fake10_genome.fa.fai
+ont_sam = input/ont.sam
 
 .PHONY: all
 all:
@@ -28,7 +29,7 @@ test: intronProspctorTests intronProspctorMergeTests
 #####
 # intronProspctor tests
 #####
-intronProspctorTests: basicTests multiTests fake10Tests regressTests
+intronProspctorTests: basicTests multiTests fake10Tests regressTests ontTests
 
 ###
 # basic tests
@@ -142,6 +143,19 @@ testFake10abMerge: mkout
 	${intronProspectorMerge} --intron-calls=output/$@.introns.tsv \
 	    expected/testFake10a.introns.tsv expected/testFake10b.introns.tsv
 	${diff} expected/$@.introns.tsv output/$@.introns.tsv
+
+##
+# ONT tests
+##
+ontTests: testOnt1
+
+testOnt1: mkout
+	${intronProspector} --junction-bed=output/$@.juncs.bed --intron-bed=output/$@.introns.bed --intron-calls=output/$@.introns.tsv --pass-through=output/$@.sam ${ont_sam}
+	${diff} expected/$@.introns.tsv output/$@.introns.tsv
+	${diff} expected/$@.juncs.bed output/$@.juncs.bed
+	${diff} expected/$@.introns.bed output/$@.introns.bed
+	${diff} ${basic_sam} output/$@.sam
+
 
 ###
 # other rules
