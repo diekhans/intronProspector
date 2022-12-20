@@ -154,8 +154,11 @@ typedef enum {
 class ReadJunctionExtractor {
     private:
     bam1_t *aln_;
-    JunctionsExtractor *juncExtractor_;
+    const string& chrom_;
+    char strand_;
+    JunctionsExtractor *junc_extractor_;
     State state_;
+    bool started_junction_;
     hts_pos_t read_pos_;
     hts_pos_t anchor_start_;   // -1 when not in anchor/intron
     hts_pos_t intron_start_;
@@ -163,86 +166,114 @@ class ReadJunctionExtractor {
     hts_pos_t anchor_end_;
     uint32_t left_mismatch_cnt_;   // mismatches in left anchor
     uint32_t right_mismatch_cnt_;  // mismatches in right anchor
+    int orientCnt_;  // sum of +1 for positive strand introns, -1 for negative strand
 
+    void record_junction() {
+        junc_extractor_->record_junction(aln_, chrom_, strand_,
+                                         anchor_start_, intron_start_, intron_end_, anchor_end_,
+                                         left_mismatch_cnt_, right_mismatch_cnt_, &orientCnt_);
+    }
+    
     public:
     ReadJunctionExtractor(bam1_t *aln,
-                          JunctionsExtractor *juncExtractor):
+                          const string& chrom,
+                          JunctionsExtractor *junc_extractor):
         aln_(aln),
-        juncExtractor_(juncExtractor),
+        chrom_(chrom),
+        strand_(junc_extractor->get_junction_strand(aln_)),
+        junc_extractor_(junc_extractor),
         state_(IN_OTHER),
+        started_junction_(false),
         read_pos_(aln->core.pos),
         anchor_start_(aln->core.pos),
         intron_start_(aln->core.pos),
         intron_end_(0),
         anchor_end_(0),
         left_mismatch_cnt_(0),
-        right_mismatch_cnt_(0) {
+        right_mismatch_cnt_(0),
+        orientCnt_(0) {
     }
-    void parse_read(const string& chrom,
-                    int *orientCnt) {
-        char strand = juncExtractor_->get_junction_strand(aln_);
+
+    // op: N
+    void enter_intron(char op, int len) {
+        if (started_junction_) {
+            // Add the previous junction
+            record_junction();
+            anchor_start_ = intron_end_;
+            intron_start_ = anchor_end_;
+        }
+        intron_end_ = intron_start_ + len;
+        anchor_end_ = intron_end_;
+        started_junction_ = true; // the next junction is now open
+        read_pos_ += len;
+    }
+
+    // op: =,M,X
+    void enter_aligned(char op, int len) {
+        if (!started_junction_) {
+            intron_start_ += len;
+            if (op == 'X') {
+                left_mismatch_cnt_ += len;
+            }
+        } else {
+            anchor_end_ += len;
+            if (op == 'X') {
+                right_mismatch_cnt_ += len;
+            }
+        }
+        read_pos_ += len;
+    }
+    
+    // op: D
+    void enter_query_delete(char op, int len) {
+        if (!started_junction_) {
+            intron_start_ += len;
+        } else {
+            record_junction();
+            // Don't include these in the next anchor
+            intron_start_ = anchor_end_ + len;
+        }
+        anchor_start_ = intron_start_;
+        started_junction_ = false;
+        read_pos_ += len;
+    }
+    
+    // op: I, S
+    void enter_query_insert(char op, int len) {
+        if (!started_junction_) {
+            anchor_start_ = intron_start_;
+        } else {
+            record_junction();
+            // Don't include these in the next anchor
+            intron_start_ = anchor_end_;
+            anchor_start_ = intron_start_;
+        }
+        started_junction_ = false;
+    }
+
+    /* parse cigar string into junctions */
+    void parse_read(int *orientCnt) {
         int n_cigar = aln_->core.n_cigar;
         uint32_t *cigar = bam_get_cigar(aln_);
-        bool started_junction = false;
 
         for (int i = 0; i < n_cigar; ++i) {
             char op = bam_cigar_opchr(cigar[i]);
             int len = bam_cigar_oplen(cigar[i]);
             switch(op) {
                 case 'N': // skipped region from the reference (intron)
-                    if (started_junction) {
-                        // Add the previous junction
-                        juncExtractor_->process_junction(aln_, chrom, strand, anchor_start_, intron_start_, intron_end_, anchor_end_, left_mismatch_cnt_, right_mismatch_cnt_, orientCnt);
-                        anchor_start_ = intron_end_;
-                        intron_start_ = anchor_end_;
-                    }
-                    intron_end_ = intron_start_ + len;
-                    anchor_end_ = intron_end_;
-                    started_junction = true; // the next junction is now open
-                    read_pos_ += len;
+                    enter_intron(op, len);
                     break;
                 case '=':  // sequence match
                 case 'M':  // alignment match (can be a sequence match or mismatch)
-                    if (!started_junction) {
-                        intron_start_ += len;
-                    } else {
-                        anchor_end_ += len;
-                    }
-                    read_pos_ += len;
-                    break;
                 case 'X':  // sequence mismatch
-                    if (!started_junction) {
-                        intron_start_ += len;
-                        left_mismatch_cnt_ += len;
-                    } else {
-                        right_mismatch_cnt_ += len;
-                        anchor_end_ += len;
-                    }
-                    read_pos_ += len;
+                    enter_aligned(op, len);
                     break;
                 case 'D':  // deletion from the reference
-                    if (!started_junction) {
-                        intron_start_ += len;
-                    } else {
-                        juncExtractor_->process_junction(aln_, chrom, strand, anchor_start_, intron_start_, intron_end_, anchor_end_, left_mismatch_cnt_, right_mismatch_cnt_, orientCnt);
-                        // Don't include these in the next anchor
-                        intron_start_ = anchor_end_ + len;
-                    }
-                    anchor_start_ = intron_start_;
-                    started_junction = false;
-                    read_pos_ += len;
+                    enter_query_delete(op, len);
                     break;
                 case 'I':  // insertion to the reference
                 case 'S':  // soft clipping (clipped sequences present in SEQ)
-                    if (!started_junction) {
-                        anchor_start_ = intron_start_;
-                    } else {
-                        juncExtractor_->process_junction(aln_, chrom, strand, anchor_start_, intron_start_, intron_end_, anchor_end_, left_mismatch_cnt_, right_mismatch_cnt_, orientCnt);
-                        // Don't include these in the next anchor
-                        intron_start_ = anchor_end_;
-                        anchor_start_ = intron_start_;
-                    }
-                    started_junction = false;
+                    enter_query_insert(op, len);
                     break;
                 case 'H':  // hard clipping (clipped sequences NOT present in SEQ)
                     break;
@@ -256,9 +287,10 @@ class ReadJunctionExtractor {
             assert(anchor_end <= read_pos);
     #endif
         }
-        if (started_junction) {
-            juncExtractor_->process_junction(aln_, chrom, strand, anchor_start_, intron_start_, intron_end_, anchor_end_, left_mismatch_cnt_, right_mismatch_cnt_, orientCnt);
+        if (started_junction_) {
+            record_junction();
         }
+        *orientCnt = orientCnt_;
     }
 };
 
@@ -450,11 +482,11 @@ Junction *JunctionsExtractor::add_junction(bam1_t *aln, const string& chrom, cha
 }
 
 // Validate a junction and save if it passes.
-void JunctionsExtractor::process_junction(bam1_t *aln, const string& chrom, char strand,
-                                          hts_pos_t anchor_start, hts_pos_t intron_start,
-                                          hts_pos_t intron_end, hts_pos_t anchor_end,
-                                          uint32_t left_mismatch_cnt, uint32_t right_mismatch_cnt,
-                                          int *orientCnt) {
+void JunctionsExtractor::record_junction(bam1_t *aln, const string& chrom, char strand,
+                                         hts_pos_t anchor_start, hts_pos_t intron_start,
+                                         hts_pos_t intron_end, hts_pos_t anchor_end,
+                                         uint32_t left_mismatch_cnt, uint32_t right_mismatch_cnt,
+                                         int *orientCnt) {
     assert((anchor_start >= 0) && (anchor_end >= 0));
     assert((intron_start >= 0) && (intron_end >= 0));
     assert(intron_start < intron_end);
@@ -473,10 +505,9 @@ void JunctionsExtractor::process_alignment(bam1_t *aln) {
     // skip if unmapped, only one cigar operation exists (likely all matches),
     // low-quality or duplicate
     if (!((aln->core.n_cigar <= 1) || (aln->core.tid < 0) || (aln->core.flag & (BAM_FQCFAIL | BAM_FDUP)))) {
-        const string& chrom = targets_[aln->core.tid];
         int orientCnt = 0;
-        ReadJunctionExtractor readJuncExtract(aln, this);
-        readJuncExtract.parse_read(chrom, &orientCnt);
+        ReadJunctionExtractor readJuncExtract(aln, targets_[aln->core.tid], this);
+        readJuncExtract.parse_read(&orientCnt);
         if (orientCnt != 0) {
             if (set_XS_strand_tag_) {
                 update_strand_tag("XS", 'A', orientCnt, aln);

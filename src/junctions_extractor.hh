@@ -195,11 +195,11 @@ public:
     char get_junction_strand(bam1_t *aln);
 
     // Validate a junction and save if it passes.
-    void process_junction(bam1_t *aln, const string& chrom, char strand,
-                          hts_pos_t anchor_start, hts_pos_t intron_start,
-                          hts_pos_t intron_end, hts_pos_t anchor_end,
-                          uint32_t left_mismatch_cnt, uint32_t right_mismatch_cnt,
-                          int *orientCnt);
+    void record_junction(bam1_t *aln, const string& chrom, char strand,
+                         hts_pos_t anchor_start, hts_pos_t intron_start,
+                         hts_pos_t intron_end, hts_pos_t anchor_end,
+                         uint32_t left_mismatch_cnt, uint32_t right_mismatch_cnt,
+                         int *orientCnt);
 
     // free junctions found so far
     void clear() {
