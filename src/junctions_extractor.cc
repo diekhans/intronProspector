@@ -142,10 +142,10 @@ static void update_strand_tag(const char* tag, char valType, int orientCnt, bam1
 
 
 typedef enum {
-    IN_OTHER = 0,
-    IN_LEFT_ANCHOR = 1,
-    IN_INTRON = 3,
-    IN_RIGHT_ANCHOR = 3
+    IN_LIMBO = 0x1,
+    IN_LEFT_ANCHOR = 0x2,
+    IN_INTRON = 0x4,
+    IN_RIGHT_ANCHOR = 0x8
 } State;
 
 /*
@@ -159,7 +159,7 @@ class ReadJunctionExtractor {
     JunctionsExtractor *junc_extractor_;
     State state_;
     bool started_junction_;
-    hts_pos_t read_pos_;
+    hts_pos_t target_pos_;
     hts_pos_t anchor_start_;   // -1 when not in anchor/intron
     hts_pos_t intron_start_;
     hts_pos_t intron_end_;
@@ -173,6 +173,13 @@ class ReadJunctionExtractor {
                                          anchor_start_, intron_start_, intron_end_, anchor_end_,
                                          left_mismatch_cnt_, right_mismatch_cnt_, &orientCnt_);
     }
+
+    void enter_limbo(int len) {
+        if (state_ == IN_RIGHT_ANCHOR) {
+            record_junction();
+        }
+        state_ = IN_LIMBO;
+    }
     
     public:
     ReadJunctionExtractor(bam1_t *aln,
@@ -182,13 +189,12 @@ class ReadJunctionExtractor {
         chrom_(chrom),
         strand_(junc_extractor->get_junction_strand(aln_)),
         junc_extractor_(junc_extractor),
-        state_(IN_OTHER),
-        started_junction_(false),
-        read_pos_(aln->core.pos),
-        anchor_start_(aln->core.pos),
-        intron_start_(aln->core.pos),
-        intron_end_(0),
-        anchor_end_(0),
+        state_(IN_LIMBO),
+        target_pos_(aln->core.pos),
+        anchor_start_(-1),
+        intron_start_(-1),
+        intron_end_(-1),
+        anchor_end_(-1),
         left_mismatch_cnt_(0),
         right_mismatch_cnt_(0),
         orientCnt_(0) {
@@ -196,61 +202,77 @@ class ReadJunctionExtractor {
 
     // op: N
     void enter_intron(char op, int len) {
-        if (started_junction_) {
-            // Add the previous junction
+        //if in right anchor, close previous intron, move right anchor to left anchor
+        //if in left anchor, record intron_range
+        //elfi ignore
+
+        if (state_ == IN_RIGHT_ANCHOR) {
+            // right anchor of previous exon is left anchor of new one,
             record_junction();
-            anchor_start_ = intron_end_;
-            intron_start_ = anchor_end_;
+            anchor_start_ = intron_end_;  // previous intron
+            left_mismatch_cnt_ = right_mismatch_cnt_;
+            right_mismatch_cnt_ = 0;
+            state_ = IN_LEFT_ANCHOR; 
         }
-        intron_end_ = intron_start_ + len;
-        anchor_end_ = intron_end_;
-        started_junction_ = true; // the next junction is now open
-        read_pos_ += len;
+
+        // this will ignore intron if not in a left anchor
+        if (state_ == IN_LEFT_ANCHOR) {
+            intron_start_ = target_pos_;
+            intron_end_ = target_pos_ + len;
+            state_ = IN_INTRON;
+        }
+        target_pos_ += len;
     }
 
     // op: =,M,X
     void enter_aligned(char op, int len) {
-        if (!started_junction_) {
-            intron_start_ += len;
-            if (op == 'X') {
+        // aligned region, becomes part of an anchor
+        if (state_ == IN_LIMBO) {
+            // start new left-anchor
+            anchor_start_ = target_pos_;
+            anchor_end_ = target_pos_ + len;
+            left_mismatch_cnt_ = right_mismatch_cnt_ = 0;
+            state_ = IN_LEFT_ANCHOR;
+        } else if (state_ & (IN_LEFT_ANCHOR | IN_RIGHT_ANCHOR)) {
+            // extend left or right anchors
+            anchor_end_ = target_pos_ + len;
+        } else if (state_ == IN_INTRON) {
+            // intron ended, starting right anchor
+            intron_end_ = target_pos_;
+            anchor_end_= target_pos_ + len;
+            state_ = IN_RIGHT_ANCHOR;
+        }
+        if (op == 'X') {
+            if (state_ == IN_LEFT_ANCHOR) {
                 left_mismatch_cnt_ += len;
-            }
-        } else {
-            anchor_end_ += len;
-            if (op == 'X') {
+            } else {
                 right_mismatch_cnt_ += len;
             }
         }
-        read_pos_ += len;
+        target_pos_ += len;
     }
     
     // op: D
     void enter_query_delete(char op, int len) {
-        if (!started_junction_) {
-            intron_start_ += len;
-        } else {
-            record_junction();
-            // Don't include these in the next anchor
-            intron_start_ = anchor_end_ + len;
-        }
-        anchor_start_ = intron_start_;
-        started_junction_ = false;
-        read_pos_ += len;
+        // query deletion; finish up and then ignore
+        enter_limbo(len);
+        target_pos_ += len;
     }
     
     // op: I, S
     void enter_query_insert(char op, int len) {
-        if (!started_junction_) {
-            anchor_start_ = intron_start_;
-        } else {
-            record_junction();
-            // Don't include these in the next anchor
-            intron_start_ = anchor_end_;
-            anchor_start_ = intron_start_;
-        }
-        started_junction_ = false;
+        // query non-intron insertion; finish up and then ignore
+        enter_limbo(len);
+        target_pos_ += len;
     }
 
+    // end of read
+    void finish() {
+        if (state_ == IN_RIGHT_ANCHOR) {
+            record_junction();
+        }
+    }
+    
     /* parse cigar string into junctions */
     void parse_read(int *orientCnt) {
         int n_cigar = aln_->core.n_cigar;
@@ -280,16 +302,8 @@ class ReadJunctionExtractor {
                 default:
                     throw std::invalid_argument("Unknown cigar operation '" + string(1, op) + "'");
             }
-    #if 0
-            assert(intron_start_ <= read_pos_);
-            assert(intron_end_ <= read_pos_);
-            assert(anchor_start_ <= read_pos_);
-            assert(anchor_end <= read_pos);
-    #endif
         }
-        if (started_junction_) {
-            record_junction();
-        }
+        finish();
         *orientCnt = orientCnt_;
     }
 };
