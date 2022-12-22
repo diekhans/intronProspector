@@ -34,6 +34,7 @@ DEALINGS IN THE SOFTWARE.  */
 #include <iomanip>
 #include <stdexcept>
 #include <set>
+#include <algorithm>
 #include "junctions_extractor.hh"
 #include "type_ops.hh"
 #include "genome.hh"
@@ -164,14 +165,20 @@ class ReadJunctionExtractor {
     hts_pos_t intron_start_;
     hts_pos_t intron_end_;
     hts_pos_t anchor_end_;
-    uint32_t left_mismatch_cnt_;   // mismatches in left anchor
-    uint32_t right_mismatch_cnt_;  // mismatches in right anchor
+    uint32_t left_mismatch_cnt_;   // mismatches in anchors
+    uint32_t right_mismatch_cnt_;
+    uint32_t left_indel_cnt_;   // indels in anchors
+    uint32_t right_indel_cnt_;
+    uint32_t left_indel_max_;   // max length of indels in anchors
+    uint32_t right_indel_max_;
     int orientCnt_;  // sum of +1 for positive strand introns, -1 for negative strand
 
     void record_junction() {
         junc_extractor_->record_junction(aln_, chrom_, strand_,
                                          anchor_start_, intron_start_, intron_end_, anchor_end_,
-                                         left_mismatch_cnt_, right_mismatch_cnt_, &orientCnt_);
+                                         left_mismatch_cnt_, right_mismatch_cnt_,
+                                         left_indel_cnt_, right_indel_cnt_,
+                                         left_indel_max_, right_indel_max_, &orientCnt_);
     }
 
     void enter_limbo() {
@@ -179,6 +186,33 @@ class ReadJunctionExtractor {
             record_junction();
         }
         state_ = IN_LIMBO;
+    }
+
+    void shift_anchor_counts() {
+        left_mismatch_cnt_ = right_mismatch_cnt_;
+        right_mismatch_cnt_ = 0;
+        left_indel_cnt_ = right_indel_cnt_;
+        right_indel_cnt_ = 0;
+        left_indel_max_ = right_indel_max_;
+        right_indel_max_ = 0;
+    }
+    
+    void count_mismatchs(uint32_t len) {
+        if (state_ == IN_LEFT_ANCHOR) {
+            left_mismatch_cnt_ += len;
+        } else if (state_ == IN_RIGHT_ANCHOR) {
+            right_mismatch_cnt_ += len;
+        }
+    }
+    
+    void count_indels(uint32_t len) {
+        if (state_ == IN_LEFT_ANCHOR) {
+            left_indel_cnt_ += len;
+            left_indel_max_ = max(left_indel_max_, len);
+        } else if (state_ == IN_RIGHT_ANCHOR) {
+            right_indel_cnt_ += len;
+            right_indel_max_ = max(right_indel_max_, len);
+        }
     }
     
     public:
@@ -197,11 +231,15 @@ class ReadJunctionExtractor {
         anchor_end_(-1),
         left_mismatch_cnt_(0),
         right_mismatch_cnt_(0),
+        left_indel_cnt_(0),
+        right_indel_cnt_(0),
+        left_indel_max_(0),
+        right_indel_max_(0),
         orientCnt_(0) {
     }
 
     // op: N
-    void enter_intron(char op, int len) {
+    void enter_intron(char op, uint32_t len) {
         //if in right anchor, close previous intron, move right anchor to left anchor
         //if in left anchor, record intron_range
         //elfi ignore
@@ -210,12 +248,11 @@ class ReadJunctionExtractor {
             // right anchor of previous exon is left anchor of new one,
             record_junction();
             anchor_start_ = intron_end_;  // previous intron
-            left_mismatch_cnt_ = right_mismatch_cnt_;
-            right_mismatch_cnt_ = 0;
+            shift_anchor_counts();
             state_ = IN_LEFT_ANCHOR; 
         }
 
-        // this will ignore intron if not in a left anchor
+        // this will ignore intron if there is not a left anchor
         if (state_ == IN_LEFT_ANCHOR) {
             intron_start_ = target_pos_;
             intron_end_ = target_pos_ + len;
@@ -225,7 +262,7 @@ class ReadJunctionExtractor {
     }
 
     // op: =,M,X
-    void enter_aligned(char op, int len) {
+    void enter_aligned(char op, uint32_t len) {
         // aligned region, becomes part of an anchor
         if (state_ == IN_LIMBO) {
             // start new left-anchor
@@ -243,27 +280,22 @@ class ReadJunctionExtractor {
             state_ = IN_RIGHT_ANCHOR;
         }
         if (op == 'X') {
-            if (state_ == IN_LEFT_ANCHOR) {
-                left_mismatch_cnt_ += len;
-            } else {
-                right_mismatch_cnt_ += len;
-            }
+            count_mismatchs(len);
         }
         target_pos_ += len;
     }
     
     // op: D
-    void enter_query_delete(char op, int len) {
-        // query deletion; finish up and then ignore
-        enter_limbo();
+    void enter_query_delete(char op, uint32_t len) {
+        // non-intron insertion in genome
+        count_indels(len);
         target_pos_ += len;
     }
     
     // op: I, S
-    void enter_query_insert(char op, int len) {
-        // query non-intron insertion; finish up and then ignore
-        enter_limbo();
-        target_pos_ += len;
+    void enter_query_insert(char op, uint32_t len) {
+        // query insertion
+        count_indels(len);
     }
 
     // end of read
@@ -277,10 +309,9 @@ class ReadJunctionExtractor {
     void parse_read(int *orientCnt) {
         int n_cigar = aln_->core.n_cigar;
         uint32_t *cigar = bam_get_cigar(aln_);
-
         for (int i = 0; i < n_cigar; ++i) {
             char op = bam_cigar_opchr(cigar[i]);
-            int len = bam_cigar_oplen(cigar[i]);
+            uint32_t len = bam_cigar_oplen(cigar[i]);
             switch(op) {
                 case 'N': // skipped region from the reference (intron)
                     enter_intron(op, len);
@@ -291,15 +322,16 @@ class ReadJunctionExtractor {
                     enter_aligned(op, len);
                     break;
                 case 'D':  // deletion from the reference
-                    enter_query_delete(op, len);
+                    enter_query_insert(op, len);
                     break;
                 case 'I':  // insertion to the reference
-                    enter_query_insert(op, len);
+                    enter_query_delete(op, len);
                     break;
                 case 'S':  // soft clipping (clipped sequences present in SEQ)
                     enter_limbo();
                     break;
                 case 'H':  // hard clipping (clipped sequences NOT present in SEQ)
+                    enter_limbo();
                     break;
                 default:
                     throw std::invalid_argument("Unknown cigar operation '" + string(1, op) + "'");
@@ -502,6 +534,8 @@ void JunctionsExtractor::record_junction(bam1_t *aln, const string& chrom, char 
                                          hts_pos_t anchor_start, hts_pos_t intron_start,
                                          hts_pos_t intron_end, hts_pos_t anchor_end,
                                          uint32_t left_mismatch_cnt, uint32_t right_mismatch_cnt,
+                                         uint32_t left_indel_cnt, uint32_t right_indel_cnt,
+                                         uint32_t left_indel_max, uint32_t right_indel_max,
                                          int *orientCnt) {
     assert((anchor_start >= 0) && (anchor_end >= 0));
     assert((intron_start >= 0) && (intron_end >= 0));

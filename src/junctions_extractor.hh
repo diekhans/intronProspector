@@ -199,6 +199,8 @@ public:
                          hts_pos_t anchor_start, hts_pos_t intron_start,
                          hts_pos_t intron_end, hts_pos_t anchor_end,
                          uint32_t left_mismatch_cnt, uint32_t right_mismatch_cnt,
+                         uint32_t left_indel_cnt, uint32_t right_indel_cnt,
+                         uint32_t left_indel_max, uint32_t right_indel_max,
                          int *orientCnt);
 
     // free junctions found so far

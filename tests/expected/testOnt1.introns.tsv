@@ -1,0 +1,5 @@
+chrom	intron_start	intron_end	strand	uniq_mapped_count	multi_mapped_count	unsure_mapped_count	max_left_overhang	max_right_overhang	confidence	splice_sites	name
+chr1	973640	973832	.	0	0	1	62	221	0		sj0
+chr1	974053	974317	.	0	0	1	221	49	0		sj1
+chr1	974366	974443	.	0	0	1	49	398	0		sj2
+chr1	1645262	1649498	.	0	1	0	86	53	0		sj3
