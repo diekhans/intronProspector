@@ -174,7 +174,7 @@ class ReadJunctionExtractor {
                                          left_mismatch_cnt_, right_mismatch_cnt_, &orientCnt_);
     }
 
-    void enter_limbo(int len) {
+    void enter_limbo() {
         if (state_ == IN_RIGHT_ANCHOR) {
             record_junction();
         }
@@ -255,14 +255,14 @@ class ReadJunctionExtractor {
     // op: D
     void enter_query_delete(char op, int len) {
         // query deletion; finish up and then ignore
-        enter_limbo(len);
+        enter_limbo();
         target_pos_ += len;
     }
     
     // op: I, S
     void enter_query_insert(char op, int len) {
         // query non-intron insertion; finish up and then ignore
-        enter_limbo(len);
+        enter_limbo();
         target_pos_ += len;
     }
 
@@ -294,8 +294,10 @@ class ReadJunctionExtractor {
                     enter_query_delete(op, len);
                     break;
                 case 'I':  // insertion to the reference
-                case 'S':  // soft clipping (clipped sequences present in SEQ)
                     enter_query_insert(op, len);
+                    break;
+                case 'S':  // soft clipping (clipped sequences present in SEQ)
+                    enter_limbo();
                     break;
                 case 'H':  // hard clipping (clipped sequences NOT present in SEQ)
                     break;
