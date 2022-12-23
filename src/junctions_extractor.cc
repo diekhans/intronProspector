@@ -289,13 +289,15 @@ class ReadJunctionExtractor {
     void enter_query_delete(char op, uint32_t len) {
         // non-intron insertion in genome
         count_indels(len);
+        enter_limbo();
         target_pos_ += len;
     }
     
-    // op: I, S
+    // op: I
     void enter_query_insert(char op, uint32_t len) {
         // query insertion
         count_indels(len);
+        enter_limbo();
     }
 
     // end of read
@@ -322,10 +324,10 @@ class ReadJunctionExtractor {
                     enter_aligned(op, len);
                     break;
                 case 'D':  // deletion from the reference
-                    enter_query_insert(op, len);
+                    enter_query_delete(op, len);
                     break;
                 case 'I':  // insertion to the reference
-                    enter_query_delete(op, len);
+                    enter_query_insert(op, len);
                     break;
                 case 'S':  // soft clipping (clipped sequences present in SEQ)
                     enter_limbo();

@@ -139,7 +139,7 @@ ontTests: testOnt1
 testOnt1: mkout
 	${intronProspector} --junction-bed=output/$@.juncs.bed --intron-bed=output/$@.introns.bed --intron-calls=output/$@.introns.tsv --pass-through=output/$@.sam ${ont_sam}
 	${diff_out}
-	${diff} ${basic_sam} output/$@.sam
+	${diff} ${ont_sam} output/$@.sam
 
 
 ###

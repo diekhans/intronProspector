@@ -39,11 +39,11 @@ DEALINGS IN THE SOFTWARE.  */
 
 using namespace std;
 
-static const uint32_t DEFAULT_MIN_ANCHOR_LENGTH = 36;
+static const uint32_t DEFAULT_MIN_ANCHOR_LENGTH = 8;
 static const uint32_t DEFAULT_MIN_INTRON_LENGTH = 70;
 static const uint32_t DEFAULT_MAX_INTRON_LENGTH = 500000;
 static const bool DEFAULT_ALLOW_ANCHOR_INDELS = false;
-static const uint32_t DEFAULT_MAX_ANCHOR_INDEL_SIZE = 8;
+static const uint32_t DEFAULT_MAX_ANCHOR_INDEL_SIZE = 36;
 static const float DEFAULT_MIN_CONFIDENCE_SCORE = 0.0;
 static const Strandness DEFAULT_STRANDED = UNSTRANDED;
 
