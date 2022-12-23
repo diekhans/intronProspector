@@ -34,6 +34,7 @@ DEALINGS IN THE SOFTWARE.  */
 #include <algorithm>
 #include <fstream>
 #include "junctions_extractor.hh"
+#include "strconvert.hh"
 #include "genome.hh"
 #include "version.hh"
 
@@ -84,6 +85,9 @@ static unsigned parse_exclude_cat(const string &cat) {
     }
 }
 
+// parse a range in the form chr:start-end, zero based, half-open
+
+
 // Parse command line
 class CmdParser {
     public:
@@ -123,6 +127,17 @@ class CmdParser {
         set_XS_strand_tag(false),
         set_TS_strand_tag(false) {
 
+        try {
+            parse_cmd_args(argc, argv);
+        } catch (const std::exception& ex) {
+            cerr << "Error parsing command line: " << ex.what() << endl;
+            exit(1);
+        }
+    }
+
+
+    private:
+    void parse_cmd_args(int argc, char *argv[]) {
         // definitions for long-only options
         static const int OPT_SET_XS_STRAND_TAG = 256;
         static const int OPT_SET_TS_STRAND_TAG = 257;
@@ -161,16 +176,16 @@ class CmdParser {
                     allow_anchor_indels = true;
                     break;
                 case 'm':
-                    max_anchor_indel_size = atoi(optarg);
+                    max_anchor_indel_size = toUnsigned(optarg);
                     break;
                 case 'i':
-                    min_intron_length = atoi(optarg);
+                    min_intron_length = toUnsigned(optarg);
                     break;
                 case 'I':
-                    max_intron_length = atoi(optarg);
+                    max_intron_length = toUnsigned(optarg);
                     break;
                 case 'C':
-                    min_confidence_score = strtod(optarg, NULL);
+                    min_confidence_score = toFloat(optarg);
                     break;
                 case 's':
                     strandness = str_to_strandness(optarg);
@@ -262,7 +277,21 @@ static void output_junctions_for_target(JunctionsExtractor& extractor,
     }
 }
 
-
+/* extract junctions for the whole BAM */
+static void serial_extract_junctions(JunctionsExtractor& extractor,
+                                     float min_confidence_score,
+                                     ostream* junction_bed_fh,
+                                     ostream* intron_bed_fh,
+                                     ostream* intron_call_fh) {
+    for (int target_index = 0; target_index < extractor.get_num_targets(); target_index++) {
+        extractor.identify_junctions_for_target(target_index);
+        output_junctions_for_target(extractor, min_confidence_score,
+                                    junction_bed_fh, intron_bed_fh, intron_call_fh);
+        extractor.clear();
+    }
+    extractor.copy_unaligned_reads();
+}
+                                
 static void extract_junctions(CmdParser &opts) {
     Genome *genome = NULL;
     if (opts.genome_fa.size() > 0) {
@@ -282,13 +311,9 @@ static void extract_junctions(CmdParser &opts) {
     if (intron_call_fh != NULL) {
         print_junction_call_header(*intron_call_fh);
     }
-    for (int target_index = 0; target_index < extractor.get_num_targets(); target_index++) {
-        extractor.identify_junctions_for_target(target_index);
-        output_junctions_for_target(extractor, opts.min_confidence_score,
-                                    junction_bed_fh, intron_bed_fh, intron_call_fh);
-        extractor.clear();
-    }
-    extractor.copy_unaligned_reads();
+    serial_extract_junctions(extractor, opts.min_confidence_score,
+                             junction_bed_fh, intron_bed_fh, intron_call_fh);
+
     delete junction_bed_fh;
     delete intron_bed_fh;
     delete intron_call_fh;
