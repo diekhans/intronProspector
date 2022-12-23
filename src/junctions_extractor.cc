@@ -158,6 +158,7 @@ class ReadJunctionExtractor {
     const string& chrom_;
     char strand_;
     JunctionsExtractor *junc_extractor_;
+    uint32_t max_anchor_indel_size_;
     State state_;
     bool started_junction_;
     hts_pos_t target_pos_;
@@ -169,8 +170,7 @@ class ReadJunctionExtractor {
     uint32_t right_mismatch_cnt_;
     uint32_t left_indel_cnt_;   // indels in anchors
     uint32_t right_indel_cnt_;
-    uint32_t left_indel_max_;   // max length of indels in anchors
-    uint32_t right_indel_max_;
+    uint32_t current_indel_cnt_; // current run of indels to compare to max
     int orientCnt_;  // sum of +1 for positive strand introns, -1 for negative strand
 
     void record_junction() {
@@ -178,7 +178,7 @@ class ReadJunctionExtractor {
                                          anchor_start_, intron_start_, intron_end_, anchor_end_,
                                          left_mismatch_cnt_, right_mismatch_cnt_,
                                          left_indel_cnt_, right_indel_cnt_,
-                                         left_indel_max_, right_indel_max_, &orientCnt_);
+                                         &orientCnt_);
     }
 
     void enter_limbo() {
@@ -193,8 +193,6 @@ class ReadJunctionExtractor {
         right_mismatch_cnt_ = 0;
         left_indel_cnt_ = right_indel_cnt_;
         right_indel_cnt_ = 0;
-        left_indel_max_ = right_indel_max_;
-        right_indel_max_ = 0;
     }
     
     void count_mismatchs(uint32_t len) {
@@ -208,21 +206,21 @@ class ReadJunctionExtractor {
     void count_indels(uint32_t len) {
         if (state_ == IN_LEFT_ANCHOR) {
             left_indel_cnt_ += len;
-            left_indel_max_ = max(left_indel_max_, len);
         } else if (state_ == IN_RIGHT_ANCHOR) {
             right_indel_cnt_ += len;
-            right_indel_max_ = max(right_indel_max_, len);
         }
     }
     
     public:
     ReadJunctionExtractor(bam1_t *aln,
                           const string& chrom,
-                          JunctionsExtractor *junc_extractor):
+                          JunctionsExtractor *junc_extractor,
+                          uint32_t max_anchor_indel_size):
         aln_(aln),
         chrom_(chrom),
         strand_(junc_extractor->get_junction_strand(aln_)),
         junc_extractor_(junc_extractor),
+        max_anchor_indel_size_(max_anchor_indel_size),
         state_(IN_LIMBO),
         target_pos_(aln->core.pos),
         anchor_start_(-1),
@@ -233,8 +231,7 @@ class ReadJunctionExtractor {
         right_mismatch_cnt_(0),
         left_indel_cnt_(0),
         right_indel_cnt_(0),
-        left_indel_max_(0),
-        right_indel_max_(0),
+        current_indel_cnt_(0),
         orientCnt_(0) {
     }
 
@@ -258,6 +255,7 @@ class ReadJunctionExtractor {
             intron_end_ = target_pos_ + len;
             state_ = IN_INTRON;
         }
+        current_indel_cnt_ = 0;
         target_pos_ += len;
     }
 
@@ -282,6 +280,7 @@ class ReadJunctionExtractor {
         if (op == 'X') {
             count_mismatchs(len);
         }
+        current_indel_cnt_ = 0;
         target_pos_ += len;
     }
     
@@ -289,7 +288,10 @@ class ReadJunctionExtractor {
     void enter_query_delete(char op, uint32_t len) {
         // non-intron insertion in genome
         count_indels(len);
-        enter_limbo();
+        current_indel_cnt_ += len;
+        if (current_indel_cnt_ > max_anchor_indel_size_) {
+            enter_limbo();
+        }
         target_pos_ += len;
     }
     
@@ -297,7 +299,10 @@ class ReadJunctionExtractor {
     void enter_query_insert(char op, uint32_t len) {
         // query insertion
         count_indels(len);
-        enter_limbo();
+        current_indel_cnt_ += len;
+        if (current_indel_cnt_ > max_anchor_indel_size_) {
+            enter_limbo();
+        }
     }
 
     // end of read
@@ -413,7 +418,8 @@ JunctionsExtractor::~JunctionsExtractor() {
 // Do some basic qc on the junction
 bool JunctionsExtractor::junction_qc(bam1_t *aln, hts_pos_t anchor_start, hts_pos_t intron_start,
                                      hts_pos_t intron_end, hts_pos_t anchor_end,
-                                     uint32_t left_mismatch_cnt, uint32_t right_mismatch_cnt) {
+                                     uint32_t left_mismatch_cnt, uint32_t right_mismatch_cnt,
+                                     uint32_t left_indel_cnt, uint32_t right_indel_cnt) {
     if ((aln->core).flag & BAM_FSECONDARY) {
         return false;
     } else if (((excludes_ & EXCLUDE_MULTI) != 0) && (get_num_aligns(aln) > 1)) {
@@ -421,8 +427,8 @@ bool JunctionsExtractor::junction_qc(bam1_t *aln, hts_pos_t anchor_start, hts_po
     } else if ((intron_end - intron_start < min_intron_length_) ||
                (intron_end - intron_start > max_intron_length_)) {
         return false;
-    } else if (((intron_start - anchor_start) - left_mismatch_cnt < min_anchor_length_) ||
-               ((anchor_end - intron_end) - right_mismatch_cnt < min_anchor_length_)) {
+    } else if ((((intron_start - anchor_start) - (left_mismatch_cnt + left_indel_cnt)) < min_anchor_length_) ||
+               (((anchor_end - intron_end) - (right_mismatch_cnt + right_indel_cnt)) < min_anchor_length_)) {
         return false;
     } else {
         return true;
@@ -537,14 +543,15 @@ void JunctionsExtractor::record_junction(bam1_t *aln, const string& chrom, char 
                                          hts_pos_t intron_end, hts_pos_t anchor_end,
                                          uint32_t left_mismatch_cnt, uint32_t right_mismatch_cnt,
                                          uint32_t left_indel_cnt, uint32_t right_indel_cnt,
-                                         uint32_t left_indel_max, uint32_t right_indel_max,
                                          int *orientCnt) {
     assert((anchor_start >= 0) && (anchor_end >= 0));
     assert((intron_start >= 0) && (intron_end >= 0));
     assert(intron_start < intron_end);
     assert(anchor_start < anchor_end);
     assert((anchor_start < intron_start) && (intron_end < anchor_end));
-    if (junction_qc(aln, anchor_start, intron_start, intron_end, anchor_end, left_mismatch_cnt, right_mismatch_cnt)) {
+    if (junction_qc(aln, anchor_start, intron_start, intron_end, anchor_end,
+                    left_mismatch_cnt, right_mismatch_cnt,
+                    left_indel_cnt, right_indel_cnt)) {
         Junction *junc = add_junction(aln, chrom, strand, anchor_start, intron_start, intron_end, anchor_end);
         if (junc->is_canonical()) {
             *orientCnt += (junc->strand == '+') ? 1 : -1;
@@ -558,7 +565,7 @@ void JunctionsExtractor::process_alignment(bam1_t *aln) {
     // low-quality or duplicate
     if (!((aln->core.n_cigar <= 1) || (aln->core.tid < 0) || (aln->core.flag & (BAM_FQCFAIL | BAM_FDUP)))) {
         int orientCnt = 0;
-        ReadJunctionExtractor readJuncExtract(aln, targets_[aln->core.tid], this);
+        ReadJunctionExtractor readJuncExtract(aln, targets_[aln->core.tid], this, max_anchor_indel_size_);
         readJuncExtract.parse_read(&orientCnt);
         if (orientCnt != 0) {
             if (set_XS_strand_tag_) {

@@ -75,10 +75,16 @@ private:
     // Junctions need atleast this many bp overlap
     // on both ends.  Mismatch bases are not included in the count.
     uint32_t min_anchor_length_;
+
+    // maximum size of a non-intron indel to allow in an anchor.  Normally zero for short reads.
+    uint32_t max_anchor_indel_size_;
+    
     // Minimum length of an intron, i.e min junction width
     uint32_t min_intron_length_;
+
     // Maximum length of an intron, i.e max junction width
     uint32_t max_intron_length_;
+
     //strandness of data; 0 = unstranded, 1 = RF, 2 = FR
     Strandness strandness_;
 
@@ -129,7 +135,8 @@ private:
     void save_targets(bam_hdr_t *header);
     bool junction_qc(bam1_t *aln, hts_pos_t anchor_start, hts_pos_t intron_start,
                      hts_pos_t intron_end, hts_pos_t anchor_end,
-                     uint32_t left_mismatch_cnt, uint32_t right_mismatch_cnt);
+                     uint32_t left_mismatch_cnt, uint32_t right_mismatch_cnt,
+                     uint32_t left_indel_cnt, uint32_t right_indel_cnt);
     void process_alignment(bam1_t *aln);
     void write_pass_through(bam1_t *aln,
                             bam_hdr_t *in_header,
@@ -162,6 +169,7 @@ private:
     }
 public:
     JunctionsExtractor(uint32_t min_anchor_length,
+                       uint32_t max_anchor_indel_size,
                        uint32_t min_intron_length,
                        uint32_t max_intron_length,
                        Strandness strandness,
@@ -172,6 +180,7 @@ public:
                        bool set_TS_strand_tag,
                        ostream *trace_fh):
         min_anchor_length_(min_anchor_length),
+        max_anchor_indel_size_(max_anchor_indel_size),
         min_intron_length_(min_intron_length),
         max_intron_length_(max_intron_length),
         strandness_(strandness),
@@ -200,7 +209,6 @@ public:
                          hts_pos_t intron_end, hts_pos_t anchor_end,
                          uint32_t left_mismatch_cnt, uint32_t right_mismatch_cnt,
                          uint32_t left_indel_cnt, uint32_t right_indel_cnt,
-                         uint32_t left_indel_max, uint32_t right_indel_max,
                          int *orientCnt);
 
     // free junctions found so far

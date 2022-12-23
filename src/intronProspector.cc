@@ -135,7 +135,7 @@ class CmdParser {
             {"min-anchor-length", required_argument, NULL, 'a'},
             {"min-intron_length", required_argument, NULL, 'i'},
             {"max-intron_length", required_argument, NULL, 'I'},
-            {"allow-anchor-indels", required_argument, NULL, 'd'},
+            {"allow-anchor-indels", no_argument, NULL, 'd'},
             {"max-anchor-indel-size", required_argument, NULL, 'm'},
             {"min-confidence-score", required_argument, NULL, 'C'},
             {"strandness", required_argument, NULL, 's'},
@@ -225,6 +225,11 @@ class CmdParser {
             }
         }
 
+        // if indels are not allowed, also indicate this my setting max size
+        if (not allow_anchor_indels) {
+            max_anchor_indel_size = 0;
+        }
+
         if (argc - optind > 1) {
             cerr << "Error: too many positional arguments" << endl << endl;
             usage();
@@ -271,7 +276,8 @@ static void extract_junctions(CmdParser &opts) {
         genome = new Genome(opts.genome_fa);
     }
     ofstream *trace_fh = opts.debug_trace_tsv.size() > 0 ? new ofstream(opts.debug_trace_tsv.c_str()) :  NULL;
-    JunctionsExtractor extractor(opts.min_anchor_length, opts.min_intron_length, opts.max_intron_length,
+    JunctionsExtractor extractor(opts.min_anchor_length, opts.max_anchor_indel_size,
+                                 opts.min_intron_length, opts.max_intron_length,
                                  opts.strandness, opts.excludes, genome,
                                  opts.skip_missing_targets,
                                  opts.set_XS_strand_tag, opts.set_TS_strand_tag,
