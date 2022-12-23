@@ -39,9 +39,11 @@ DEALINGS IN THE SOFTWARE.  */
 
 using namespace std;
 
-static const uint32_t DEFAULT_MIN_ANCHOR_LENGTH = 8;
+static const uint32_t DEFAULT_MIN_ANCHOR_LENGTH = 36;
 static const uint32_t DEFAULT_MIN_INTRON_LENGTH = 70;
 static const uint32_t DEFAULT_MAX_INTRON_LENGTH = 500000;
+static const bool DEFAULT_ALLOW_ANCHOR_INDELS = false;
+static const uint32_t DEFAULT_MAX_ANCHOR_INDEL_SIZE = 8;
 static const float DEFAULT_MIN_CONFIDENCE_SCORE = 0.0;
 static const Strandness DEFAULT_STRANDED = UNSTRANDED;
 
@@ -90,6 +92,8 @@ class CmdParser {
     uint32_t min_anchor_length;
     uint32_t min_intron_length;
     uint32_t max_intron_length;
+    bool allow_anchor_indels;
+    uint32_t max_anchor_indel_size;
     float min_confidence_score;
     Strandness strandness;
     unsigned excludes;
@@ -111,6 +115,8 @@ class CmdParser {
         min_anchor_length(DEFAULT_MIN_ANCHOR_LENGTH),
         min_intron_length(DEFAULT_MIN_INTRON_LENGTH),
         max_intron_length(DEFAULT_MAX_INTRON_LENGTH),
+        allow_anchor_indels(DEFAULT_ALLOW_ANCHOR_INDELS),
+        max_anchor_indel_size(DEFAULT_MAX_ANCHOR_INDEL_SIZE),
         min_confidence_score(DEFAULT_MIN_CONFIDENCE_SCORE),
         strandness(DEFAULT_STRANDED),
         excludes(EXCLUDE_NONE),
@@ -129,6 +135,8 @@ class CmdParser {
             {"min-anchor-length", required_argument, NULL, 'a'},
             {"min-intron_length", required_argument, NULL, 'i'},
             {"max-intron_length", required_argument, NULL, 'I'},
+            {"allow-anchor-indels", required_argument, NULL, 'd'},
+            {"max-anchor-indel-size", required_argument, NULL, 'm'},
             {"min-confidence-score", required_argument, NULL, 'C'},
             {"strandness", required_argument, NULL, 's'},
             {"excludes", required_argument, NULL, 'X'},
@@ -151,6 +159,12 @@ class CmdParser {
             switch (c) {
                 case 'a':
                     min_anchor_length = atoi(optarg);
+                    break;
+                case 'd':
+                    allow_anchor_indels = true;
+                    break;
+                case 'm':
+                    max_anchor_indel_size = atoi(optarg);
                     break;
                 case 'i':
                     min_intron_length = atoi(optarg);
