@@ -192,16 +192,13 @@ public:
     }
     
     // Print BED with anchors as blocks and intron as gap.
-    void print_anchor_bed(bool map_to_ucsc,
-                          ostream& out) const;
+    void print_anchor_bed(ostream& out) const;
 
     // Print BED with intron as block 
-    void print_intron_bed(bool map_to_ucsc,
-                          ostream& out) const;
+    void print_intron_bed(ostream& out) const;
 
     // Print row to junction call TSV
-    void print_junction_call_row(bool map_to_ucsc,
-                                 ostream& out) const;
+    void print_junction_call_row(ostream& out) const;
 };
 
 // Vector of pointers to junctions
@@ -251,13 +248,11 @@ class JunctionTable: public map<JunctionKey, Junction*> {
 // Print BED with anchors as blocks and intron as gap.
 void print_anchor_bed(const JunctionVector& juncs,
                       float min_confidence_score,
-                      bool map_to_ucsc,
                       ostream& out);
 
 // Print BED with intron as block
 void print_intron_bed(const JunctionVector& juncs,
                       float min_confidence_score,
-                      bool map_to_ucsc,
                       ostream& out);
 
 // Print header for junction call TSV
@@ -266,7 +261,6 @@ void print_junction_call_header(ostream& out);
 // Print TSV with intron information
 void print_intron_call_tsv(const JunctionVector& juncs,
                            float min_confidence_score,
-                           bool map_to_ucsc,
                            ostream& out);
 
 #endif

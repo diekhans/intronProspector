@@ -60,10 +60,8 @@ class CmdParser {
     string junction_bed;
     string intron_bed;
     string intron_call_tsv;
-    bool map_to_ucsc;
 
-    CmdParser(int argc, char *argv[]):
-        map_to_ucsc(false) {
+    CmdParser(int argc, char *argv[]) {
         
         struct option long_options[] = {
             {"help", no_argument, NULL, 'h'},
@@ -71,7 +69,6 @@ class CmdParser {
             {"junction-bed", required_argument, NULL, 'j'},
             {"intron-bed", required_argument, NULL, 'n'},
             {"intron-calls", required_argument, NULL, 'c'},
-            {"map-to-ucsc", no_argument, NULL, 'U'},
             {NULL, 0, NULL, 0}
         };
             
@@ -87,9 +84,6 @@ class CmdParser {
                     break;
                 case 'c':
                     intron_call_tsv = optarg;
-                    break;
-                case 'U':
-                    map_to_ucsc = true;
                     break;
                 case 'h':
                     usage();
@@ -170,18 +164,18 @@ static void intron_prospector_merge(CmdParser &opts) {
     renumber_junctions(juncs);
     if (opts.junction_bed != "") {
         ofstream out(opts.junction_bed.c_str());
-        print_anchor_bed(juncs, 0.0, opts.map_to_ucsc, out);
+        print_anchor_bed(juncs, 0.0, out);
     }
     if ((opts.intron_bed != "") or (opts.intron_call_tsv != "")) {
         juncs.sort_by_introns();
         if (opts.intron_bed != "") {
             ofstream out(opts.intron_bed.c_str());
-            print_intron_bed(juncs, 0.0, opts.map_to_ucsc, out);
+            print_intron_bed(juncs, 0.0, out);
         }
         if (opts.intron_call_tsv != "") {
             ofstream out(opts.intron_call_tsv.c_str());
             print_junction_call_header(out);
-            print_intron_call_tsv(juncs, 0.0, opts.map_to_ucsc, out);
+            print_intron_call_tsv(juncs, 0.0, out);
         }
     }
  }

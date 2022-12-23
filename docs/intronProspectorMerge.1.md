@@ -25,10 +25,6 @@ Options
 
 > Prints the current version number.
 
-`-U, --map-to-ucsc`
-
-> Naively generate UCSC chromosome names in TSV and BED files.  This pre-pends `chr` to numeric and X/Y names and change `MT` to `chrMT`, other name are not modified.  This will not produce the correct results for other sequences such as alts, patches, and unmapped sequences.  It does not modify records passed through (-p).
-
 `-c FILE, --intron-calls=FILE`
 
 > Write a tab-separated values (TSV) file, with the junctions calls.  The confidence column will be the maximum confidence in any of the files.

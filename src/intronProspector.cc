@@ -105,7 +105,6 @@ class CmdParser {
     string intron_bed;
     string intron_call_tsv;
     string bam_pass_through;
-    bool map_to_ucsc;
     string debug_trace_tsv;
     bool set_XS_strand_tag;
     bool set_TS_strand_tag;
@@ -121,7 +120,6 @@ class CmdParser {
         strandness(DEFAULT_STRANDED),
         excludes(EXCLUDE_NONE),
         skip_missing_targets(false),
-        map_to_ucsc(false),
         set_XS_strand_tag(false),
         set_TS_strand_tag(false) {
 
@@ -146,7 +144,6 @@ class CmdParser {
             {"intron-bed", required_argument, NULL, 'n'},
             {"intron-calls", required_argument, NULL, 'c'},
             {"pass-through", required_argument, NULL, 'p'},
-            {"map-to-ucsc", no_argument, NULL, 'U'},
             {"debug-trace", required_argument, NULL, 'D'},
             {"set-XS-strand-tag", no_argument, NULL, OPT_SET_XS_STRAND_TAG},
             {"set-TS-strand-tag", no_argument, NULL, OPT_SET_TS_STRAND_TAG},
@@ -199,9 +196,6 @@ class CmdParser {
                 case 'p':
                     bam_pass_through = optarg;
                     break;
-                case 'U':
-                    map_to_ucsc = true;
-                    break;
                 case 'D':
                     debug_trace_tsv = optarg;
                     break;
@@ -249,22 +243,21 @@ class CmdParser {
 
 static void output_junctions_for_target(JunctionsExtractor& extractor,
                                          float min_confidence_score,
-                                         bool map_to_ucsc,
                                          ostream* junction_bed_fh,
                                          ostream* intron_bed_fh,
                                          ostream* intron_call_fh) {
     JunctionVector juncs = extractor.get_junctions();
     if (junction_bed_fh != NULL) {
         juncs.sort_by_anchors();
-        print_anchor_bed(juncs, min_confidence_score, map_to_ucsc, *junction_bed_fh);
+        print_anchor_bed(juncs, min_confidence_score, *junction_bed_fh);
     }
     if ((intron_bed_fh != NULL) or (intron_call_fh != NULL)) {
         juncs.sort_by_introns();
         if (intron_bed_fh != NULL) {
-            print_intron_bed(juncs, min_confidence_score, map_to_ucsc, *intron_bed_fh);
+            print_intron_bed(juncs, min_confidence_score, *intron_bed_fh);
         }
         if (intron_call_fh != NULL) {
-            print_intron_call_tsv(juncs, min_confidence_score, map_to_ucsc, *intron_call_fh);
+            print_intron_call_tsv(juncs, min_confidence_score, *intron_call_fh);
         }
     }
 }
@@ -291,7 +284,7 @@ static void extract_junctions(CmdParser &opts) {
     }
     for (int target_index = 0; target_index < extractor.get_num_targets(); target_index++) {
         extractor.identify_junctions_for_target(target_index);
-        output_junctions_for_target(extractor, opts.min_confidence_score, opts.map_to_ucsc,
+        output_junctions_for_target(extractor, opts.min_confidence_score,
                                     junction_bed_fh, intron_bed_fh, intron_call_fh);
         extractor.clear();
     }
