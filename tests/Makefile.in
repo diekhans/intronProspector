@@ -19,6 +19,13 @@ fake10_fa = output/fake10_genome.fa
 fake10_fai = output/fake10_genome.fa.fai
 ont_sam = input/ont.sam
 
+define diff_out
+	${diff} expected/$@.introns.tsv output/$@.introns.tsv
+	${diff} expected/$@.juncs.bed output/$@.juncs.bed
+	${diff} expected/$@.introns.bed output/$@.introns.bed
+endef
+
+
 .PHONY: all
 all:
 
@@ -39,40 +46,30 @@ basicTests: testBasic1 testBasic2 testBasic3 testBasic4 testBasic5
 # basic unstranded
 testBasic1: mkout
 	${intronProspector} --junction-bed=output/$@.juncs.bed --intron-bed=output/$@.introns.bed --intron-calls=output/$@.introns.tsv --pass-through=output/$@.sam ${basic_sam}
-	${diff} expected/$@.introns.tsv output/$@.introns.tsv
-	${diff} expected/$@.juncs.bed output/$@.juncs.bed
-	${diff} expected/$@.introns.bed output/$@.introns.bed
+	${diff_out}
 	${diff} ${basic_sam} output/$@.sam
 
 # RF strandness
 testBasic2: mkout
 	${intronProspector} --strandness=RF --junction-bed=output/$@.juncs.bed --intron-bed=output/$@.introns.bed --intron-calls=output/$@.introns.tsv ${basic_sam}
-	${diff} expected/$@.introns.tsv output/$@.introns.tsv
-	${diff} expected/$@.juncs.bed output/$@.juncs.bed
-	${diff} expected/$@.introns.bed output/$@.introns.bed
+	${diff_out}
 
 # testBasic1 with BAM
 testBasic3: mkout ${basic_bam}
 	${intronProspector} --junction-bed=output/$@.juncs.bed --intron-bed=output/$@.introns.bed --pass-through=output/$@.bam --intron-calls=output/$@.introns.tsv ${basic_bam}
-	${diff} expected/$@.introns.tsv output/$@.introns.tsv
-	${diff} expected/testBasic1.juncs.bed output/$@.juncs.bed
-	${diff} expected/testBasic1.introns.bed output/$@.introns.bed
+	${diff_out}
 	samtools view -h --no-PG output/$@.bam >output/$@.sam
 	${diff} ${basic_sam} output/$@.sam
 
 # test confidence score filter
 testBasic4: mkout ${basic_bam}
 	${intronProspector} --min-confidence-score=1.0 --junction-bed=output/$@.juncs.bed --intron-bed=output/$@.introns.bed --intron-calls=output/$@.introns.tsv ${basic_bam}
-	${diff} expected/$@.introns.tsv output/$@.introns.tsv
-	${diff} expected/$@.juncs.bed output/$@.juncs.bed
-	${diff} expected/$@.introns.bed output/$@.introns.bed
+	${diff_out}
 
 # test exclude multi filter
 testBasic5: mkout ${basic_bam}
 	${intronProspector} --exclude=multi --junction-bed=output/$@.juncs.bed --intron-bed=output/$@.introns.bed --intron-calls=output/$@.introns.tsv ${basic_bam}
-	${diff} expected/$@.introns.tsv output/$@.introns.tsv
-	${diff} expected/$@.juncs.bed output/$@.juncs.bed
-	${diff} expected/$@.introns.bed output/$@.introns.bed
+	${diff_out}
 
 
 ###
@@ -82,9 +79,7 @@ multiTests: testMulti1
 
 testMulti1: mkout
 	${intronProspector} --junction-bed=output/$@.juncs.bed --intron-bed=output/$@.introns.bed --intron-calls=output/$@.introns.tsv ${multi_sam}
-	${diff} expected/$@.introns.tsv output/$@.introns.tsv
-	${diff} expected/$@.juncs.bed output/$@.juncs.bed
-	${diff} expected/$@.introns.bed output/$@.introns.bed
+	${diff_out}
 	bedToBigBed output/$@.juncs.bed input/test_multi.size output/$@.juncs.bigBed
 	bedToBigBed output/$@.introns.bed input/test_multi.size output/$@.introns.bigBed
 
@@ -96,27 +91,21 @@ fake10Tests: testFake10a testFake10b testFake10c
 # fake10 STAR mappings (SAM doesn't have strand)
 testFake10a: mkout ${fake10_fa} ${fake10_fai}
 	${intronProspector} --genome-fasta=${fake10_fa} --junction-bed=output/$@.juncs.bed --intron-bed=output/$@.introns.bed --intron-calls=output/$@.introns.tsv --pass-through=output/$@.sam --debug-trace=output/$@.debug.tsv ${fake10_star_sam}
-	${diff} expected/$@.introns.tsv output/$@.introns.tsv
-	${diff} expected/$@.juncs.bed output/$@.juncs.bed
-	${diff} expected/$@.introns.bed output/$@.introns.bed
+	${diff_out}
 	${diff} expected/$@.debug.tsv output/$@.debug.tsv
 	${diff} ${fake10_star_sam} output/$@.sam
 
 # fake10 hisat2 mappings
 testFake10b: mkout ${fake10_fa} ${fake10_fai}
 	${intronProspector} --genome-fasta=${fake10_fa}  --junction-bed=output/$@.juncs.bed --intron-bed=output/$@.introns.bed --intron-calls=output/$@.introns.tsv --pass-through=output/$@.sam ${fake10_hisat2_sam}
-	${diff} expected/$@.introns.tsv output/$@.introns.tsv
-	${diff} expected/$@.juncs.bed output/$@.juncs.bed
-	${diff} expected/$@.introns.bed output/$@.introns.bed
+	${diff_out}
 	${diff} ${fake10_hisat2_sam} output/$@.sam
 
 # fake10 hisat2 mappings with missing target sequence
 testFake10c: mkout ${fake10_fa} ${fake10_fai}
 	${intronProspector} --genome-fasta=${fake10_fa} --skip-missing-targets --junction-bed=output/$@.juncs.bed --intron-bed=output/$@.introns.bed --intron-calls=output/$@.introns.tsv ${fake10_missing_sam} > output/$@.err 2>&1
 	${diff} expected/$@.err output/$@.err
-	${diff} expected/$@.introns.tsv output/$@.introns.tsv
-	${diff} expected/$@.juncs.bed output/$@.juncs.bed
-	${diff} expected/$@.introns.bed output/$@.introns.bed
+	${diff_out}
 
 
 regressTests: testSortBug
@@ -135,9 +124,7 @@ intronProspctorMergeTests: testBasic134Merge testFake10abMerge
 testBasic134Merge: mkout
 	${intronProspectorMerge} --junction-bed=output/$@.juncs.bed --intron-bed=output/$@.introns.bed --intron-calls=output/$@.introns.tsv \
 	    expected/testBasic1.introns.tsv expected/testBasic3.introns.tsv expected/testBasic4.introns.tsv
-	${diff} expected/$@.introns.tsv output/$@.introns.tsv
-	${diff} expected/$@.juncs.bed output/$@.juncs.bed
-	${diff} expected/$@.introns.bed output/$@.introns.bed
+	${diff_out}
 
 testFake10abMerge: mkout
 	${intronProspectorMerge} --intron-calls=output/$@.introns.tsv \
@@ -151,9 +138,7 @@ ontTests: testOnt1
 
 testOnt1: mkout
 	${intronProspector} --junction-bed=output/$@.juncs.bed --intron-bed=output/$@.introns.bed --intron-calls=output/$@.introns.tsv --pass-through=output/$@.sam ${ont_sam}
-	${diff} expected/$@.introns.tsv output/$@.introns.tsv
-	${diff} expected/$@.juncs.bed output/$@.juncs.bed
-	${diff} expected/$@.introns.bed output/$@.introns.bed
+	${diff_out}
 	${diff} ${basic_sam} output/$@.sam
 
 
