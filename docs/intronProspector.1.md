@@ -36,15 +36,15 @@ Options
 
 `-I INT,  --max-intron_length=INT`
 
-> Are indels allowed in anchors?  Useful for ONT reads.  Indels bases don't count towards the meeting the anchor size threshold.  The default is don't allow indels. .
+> Maximum intron length. The default is 500000 bases.
 
 `-d,  --allow-anchor-indels`
 
-> Maximum size of any contiguous indel in an anchor if indels are allowed in anchors.  Exceeding this length discards the intron.  The default is 36.
+> Are indels allowed in anchors?  Useful for ONT reads.  Indels bases don't count towards the meeting the anchor size threshold.  The default is don't allow indels. .
 
 `-m INT,  --max-anchor-indel-size INT`
 
-> Maximum intron length. The default is 500000 bases.
+> Maximum size of any contiguous indel in an anchor if indels are allowed in anchors.  Exceeding this length discards the intron.  The default is 36.
 
 `-C FLOAT, --min-confidence-score=FLOAT`
 
