@@ -659,7 +659,7 @@ bam1_t* JunctionsExtractor::read_align() {
 // check if an chrom has already been processed, indicating an unsorted BAM
 void JunctionsExtractor::check_new_target(bam1_t *aln) {
     if (done_targets_.find(aln->core.tid) != done_targets_.end()) {
-        throw runtime_error(targets_[aln->core.tid] + " already process, BAM appears to not be coordinate sorted");
+        throw runtime_error(targets_[aln->core.tid] + " already processed, BAM appears to not be coordinate sorted");
     }
     done_targets_.insert(aln->core.tid);
 }
