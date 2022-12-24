@@ -134,7 +134,7 @@ testFake10abMerge: mkout
 ##
 # ONT tests
 ##
-ontTests: testOnt1 testOntIndel testOntSkipTargets
+ontTests: testOnt1 testOntIndel testOntSkipTargets testOntOutOfOrderTargets
 
 testOnt1: mkout
 	${intronProspector} --junction-bed=output/$@.juncs.bed --intron-bed=output/$@.introns.bed --intron-calls=output/$@.introns.tsv --pass-through=output/$@.sam ${ont_sam}
@@ -148,6 +148,10 @@ testOntIndel: mkout
 testOntSkipTargets: mkout
 	${intronProspector} --allow-anchor-indels --junction-bed=output/$@.juncs.bed --intron-bed=output/$@.introns.bed --intron-calls=output/$@.introns.tsv input/ont-skip-targets.sam
 	${diff_out}
+
+testOntOutOfOrderTargets: mkout
+	${intronProspector} --allow-anchor-indels input/ont-out-of-order-targets.sam > output/$@.err 2>&1 || true
+	${diff} expected/$@.err output/$@.err
 
 ###
 # other rules

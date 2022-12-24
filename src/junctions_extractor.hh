@@ -114,7 +114,7 @@ private:
     bool set_TS_strand_tag_;
 
     // checking for not sorted
-    set<int> done_targets_;
+    int previous_target_;
 
     // alignment buffer, used to handle one level of read-ahead
     bam1_t *aln_buf_;
@@ -189,6 +189,7 @@ public:
         skip_missing_targets_(skip_missing_targets),
         set_XS_strand_tag_(set_XS_strand_tag),
         set_TS_strand_tag_(set_TS_strand_tag),
+        previous_target_(-1),
         aln_buf_(NULL),
         aln_pending_(false),
         ijunc_(0),
