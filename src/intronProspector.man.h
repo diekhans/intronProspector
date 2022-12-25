@@ -58,7 +58,7 @@
 "  don’t count towards the meeting the anchor size threshold. The default\n"
 "  is don’t allow indels. .\n"
 "\n"
-"-m INT,  --max-anchor-indel-size INT\n"
+"-m INT,  --max-anchor-indel-size=INT\n"
 "\n"
 "  Maximum size of any contiguous indel in an anchor if indels are\n"
 "  allowed in anchors. Exceeding this length discards the intron. The\n"
