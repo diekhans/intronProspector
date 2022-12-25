@@ -656,10 +656,21 @@ bam1_t* JunctionsExtractor::read_align() {
     }
 }
 
-// check if an chrom has already been processed, indicating an unsorted BAM
-void JunctionsExtractor::check_new_target(bam1_t *aln) {
-    if (aln->core.tid < previous_target_) {
-        throw runtime_error("BAM appears to not be coordinate sorted");
+// process an alignment, return false if not on this target
+bool JunctionsExtractor::process_target_alignment(int target_index,
+                                                  bam1_t *aln) {
+    if (aln->core.tid != target_index) {
+        if ((aln->core.tid >= 0) and (aln->core.tid < previous_target_)) {
+            throw runtime_error("BAM appears to not be coordinate sorted");
+        }
+        aln_pending_ = true;
+        return false;
+    } else {
+        process_alignment(aln);
+        if (out_sam_ != NULL) {
+            write_pass_through(aln, in_header_, out_sam_);
+        }
+        return true;
     }
 }
 
@@ -667,15 +678,8 @@ void JunctionsExtractor::check_new_target(bam1_t *aln) {
 void JunctionsExtractor::identify_junctions_for_target(int target_index) {
     bam1_t *aln;
     while((aln = read_align()) != NULL) {
-        if (aln->core.tid != target_index) {
-            aln_pending_ = true;
-            check_new_target(aln);
+        if (not process_target_alignment(target_index, aln)) {
             break;
-        } else {
-            process_alignment(aln);
-            if (out_sam_ != NULL) {
-                write_pass_through(aln, in_header_, out_sam_);
-            }
         }
     }
     previous_target_ = target_index;

@@ -162,7 +162,8 @@ private:
                             hts_pos_t intron_start, hts_pos_t intron_end);
 
     bam1_t* read_align();
-    void check_new_target(bam1_t *aln);
+    bool process_target_alignment(int target_index,
+                                  bam1_t *aln);
 
     JunctionsExtractor() {
         assert(false); // Default constructor not allowed
