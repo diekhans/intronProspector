@@ -48,6 +48,14 @@ static const char *usage_msg =
 // Usage statement for this tool
 static void usage() {
     cerr << usage_msg;
+    exit(0);
+}
+
+// error and reference to -h
+static void cmd_error(const string& msg) {
+    cerr << "Error: "  << msg << endl;
+    cerr << "Use --help to get usage" << endl;
+    exit(1);
 }
 
 // Parse command line
@@ -87,22 +95,17 @@ class CmdParser {
                     break;
                 case 'h':
                     usage();
-                    exit(0);
                 case 'v':
                     cerr << PACKAGE_NAME << " " << PACKAGE_VERSION << " " << PACKAGE_URL << endl;
                     exit(0);
                 case '?':
                 default:
-                    cerr << "Error: invalid option" << endl;
-                    usage();
-                    exit(1);
+                    cmd_error("invalid option");
             }
         }
 
         if (argc - optind < 1) {
-            cerr << "Error: a least one input call TSV required" << endl << endl;
-            usage();
-            exit(1);
+            cmd_error("a least one input call TSV required");
         }
         while (optind < argc) {
             input_calls_tsvs.push_back(string(argv[optind++]));
@@ -186,8 +189,7 @@ int main(int argc, char *argv[]) {
     try {
         intron_prospector_merge(opts);
     } catch (const std::exception& e) {
-        cerr << "Error: " << e.what() << '\n';
-        exit(1);
+        cmd_error(e.what());
     }
     return 0;
 }

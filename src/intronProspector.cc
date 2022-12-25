@@ -55,6 +55,14 @@ static const char *usage_msg =
 // Usage statement for this tool
 static void usage() {
     cerr << usage_msg;
+    exit(0);
+}
+
+// error and reference to -h
+static void cmd_error(const string& msg) {
+    cerr << "Error: "  << msg << endl;
+    cerr << "Use --help to get usage" << endl;
+    exit(1);
 }
 
 // convert a specification for strandness to constant.
@@ -222,15 +230,12 @@ class CmdParser {
                     break;
                 case 'h':
                     usage();
-                    exit(0);
                 case 'v':
                     cerr << PACKAGE_NAME << " " << PACKAGE_VERSION << " " << PACKAGE_URL << endl;
                     exit(0);
                 case '?':
                 default:
-                    cerr << "Error: invalid option" << endl;
-                    usage();
-                    exit(1);
+                    cmd_error("invalid option");
             }
         }
 
@@ -240,17 +245,14 @@ class CmdParser {
         }
 
         if (argc - optind > 1) {
-            cerr << "Error: too many positional arguments" << endl << endl;
-            usage();
-            exit(1);
+            cmd_error("too many positional arguments");
         }
         if (argc - optind == 1) {
             bam_file = string(argv[optind++]);
         }
         if ((set_XS_strand_tag or set_TS_strand_tag)
             and ((bam_pass_through.size() == 0) or (genome_fa.size() == 0))) {
-            cerr << "Error: --set-XS-strand-tag and --set-TS-strand-tag require --pass-through and --genome-fasta" << endl;
-            exit(1);
+            cmd_error("--set-XS-strand-tag and --set-TS-strand-tag require --pass-through and --genome-fasta");
         }
     }
 };
@@ -327,8 +329,7 @@ int main(int argc, char *argv[]) {
     try {
         extract_junctions(opts);
     } catch (const std::exception& e) {
-        cerr << "Error: " << e.what() << '\n';
-        exit(1);
+        cmd_error(e.what());
     }
     return 0;
 }
