@@ -259,7 +259,7 @@ class ReadJunctionExtractor {
         target_pos_ += len;
     }
 
-    // op: =,M,X
+    // op: = M,X
     void enter_aligned(char op, uint32_t len) {
         // aligned region, becomes part of an anchor
         if (state_ == IN_LIMBO) {
