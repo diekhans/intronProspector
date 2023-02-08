@@ -16,3 +16,5 @@ Test cases:
     reuse.  The STAR junctions and regtools calls are also included for
     debugging.
 
+
+ -  ont reads from LRGASP aligned to GRCh38

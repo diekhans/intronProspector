@@ -34,6 +34,7 @@ DEALINGS IN THE SOFTWARE.  */
 #include <algorithm>
 #include <fstream>
 #include "junctions_extractor.hh"
+#include "strconvert.hh"
 #include "genome.hh"
 #include "version.hh"
 
@@ -42,6 +43,8 @@ using namespace std;
 static const uint32_t DEFAULT_MIN_ANCHOR_LENGTH = 8;
 static const uint32_t DEFAULT_MIN_INTRON_LENGTH = 70;
 static const uint32_t DEFAULT_MAX_INTRON_LENGTH = 500000;
+static const bool DEFAULT_ALLOW_ANCHOR_INDELS = false;
+static const uint32_t DEFAULT_MAX_ANCHOR_INDEL_SIZE = 36;
 static const float DEFAULT_MIN_CONFIDENCE_SCORE = 0.0;
 static const Strandness DEFAULT_STRANDED = UNSTRANDED;
 
@@ -52,6 +55,14 @@ static const char *usage_msg =
 // Usage statement for this tool
 static void usage() {
     cerr << usage_msg;
+    exit(0);
+}
+
+// error and reference to -h
+static void cmd_error(const string& msg) {
+    cerr << "Error: "  << msg << endl;
+    cerr << "Use --help to get usage" << endl;
+    exit(1);
 }
 
 // convert a specification for strandness to constant.
@@ -82,6 +93,9 @@ static unsigned parse_exclude_cat(const string &cat) {
     }
 }
 
+// parse a range in the form chr:start-end, zero based, half-open
+
+
 // Parse command line
 class CmdParser {
     public:
@@ -90,6 +104,8 @@ class CmdParser {
     uint32_t min_anchor_length;
     uint32_t min_intron_length;
     uint32_t max_intron_length;
+    bool allow_anchor_indels;
+    uint32_t max_anchor_indel_size;
     float min_confidence_score;
     Strandness strandness;
     unsigned excludes;
@@ -101,7 +117,6 @@ class CmdParser {
     string intron_bed;
     string intron_call_tsv;
     string bam_pass_through;
-    bool map_to_ucsc;
     string debug_trace_tsv;
     bool set_XS_strand_tag;
     bool set_TS_strand_tag;
@@ -111,14 +126,26 @@ class CmdParser {
         min_anchor_length(DEFAULT_MIN_ANCHOR_LENGTH),
         min_intron_length(DEFAULT_MIN_INTRON_LENGTH),
         max_intron_length(DEFAULT_MAX_INTRON_LENGTH),
+        allow_anchor_indels(DEFAULT_ALLOW_ANCHOR_INDELS),
+        max_anchor_indel_size(DEFAULT_MAX_ANCHOR_INDEL_SIZE),
         min_confidence_score(DEFAULT_MIN_CONFIDENCE_SCORE),
         strandness(DEFAULT_STRANDED),
         excludes(EXCLUDE_NONE),
         skip_missing_targets(false),
-        map_to_ucsc(false),
         set_XS_strand_tag(false),
         set_TS_strand_tag(false) {
 
+        try {
+            parse_cmd_args(argc, argv);
+        } catch (const std::exception& ex) {
+            cerr << "Error parsing command line: " << ex.what() << endl;
+            exit(1);
+        }
+    }
+
+
+    private:
+    void parse_cmd_args(int argc, char *argv[]) {
         // definitions for long-only options
         static const int OPT_SET_XS_STRAND_TAG = 256;
         static const int OPT_SET_TS_STRAND_TAG = 257;
@@ -129,6 +156,8 @@ class CmdParser {
             {"min-anchor-length", required_argument, NULL, 'a'},
             {"min-intron_length", required_argument, NULL, 'i'},
             {"max-intron_length", required_argument, NULL, 'I'},
+            {"allow-anchor-indels", no_argument, NULL, 'd'},
+            {"max-anchor-indel-size", required_argument, NULL, 'm'},
             {"min-confidence-score", required_argument, NULL, 'C'},
             {"strandness", required_argument, NULL, 's'},
             {"excludes", required_argument, NULL, 'X'},
@@ -138,7 +167,6 @@ class CmdParser {
             {"intron-bed", required_argument, NULL, 'n'},
             {"intron-calls", required_argument, NULL, 'c'},
             {"pass-through", required_argument, NULL, 'p'},
-            {"map-to-ucsc", no_argument, NULL, 'U'},
             {"debug-trace", required_argument, NULL, 'D'},
             {"set-XS-strand-tag", no_argument, NULL, OPT_SET_XS_STRAND_TAG},
             {"set-TS-strand-tag", no_argument, NULL, OPT_SET_TS_STRAND_TAG},
@@ -152,14 +180,20 @@ class CmdParser {
                 case 'a':
                     min_anchor_length = atoi(optarg);
                     break;
+                case 'd':
+                    allow_anchor_indels = true;
+                    break;
+                case 'm':
+                    max_anchor_indel_size = toUnsigned(optarg);
+                    break;
                 case 'i':
-                    min_intron_length = atoi(optarg);
+                    min_intron_length = toUnsigned(optarg);
                     break;
                 case 'I':
-                    max_intron_length = atoi(optarg);
+                    max_intron_length = toUnsigned(optarg);
                     break;
                 case 'C':
-                    min_confidence_score = strtod(optarg, NULL);
+                    min_confidence_score = toFloat(optarg);
                     break;
                 case 's':
                     strandness = str_to_strandness(optarg);
@@ -185,9 +219,6 @@ class CmdParser {
                 case 'p':
                     bam_pass_through = optarg;
                     break;
-                case 'U':
-                    map_to_ucsc = true;
-                    break;
                 case 'D':
                     debug_trace_tsv = optarg;
                     break;
@@ -199,30 +230,29 @@ class CmdParser {
                     break;
                 case 'h':
                     usage();
-                    exit(0);
                 case 'v':
                     cerr << PACKAGE_NAME << " " << PACKAGE_VERSION << " " << PACKAGE_URL << endl;
                     exit(0);
                 case '?':
                 default:
-                    cerr << "Error: invalid option" << endl;
-                    usage();
-                    exit(1);
+                    cmd_error("invalid option");
             }
         }
 
+        // if indels are not allowed, also indicate this my setting max size
+        if (not allow_anchor_indels) {
+            max_anchor_indel_size = 0;
+        }
+
         if (argc - optind > 1) {
-            cerr << "Error: too many positional arguments" << endl << endl;
-            usage();
-            exit(1);
+            cmd_error("too many positional arguments");
         }
         if (argc - optind == 1) {
             bam_file = string(argv[optind++]);
         }
         if ((set_XS_strand_tag or set_TS_strand_tag)
             and ((bam_pass_through.size() == 0) or (genome_fa.size() == 0))) {
-            cerr << "Error: --set-XS-strand-tag and --set-TS-strand-tag require --pass-through and --genome-fasta" << endl;
-            exit(1);
+            cmd_error("--set-XS-strand-tag and --set-TS-strand-tag require --pass-through and --genome-fasta");
         }
     }
 };
@@ -230,34 +260,48 @@ class CmdParser {
 
 static void output_junctions_for_target(JunctionsExtractor& extractor,
                                          float min_confidence_score,
-                                         bool map_to_ucsc,
                                          ostream* junction_bed_fh,
                                          ostream* intron_bed_fh,
                                          ostream* intron_call_fh) {
     JunctionVector juncs = extractor.get_junctions();
     if (junction_bed_fh != NULL) {
         juncs.sort_by_anchors();
-        print_anchor_bed(juncs, min_confidence_score, map_to_ucsc, *junction_bed_fh);
+        print_anchor_bed(juncs, min_confidence_score, *junction_bed_fh);
     }
     if ((intron_bed_fh != NULL) or (intron_call_fh != NULL)) {
         juncs.sort_by_introns();
         if (intron_bed_fh != NULL) {
-            print_intron_bed(juncs, min_confidence_score, map_to_ucsc, *intron_bed_fh);
+            print_intron_bed(juncs, min_confidence_score, *intron_bed_fh);
         }
         if (intron_call_fh != NULL) {
-            print_intron_call_tsv(juncs, min_confidence_score, map_to_ucsc, *intron_call_fh);
+            print_intron_call_tsv(juncs, min_confidence_score, *intron_call_fh);
         }
     }
 }
 
-
+/* extract junctions for the whole BAM */
+static void serial_extract_junctions(JunctionsExtractor& extractor,
+                                     float min_confidence_score,
+                                     ostream* junction_bed_fh,
+                                     ostream* intron_bed_fh,
+                                     ostream* intron_call_fh) {
+    for (int target_index = 0; target_index < extractor.get_num_targets(); target_index++) {
+        extractor.identify_junctions_for_target(target_index);
+        output_junctions_for_target(extractor, min_confidence_score,
+                                    junction_bed_fh, intron_bed_fh, intron_call_fh);
+        extractor.clear();
+    }
+    extractor.copy_unaligned_reads();
+}
+                                
 static void extract_junctions(CmdParser &opts) {
     Genome *genome = NULL;
     if (opts.genome_fa.size() > 0) {
         genome = new Genome(opts.genome_fa);
     }
     ofstream *trace_fh = opts.debug_trace_tsv.size() > 0 ? new ofstream(opts.debug_trace_tsv.c_str()) :  NULL;
-    JunctionsExtractor extractor(opts.min_anchor_length, opts.min_intron_length, opts.max_intron_length,
+    JunctionsExtractor extractor(opts.min_anchor_length, opts.max_anchor_indel_size,
+                                 opts.min_intron_length, opts.max_intron_length,
                                  opts.strandness, opts.excludes, genome,
                                  opts.skip_missing_targets,
                                  opts.set_XS_strand_tag, opts.set_TS_strand_tag,
@@ -269,13 +313,9 @@ static void extract_junctions(CmdParser &opts) {
     if (intron_call_fh != NULL) {
         print_junction_call_header(*intron_call_fh);
     }
-    for (int target_index = 0; target_index < extractor.get_num_targets(); target_index++) {
-        extractor.identify_junctions_for_target(target_index);
-        output_junctions_for_target(extractor, opts.min_confidence_score, opts.map_to_ucsc,
-                                    junction_bed_fh, intron_bed_fh, intron_call_fh);
-        extractor.clear();
-    }
-    extractor.copy_unaligned_reads();
+    serial_extract_junctions(extractor, opts.min_confidence_score,
+                             junction_bed_fh, intron_bed_fh, intron_call_fh);
+
     delete junction_bed_fh;
     delete intron_bed_fh;
     delete intron_call_fh;
@@ -289,8 +329,7 @@ int main(int argc, char *argv[]) {
     try {
         extract_junctions(opts);
     } catch (const std::exception& e) {
-        cerr << "Error: " << e.what() << '\n';
-        exit(1);
+        cmd_error(e.what());
     }
     return 0;
 }

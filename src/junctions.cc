@@ -161,18 +161,6 @@ static unsigned read_count_to_bed_score(uint64_t read_count) {
     return (read_count <= 1000) ? read_count : 1000;
 }
 
-// naive mapping to ucsc chrom name
-static const string make_ucsc_chrom(const string& chrom) {
-    if ((chrom.find_first_not_of("0123456789") == std::string::npos)
-        || (chrom == "X") || (chrom == "Y")) {
-        return string("chr") + chrom;
-    } else if (chrom == "MT") {
-        return "chrM";
-    } else {
-        return chrom;
-    }
-}
-
 // color-code to use for splice-sites
 static const string& getBedColor(const string& splice_sites) {
     static const string NO_INFO_COLOR = "64,128,64";
@@ -196,14 +184,8 @@ static const string& getBedColor(const string& splice_sites) {
 
 // Print BED with anchors as blocks and intron as gap.  ijunc is used to
 // make the BED name.
-void Junction::print_anchor_bed(bool map_to_ucsc,
-                                ostream& out) const {
-    if (map_to_ucsc) {
-        out << make_ucsc_chrom(chrom);
-    } else {
-        out << chrom;
-    }        
-    out << "\t" << anchor_start << "\t" << anchor_end
+void Junction::print_anchor_bed(ostream& out) const {
+    out << chrom << "\t" << anchor_start << "\t" << anchor_end
         << "\t" << "sj" << ijunc;
     if (splice_sites != "") {
         out << '_' << splice_sites;
@@ -217,14 +199,8 @@ void Junction::print_anchor_bed(bool map_to_ucsc,
 
 // Print BED with intron as block  ijunc is used to
 // make the BED name.
-void Junction::print_intron_bed(bool map_to_ucsc,
-                                ostream& out) const {
-    if (map_to_ucsc) {
-        out << make_ucsc_chrom(chrom);
-    } else {
-        out << chrom;
-    }        
-    out << "\t" << intron_start << "\t" << intron_end
+void Junction::print_intron_bed(ostream& out) const {
+    out << chrom << "\t" << intron_start << "\t" << intron_end
         << "\t" << "sj" << ijunc;
     if (splice_sites != "") {
         out << '_' << splice_sites;
@@ -234,14 +210,8 @@ void Junction::print_intron_bed(bool map_to_ucsc,
 }
 
 // Print row to junction call TSV
-void Junction::print_junction_call_row(bool map_to_ucsc,
-                                       ostream& out) const {
-    if (map_to_ucsc) {
-        out << make_ucsc_chrom(chrom);
-    } else {
-        out << chrom;
-    }        
-    out << "\t" << intron_start << "\t" << intron_end << "\t" << strand
+void Junction::print_junction_call_row(ostream& out) const {
+    out << chrom << "\t" << intron_start << "\t" << intron_end << "\t" << strand
         << "\t" << read_counts[SINGLE_MAPPED_READ] << "\t" << read_counts[MULTI_MAPPED_READ] << "\t" << read_counts[UNSURE_READ]
         << "\t" << intron_start - anchor_start << "\t" << anchor_end - intron_end
         << "\t" << get_confidence() << "\t" << splice_sites << "\tsj" << ijunc << endl;
@@ -250,11 +220,10 @@ void Junction::print_junction_call_row(bool map_to_ucsc,
 // Print BED with anchors as blocks and intron as gap.
 void print_anchor_bed(const JunctionVector& juncs,
                       float min_confidence_score,
-                      bool map_to_ucsc,
                       ostream& out) {
     for (unsigned i = 0; i < juncs.size(); i++) {
         if (juncs[i]->get_confidence() >= min_confidence_score) {
-            juncs[i]->print_anchor_bed(map_to_ucsc, out);
+            juncs[i]->print_anchor_bed(out);
         }
     }
 }
@@ -262,11 +231,10 @@ void print_anchor_bed(const JunctionVector& juncs,
 // Print BED with intron as block
 void print_intron_bed(const JunctionVector& juncs,
                       float min_confidence_score,
-                      bool map_to_ucsc,
                       ostream& out) {
     for (unsigned i = 0; i < juncs.size(); i++) {
         if (juncs[i]->get_confidence() >= min_confidence_score) {
-            juncs[i]->print_intron_bed(map_to_ucsc, out);
+            juncs[i]->print_intron_bed(out);
         }
     }
 }
@@ -282,12 +250,11 @@ void print_junction_call_header(ostream& out) {
 // Print TSV with intron information
 void print_intron_call_tsv(const JunctionVector& juncs,
                            float min_confidence_score,
-                           bool map_to_ucsc,
                            ostream& out) {
     out.precision(3);
     for (unsigned i = 0; i < juncs.size(); i++) {
         if (juncs[i]->get_confidence() >= min_confidence_score) {
-            juncs[i]->print_junction_call_row(map_to_ucsc, out);
+            juncs[i]->print_junction_call_row(out);
         }
     }
 }

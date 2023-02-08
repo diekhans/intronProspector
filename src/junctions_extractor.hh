@@ -75,10 +75,16 @@ private:
     // Junctions need atleast this many bp overlap
     // on both ends.  Mismatch bases are not included in the count.
     uint32_t min_anchor_length_;
+
+    // maximum size of a non-intron indel to allow in an anchor.  Normally zero for short reads.
+    uint32_t max_anchor_indel_size_;
+    
     // Minimum length of an intron, i.e min junction width
     uint32_t min_intron_length_;
+
     // Maximum length of an intron, i.e max junction width
     uint32_t max_intron_length_;
+
     //strandness of data; 0 = unstranded, 1 = RF, 2 = FR
     Strandness strandness_;
 
@@ -108,7 +114,7 @@ private:
     bool set_TS_strand_tag_;
 
     // checking for not sorted
-    set<int> done_targets_;
+    int previous_target_;
 
     // alignment buffer, used to handle one level of read-ahead
     bam1_t *aln_buf_;
@@ -127,11 +133,10 @@ private:
     
     // internal functions
     void save_targets(bam_hdr_t *header);
-    bool junction_qc(bam1_t *aln, uint32_t anchor_start, uint32_t intron_start,
-                     uint32_t intron_end, uint32_t anchor_end,
-                     uint32_t left_mismatch_cnt, uint32_t right_mismatch_cnt);
-    void parse_alignment_into_junctions(bam1_t *aln,
-                                        int *orientCnt);
+    bool junction_qc(bam1_t *aln, hts_pos_t anchor_start, hts_pos_t intron_start,
+                     hts_pos_t intron_end, hts_pos_t anchor_end,
+                     uint32_t left_mismatch_cnt, uint32_t right_mismatch_cnt,
+                     uint32_t left_indel_cnt, uint32_t right_indel_cnt);
     void process_alignment(bam1_t *aln);
     void write_pass_through(bam1_t *aln,
                             bam_hdr_t *in_header,
@@ -139,42 +144,33 @@ private:
     
     Junction *create_junction(bam1_t *aln, const JunctionKey &key,
                               const string& chrom, char strand,
-                              uint32_t anchor_start, uint32_t intron_start,
-                              uint32_t intron_end, uint32_t anchor_end);
+                              hts_pos_t anchor_start, hts_pos_t intron_start,
+                              hts_pos_t intron_end, hts_pos_t anchor_end);
     Junction *update_junction(bam1_t *aln, const JunctionKey &key,
                               const string& chrom, char strand,
-                              uint32_t anchor_start, uint32_t intron_start,
-                              uint32_t intron_end, uint32_t anchor_end);
+                              hts_pos_t anchor_start, hts_pos_t intron_start,
+                              hts_pos_t intron_end, hts_pos_t anchor_end);
     Junction *add_junction(bam1_t *aln, const string& chrom, char strand,
-                           uint32_t anchor_start, uint32_t intron_start, 
-                           uint32_t intron_end, uint32_t anchor_end);
-    void update_strand_tag(const char* tag, char valType, int orientCnt, bam1_t *aln);
-    void process_junction(bam1_t *aln, const string& chrom, char strand,
-                          uint32_t anchor_start, uint32_t intron_start,
-                          uint32_t intron_end, uint32_t anchor_end,
-                          uint32_t left_mismatch_cnt, uint32_t right_mismatch_cnt,
-                          int *orientCnt);
+                           hts_pos_t anchor_start, hts_pos_t intron_start, 
+                           hts_pos_t intron_end, hts_pos_t anchor_end);
     char get_junction_strand_XS(bam1_t *aln);
     char get_junction_strand_flag(bam1_t *aln);
-    char get_junction_strand(bam1_t *aln);
-    int get_num_aligns(bam1_t *aln);
-    ReadCategory get_category_from_tag(bam1_t *aln);
-    ReadCategory get_read_category(bam1_t *aln);
     samFile* open_pass_through(samFile *in_sam,
                                bam_hdr_t *in_header,
                                const string& bam_pass_through);
-    bool is_canonical(const string& junctions);
     string get_splice_sites(const string& chrom, char strand,
-                            uint32_t intron_start, uint32_t intron_end);
+                            hts_pos_t intron_start, hts_pos_t intron_end);
 
     bam1_t* read_align();
-    void check_new_target(bam1_t *aln);
+    bool process_target_alignment(int target_index,
+                                  bam1_t *aln);
 
     JunctionsExtractor() {
         assert(false); // Default constructor not allowed
     }
 public:
     JunctionsExtractor(uint32_t min_anchor_length,
+                       uint32_t max_anchor_indel_size,
                        uint32_t min_intron_length,
                        uint32_t max_intron_length,
                        Strandness strandness,
@@ -185,6 +181,7 @@ public:
                        bool set_TS_strand_tag,
                        ostream *trace_fh):
         min_anchor_length_(min_anchor_length),
+        max_anchor_indel_size_(max_anchor_indel_size),
         min_intron_length_(min_intron_length),
         max_intron_length_(max_intron_length),
         strandness_(strandness),
@@ -193,6 +190,7 @@ public:
         skip_missing_targets_(skip_missing_targets),
         set_XS_strand_tag_(set_XS_strand_tag),
         set_TS_strand_tag_(set_TS_strand_tag),
+        previous_target_(-1),
         aln_buf_(NULL),
         aln_pending_(false),
         ijunc_(0),
@@ -203,6 +201,17 @@ public:
     }
 
     ~JunctionsExtractor();
+
+    // Get the strand
+    char get_junction_strand(bam1_t *aln);
+
+    // Validate a junction and save if it passes.
+    void record_junction(bam1_t *aln, const string& chrom, char strand,
+                         hts_pos_t anchor_start, hts_pos_t intron_start,
+                         hts_pos_t intron_end, hts_pos_t anchor_end,
+                         uint32_t left_mismatch_cnt, uint32_t right_mismatch_cnt,
+                         uint32_t left_indel_cnt, uint32_t right_indel_cnt,
+                         int *orientCnt);
 
     // free junctions found so far
     void clear() {

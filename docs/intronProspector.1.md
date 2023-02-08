@@ -38,6 +38,14 @@ Options
 
 > Maximum intron length. The default is 500000 bases.
 
+`-d,  --allow-anchor-indels`
+
+> Are indels allowed in anchors?  Useful for ONT reads.  Indels bases don't count towards the meeting the anchor size threshold.  The default is don't allow indels. .
+
+`-m INT,  --max-anchor-indel-size=INT`
+
+> Maximum size of any contiguous indel in an anchor if indels are allowed in anchors.  Exceeding this length discards the intron.  The default is 36.
+
 `-C FLOAT, --min-confidence-score=FLOAT`
 
 > Calculate the Shannon-Wiener Diversity Index to use as a confidence score and discard intron calls below this value.  The default is 0.0, which discards no calls. A value of 1.0 is a good threshold for filtering. This methodology it taken from JuncBASE DOI: 10.1101/gr.108662.110.
@@ -53,10 +61,6 @@ Options
 `-S, --skip-missing-targets`
 
 > Skip getting splice junctions when target sequence is missing in genome FASTA rather than generate an error and stop.
-
-`-U, --map-to-ucsc`
-
-> Naively generate UCSC chromosome names in TSV and BED files.  This pre-pends `chr` to numeric and X/Y names and change `MT` to `chrMT`, other name are not modified.  This will not produce the correct results for other sequences such as alts, patches, and unmapped sequences.  It does not modify records passed through (-p).
 
 `-c FILE, --intron-calls=FILE`
 
