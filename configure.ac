@@ -1,4 +1,4 @@
-AC_INIT([intronProspector], 1.0.2)
+AC_INIT([intronProspector], 1.0.3)
 PACKAGE_URL='https://github.com/diekhans/intronProspector'
 AC_SUBST([PACKAGE_NAME])
 AC_SUBST([PACKAGE_URL])
@@ -9,7 +9,7 @@ AC_LANG([C++])
 # coded it.
 AC_ARG_WITH([htslib],
   [AS_HELP_STRING([--with-htslib=DIR],
-    [use the HTSlib source tree or installation in DIR. ])], [])
+    [use the HTSlib source tree or installation in DIR.])], [])
 
 AC_PROG_CC()
 AC_PROG_CXX()
@@ -74,6 +74,6 @@ AC_SUBST([CPPFLAGS])
 AC_SUBST([LDFLAGS])
 AC_SUBST([LIBS])
    
-AC_CONFIG_FILES([Makefile src/Makefile tests/Makefile])
+AC_CONFIG_FILES([Makefile src/Makefile tests/Makefile src/version.hh])
 
 AC_OUTPUT
