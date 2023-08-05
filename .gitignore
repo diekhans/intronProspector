@@ -41,3 +41,5 @@ autom4te.cache
 # unique to this tree or markd
 .emacs.bak
 
+# generated file
+src/version.hh
