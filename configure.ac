@@ -11,6 +11,15 @@ AC_ARG_WITH([htslib],
   [AS_HELP_STRING([--with-htslib=DIR],
     [use the HTSlib source tree or installation in DIR.])], [])
 
+AC_ARG_ENABLE([static-link],
+              [AS_HELP_STRING([--enable-static-link],
+                              [Link the program statically])],
+              [case "${enableval}" in
+               yes) static_link=true ;;
+               no)  static_link=false ;;
+               *) AC_MSG_ERROR([bad value ${enableval} for --enable-static-link]) ;;
+               esac],
+              [static_link=false])
 AC_PROG_CC()
 AC_PROG_CXX()
 
@@ -63,6 +72,10 @@ if test "${hts_incl_found}" != "yes"  ; then
 fi
 if test "${hts_lib_found}" != "yes" ; then
     AC_MSG_ERROR([HTSlib library not found, use --with-htslib=DIR to select which HTSlib to use])
+fi
+
+if test x$static_link = xtrue; then
+    LDFLAGS="$LDFLAGS -static"
 fi
 
 
