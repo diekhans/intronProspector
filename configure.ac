@@ -27,6 +27,9 @@ AC_MSG_NOTICE([checking for location of HTSlib include and library])
 hts_incl_found=no
 hts_lib_found=no
 if test x"${with_htslib}" != "x" ; then
+   if test "${with_htslib}" = "yes" ; then
+       AC_MSG_ERROR([It appears that --with-htslib was supplied without an argument, please use --with-htslib=DIR])
+   fi
    # explicit location
    hts_saved_CPPFLAGS=${CPPFLAGS}
    # try source tree layout
