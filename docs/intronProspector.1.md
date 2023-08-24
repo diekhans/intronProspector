@@ -15,6 +15,10 @@ Find putative intron junctions in a RNA-Seq alignment. The *readaligns* file may
 
 This program allows for integrating splice junction calling into an alignment pipeline.  Pass-through mode copys the alignment file on `stdin` to `stdout`.  It can then sit between an aligner outputting SAM and `samtools` that converts to BAM/CRAM.
 
+Both short-read (Illumina) and long-read RNA-Seq can be process.  For
+short-reads, it is recommended to use `--min-confidence-score=1.0`.  Introns
+are as determined by the aligner and indicated in the BAM by `N` operations.
+
 Options
 -------
 
