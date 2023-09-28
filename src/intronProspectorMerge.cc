@@ -63,6 +63,7 @@ class CmdParser {
     public:
     // input
     vector<string> input_calls_tsvs;
+    string intron_calls_files;
 
     // output
     string junction_bed;
@@ -74,16 +75,20 @@ class CmdParser {
         struct option long_options[] = {
             {"help", no_argument, NULL, 'h'},
             {"version", no_argument, NULL, 'v'},
+            {"intron-calls-files", required_argument, NULL, 'i'},
             {"junction-bed", required_argument, NULL, 'j'},
             {"intron-bed", required_argument, NULL, 'n'},
             {"intron-calls", required_argument, NULL, 'c'},
             {NULL, 0, NULL, 0}
         };
             
-        const char *short_options = "hvj:n:c:U";
+        const char *short_options = "hvi:j:n:c:U";
         int c;
         while ((c = getopt_long(argc, argv, short_options, long_options, NULL)) != -1) {
             switch (c) {
+                case 'i':
+                    intron_calls_files = optarg;
+                    break;
                 case 'j':
                     junction_bed = optarg;
                     break;
@@ -104,12 +109,24 @@ class CmdParser {
             }
         }
 
-        if (argc - optind < 1) {
-            cmd_error("a least one input call TSV required");
-        }
         while (optind < argc) {
             input_calls_tsvs.push_back(string(argv[optind++]));
         }
+        if (intron_calls_files.size() > 0) {
+            read_input_call_list(intron_calls_files);
+        }
+        if (input_calls_tsvs.size() == 0) {
+            cmd_error("a least one input call TSV required on the command list or with the --intron_call_files (-i) option");
+        }
+    }
+
+    void read_input_call_list(const string& intron_calls_files) {
+        ifstream infh(intron_calls_files);
+        string line;
+        while (getline(infh, line)) {
+            input_calls_tsvs.push_back(line);
+        }
+        infh.close();
     }
 };
 

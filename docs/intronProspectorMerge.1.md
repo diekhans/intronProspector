@@ -6,7 +6,7 @@ NAME
 SYNOPSIS
 ========
 
-`intronProspectorMerge [options] intronCallsTsv ...`
+`intronProspectorMerge [options] [intronCallsTsv ...]`
 
 DESCRIPTION
 ===========
@@ -24,6 +24,10 @@ Options
 `-v, --version`
 
 > Prints the current version number.
+
+`-i FILE, --intron-calls-files=FILE`
+
+> File containing a list input intron calls files, one file per line'
 
 `-c FILE, --intron-calls=FILE`
 

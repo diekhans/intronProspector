@@ -1,4 +1,4 @@
-AC_INIT([intronProspector], 1.0.3)
+AC_INIT([intronProspector], 1.1.0)
 PACKAGE_URL='https://github.com/diekhans/intronProspector'
 AC_SUBST([PACKAGE_NAME])
 AC_SUBST([PACKAGE_URL])
