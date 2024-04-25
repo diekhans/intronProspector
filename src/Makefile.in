@@ -53,7 +53,7 @@ distclean: clean
 .PHONY: doc
 doc:  intronProspector.man.h intronProspectorMerge.man.h
 
-%.man.h: ../docs/%.1.md
+%.man.h: ../docs/%.1.md mkManHelp.awk
 	pandoc -f markdown -t plain  $< >$@.txt.tmp
 	awk -f mkManHelp.awk $@.txt.tmp > $@.tmp
 	mv $@.tmp $@
