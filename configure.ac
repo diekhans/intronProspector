@@ -1,15 +1,24 @@
 AC_INIT([intronProspector], 1.1.0)
+
+##
+# rebuild with:
+#   autoreconf
+#   autoconf
+# requires autoconf-archive
+##
+
 PACKAGE_URL='https://github.com/diekhans/intronProspector'
 AC_SUBST([PACKAGE_NAME])
 AC_SUBST([PACKAGE_URL])
 AC_SUBST([PACKAGE_VERSION])
 AC_LANG([C++])
+AC_PATH_PROG([PKG_CONFIG], [pkg-config], [no])
 
 # Could not get ax_with_htslib.m4 from autoconf archive to work, so just hand
 # coded it.
 AC_ARG_WITH([htslib],
   [AS_HELP_STRING([--with-htslib=DIR],
-    [use the HTSlib source tree or installation in DIR.])], [])
+    [use htlib installed in DIR (not the source tree), otherwise pkgconfig is check])], [])
 
 AC_ARG_ENABLE([static-link],
               [AS_HELP_STRING([--enable-static-link],
@@ -23,68 +32,49 @@ AC_ARG_ENABLE([static-link],
 AC_PROG_CC()
 AC_PROG_CXX()
 
-AC_MSG_NOTICE([checking for location of HTSlib include and library])
-hts_incl_found=no
-hts_lib_found=no
+# FIXME: some of this is wonky, including using HTSLIB_EXTRA and
+# having to add -rpath.  Need to dig into this
+
+AC_MSG_NOTICE([checking for location of htslib include and library])
+
+HTSLIB_EXTRA="-lcurl -lssl -lcrypt -lbz2 -lz -llzma"
+
 if test x"${with_htslib}" != "x" ; then
+   # --with-htslib=DIR specified
    if test "${with_htslib}" = "yes" ; then
        AC_MSG_ERROR([It appears that --with-htslib was supplied without an argument, please use --with-htslib=DIR])
    fi
-   # explicit location
-   hts_saved_CPPFLAGS=${CPPFLAGS}
-   # try source tree layout
-   HTSLIB_CPPFLAGS="-I${with_htslib}"
-   CPPFLAGS="$CPPFLAGS $HTSLIB_CPPFLAGS"
-   AC_MSG_NOTICE(checking for HTSlib header using $HTSLIB_CPPFLAGS)
+   CPPFLAGS="${CPPFLAGS} -I${with_htslib}/include"
+   AC_MSG_NOTICE(checking for htslib headers using ${CPPFLAGS})
    AC_CHECK_HEADER([htslib/sam.h],
-       [hts_incl_found=yes],
-       [HTSLIB_CPPFLAGS="-I${with_htslib}/include"
-        CPPFLAGS="$CPPFLAGS $HTSLIB_CPPFLAGS"
-        AC_MSG_NOTICE(checking for HTSlib header using $HTSLIB_CPPFLAGS)
-        unset ac_cv_header_htslib_sam_h  # avoid cache
-        AC_CHECK_HEADER([htslib/sam.h],
-            [hts_incl_found=yes])])
-   CPPFLAGS=${hts_saved_CPPFLAGS}
-   # try source tree layout then lib dir
-   hts_saved_LDFLAGS=${LDFLAGS}
-   HTSLIB_LDFLAGS="-L${with_htslib} -Wl,-rpath,${with_htslib} -lhts"
-   LDFLAGS="$LDFLAGS $HTSLIB_LDFLAGS"
-   AC_MSG_NOTICE(checking for HTSlib library using $HTSLIB_LDFLAGS)
+       [AC_MSG_NOTICE([htslib/sam.h found])],
+       [AC_MSG_ERROR([htslib/sam.h not found])])
+
+   ldrpath="-L${with_htslib}/lib -Wl,-rpath,${with_htslib}/lib -Wl,-rpath-link,${with_htslib}/lib"
+   LIBS="${LIBS} ${ldrpath} -lhts ${HTSLIB_EXTRA}"
+   AC_MSG_NOTICE(checking for htslib library using ${LIBS})
    AC_CHECK_LIB(hts, hts_version,
-       [hts_lib_found=yes],
-       [HTSLIB_LDFLAGS="-L${with_htslib}/lib -Wl,-rpath,${with_htslib} -lhts"
-        LDFLAGS="$LDFLAGS $HTSLIB_LDFLAGS"
-        unset ac_cv_lib_hts_hts_version  # avoid cache
-        AC_MSG_NOTICE(checking for HTSlib library using $HTSLIB_LDFLAGS)
-        AC_CHECK_LIB(hts, hts_version,
-            [hts_lib_found=yes])])
-   LDFLAGS=${hts_saved_LDFLAGS}
+      [AC_MSG_NOTICE([-lhts found])],
+      [AC_MSG_ERROR([-lhts not found])])
 else
-   # default location
-   AC_MSG_NOTICE(checking for HTSlib header using standard include directory)
-   AC_CHECK_HEADER([htslib/sam.h],
-        [hts_incl_found=yes])
-   AC_MSG_NOTICE(checking for HTSlib library using standard lib directory)
-   AC_CHECK_LIB(hts, hts_version,
-       [hts_lib_found=yes])
-fi
+    # use pkgconfig
+    PKG_CHECK_MODULES([htslib], [htslib >= 0.20.0],
+        [AC_MSG_RESULT([htslib found])],
+        [AC_MSG_ERROR([pkg-config did not find htslib])])
+    CPPFLAGS="${CPPFLAGS} ${htslib_CFLAGS}"
 
+    # FIXME: with conda get warnings like
+    # ld: warning: libdeflate.so.0, needed by .../lib/libhts.so, not found (try using -rpath or -rpath-link)
 
-if test "${hts_incl_found}" != "yes"  ; then
-    AC_MSG_ERROR([HTSlib includes not found, use --with-htslib=DIR to select which HTSlib to use])
-fi
-if test "${hts_lib_found}" != "yes" ; then
-    AC_MSG_ERROR([HTSlib library not found, use --with-htslib=DIR to select which HTSlib to use])
+    htslibdir=`pkg-config --libs-only-L htslib | sed -e 's/^-L//' -e 's/ *$//'`
+    ldrpath="-Wl,-rpath,${htslibdir} -Wl,-rpath-link,${htslibdir}"
+    LIBS="${LIBS} ${ldrpath} ${htslib_LIBS} ${HTSLIB_EXTRA}"
 fi
 
 if test x$static_link = xtrue; then
     LDFLAGS="$LDFLAGS -static"
 fi
 
-
-CPPFLAGS="${HTSLIB_CPPFLAGS} ${CPPFLAGS}"
-LDFLAGS="${HTSLIB_LDFLAGS} ${LDFLAGS}"
-LIBS="-lhts -lcurl -lbz2 -lz -llzma"
 AC_SUBST([CXXFLAGS])
 AC_SUBST([CPPFLAGS])
 AC_SUBST([LDFLAGS])

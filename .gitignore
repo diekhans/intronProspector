@@ -43,5 +43,7 @@ autom4te.cache
 
 bin/
 
-# generated file
+# generated files
 src/version.hh
+aclocal.m4
+
