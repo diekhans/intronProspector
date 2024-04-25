@@ -197,16 +197,21 @@ void Junction::print_anchor_bed(ostream& out) const {
         << "\t" << "0," << intron_end - anchor_start << endl;
 }
 
-// Print BED with intron as block  ijunc is used to
+// Print BED with intron as block ijunc is used to
 // make the BED name.
-void Junction::print_intron_bed(ostream& out) const {
+void Junction::print_intron_bed(ostream& out,
+                                int columns) const {
+    assert((columns == 6) || (columns == 9));
     out << chrom << "\t" << intron_start << "\t" << intron_end
         << "\t" << "sj" << ijunc;
     if (splice_sites != "") {
         out << '_' << splice_sites;
     }
-    out << "\t" << read_count_to_bed_score(total_read_count()) << "\t" << strand
-        << "\t" << intron_start << "\t" << intron_end << "\t" << getBedColor(splice_sites) << endl;
+    out << "\t" << read_count_to_bed_score(total_read_count()) << "\t" << strand;
+    if (columns == 9) {
+        out << "\t" << intron_start << "\t" << intron_end << "\t" << getBedColor(splice_sites);
+    }
+    out << endl;
 }
 
 // Print row to junction call TSV
@@ -231,10 +236,11 @@ void print_anchor_bed(const JunctionVector& juncs,
 // Print BED with intron as block
 void print_intron_bed(const JunctionVector& juncs,
                       float min_confidence_score,
+                      int columns,
                       ostream& out) {
     for (unsigned i = 0; i < juncs.size(); i++) {
         if (juncs[i]->get_confidence() >= min_confidence_score) {
-            juncs[i]->print_intron_bed(out);
+            juncs[i]->print_intron_bed(out, columns);
         }
     }
 }

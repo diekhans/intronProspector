@@ -68,6 +68,7 @@ class CmdParser {
     // output
     string junction_bed;
     string intron_bed;
+    string intron_bed6;
     string intron_call_tsv;
 
     CmdParser(int argc, char *argv[]) {
@@ -78,11 +79,12 @@ class CmdParser {
             {"intron-calls-files", required_argument, NULL, 'i'},
             {"junction-bed", required_argument, NULL, 'j'},
             {"intron-bed", required_argument, NULL, 'n'},
+            {"intron-bed6", required_argument, NULL, 'b'},
             {"intron-calls", required_argument, NULL, 'c'},
             {NULL, 0, NULL, 0}
         };
             
-        const char *short_options = "hvi:j:n:c:U";
+        const char *short_options = "hvi:j:n:b:c:U";
         int c;
         while ((c = getopt_long(argc, argv, short_options, long_options, NULL)) != -1) {
             switch (c) {
@@ -94,6 +96,9 @@ class CmdParser {
                     break;
                 case 'n':
                     intron_bed = optarg;
+                    break;
+                case 'b':
+                    intron_bed6 = optarg;
                     break;
                 case 'c':
                     intron_call_tsv = optarg;
@@ -186,11 +191,15 @@ static void intron_prospector_merge(CmdParser &opts) {
         ofstream out(opts.junction_bed.c_str());
         print_anchor_bed(juncs, 0.0, out);
     }
-    if ((opts.intron_bed != "") or (opts.intron_call_tsv != "")) {
+    if ((opts.intron_bed != "") or (opts.intron_bed6 != "") or (opts.intron_call_tsv != "")) {
         juncs.sort_by_introns();
         if (opts.intron_bed != "") {
             ofstream out(opts.intron_bed.c_str());
-            print_intron_bed(juncs, 0.0, out);
+            print_intron_bed(juncs, 0.0, 9, out);
+        }
+        if (opts.intron_bed6 != "") {
+            ofstream out(opts.intron_bed6.c_str());
+            print_intron_bed(juncs, 0.0, 6, out);
         }
         if (opts.intron_call_tsv != "") {
             ofstream out(opts.intron_call_tsv.c_str());

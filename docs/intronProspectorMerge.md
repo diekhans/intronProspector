@@ -36,6 +36,10 @@ Merge output of the `intronProspector` intron calls tab-separated (TSV) files, a
 
 > Write the intron BED with the bounds of the intron. The score is the number of alignments spanning the junction, with a maximum score of 1000 for UCSC browser compatibility.  If genome is supplied, BED is colored green for U2 junctions, blue for U12, or red for unknown.
 
+`-b FILE, --intron-bed6=FILE`
+
+> Write the intron BED 6 with the bounds of the introns. The score is the number of alignments spanning the junction.   This is for software not wanting to create a browser track.
+
 # BUGS
 
 See GitHub Issues: <https://github.com/diekhans/intronProspector/issues>

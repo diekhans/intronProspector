@@ -45,8 +45,9 @@ basicTests: testBasic1 testBasic2 testBasic3 testBasic4 testBasic5
 
 # basic unstranded
 testBasic1: mkout
-	${intronProspector} --junction-bed=output/$@.juncs.bed --intron-bed=output/$@.introns.bed --intron-calls=output/$@.introns.tsv --pass-through=output/$@.sam ${basic_sam}
+	${intronProspector} --junction-bed=output/$@.juncs.bed --intron-bed=output/$@.introns.bed --intron-bed6=output/$@.introns.bed6 --intron-calls=output/$@.introns.tsv --pass-through=output/$@.sam ${basic_sam}
 	${diff_out}
+	${diff} expected/$@.introns.bed6 output/$@.introns.bed6
 	${diff} ${basic_sam} output/$@.sam
 
 # RF strandness

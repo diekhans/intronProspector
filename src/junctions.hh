@@ -195,7 +195,8 @@ public:
     void print_anchor_bed(ostream& out) const;
 
     // Print BED with intron as block 
-    void print_intron_bed(ostream& out) const;
+    void print_intron_bed(ostream& out,
+                          int columns) const;
 
     // Print row to junction call TSV
     void print_junction_call_row(ostream& out) const;
@@ -253,6 +254,7 @@ void print_anchor_bed(const JunctionVector& juncs,
 // Print BED with intron as block
 void print_intron_bed(const JunctionVector& juncs,
                       float min_confidence_score,
+                      int columns,
                       ostream& out);
 
 // Print header for junction call TSV

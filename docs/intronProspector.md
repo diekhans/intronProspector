@@ -30,11 +30,11 @@ are as determined by the aligner and indicated in the BAM by `N` operations.
 
 > Minimum anchor length. Junctions which satisfy a minimum anchor length on both sides are reported.  Mismatch bases don't count towards the meeting this threshold.  The default is 8 bases.
 
-`-i INT, --min-intron_length=INT`
+`-i INT, --min-intron-length=INT`
 
 > Minimum intron length. The default is 70 bases.
 
-`-I INT,  --max-intron_length=INT`
+`-I INT,  --max-intron-length=INT`
 
 > Maximum intron length. The default is 500000 bases.
 
@@ -84,6 +84,10 @@ are as determined by the aligner and indicated in the BAM by `N` operations.
 `-n FILE, --intron-bed=FILE`
 
 > Write the intron BED 9 with the bounds of the introns. The score is the number of alignments spanning the junction, with a maximum score of 1000 for UCSC browser compatibility.  If genome is supplied, BED is colored green for U2 junctions, blue for U12, or red for unknown.
+
+`-b FILE, --intron-bed6=FILE`
+
+> Write the intron BED 6 with the bounds of the introns. The score is the number of alignments spanning the junction.   This is for software not wanting to create a browser track.
 
 `-p FILE, --pass-through=FILE`
 

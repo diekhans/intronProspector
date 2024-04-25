@@ -115,6 +115,7 @@ class CmdParser {
     // output
     string junction_bed;
     string intron_bed;
+    string intron_bed6;
     string intron_call_tsv;
     string bam_pass_through;
     string debug_trace_tsv;
@@ -154,8 +155,8 @@ class CmdParser {
             {"help", no_argument, NULL, 'h'},
             {"version", no_argument, NULL, 'v'},
             {"min-anchor-length", required_argument, NULL, 'a'},
-            {"min-intron_length", required_argument, NULL, 'i'},
-            {"max-intron_length", required_argument, NULL, 'I'},
+            {"min-intron-length", required_argument, NULL, 'i'},
+            {"max-intron-length", required_argument, NULL, 'I'},
             {"allow-anchor-indels", no_argument, NULL, 'd'},
             {"max-anchor-indel-size", required_argument, NULL, 'm'},
             {"min-confidence-score", required_argument, NULL, 'C'},
@@ -165,6 +166,7 @@ class CmdParser {
             {"skip-missing-targets", no_argument, NULL, 'S'},
             {"junction-bed", required_argument, NULL, 'j'},
             {"intron-bed", required_argument, NULL, 'n'},
+            {"intron-bed6", required_argument, NULL, 'b'},
             {"intron-calls", required_argument, NULL, 'c'},
             {"pass-through", required_argument, NULL, 'p'},
             {"debug-trace", required_argument, NULL, 'D'},
@@ -173,7 +175,7 @@ class CmdParser {
             {NULL, 0, NULL, 0}
         };
             
-        const char *short_options = "hva:i:I:C:s:X:g:S:j:n:c:p:UD:";
+        const char *short_options = "hva:i:I:C:s:X:g:S:j:n:b:c:p:UD:";
         int c;
         while ((c = getopt_long(argc, argv, short_options, long_options, NULL)) != -1) {
             switch (c) {
@@ -212,6 +214,9 @@ class CmdParser {
                     break;
                 case 'n':
                     intron_bed = optarg;
+                    break;
+                case 'b':
+                    intron_bed6 = optarg;
                     break;
                 case 'c':
                     intron_call_tsv = optarg;
@@ -262,6 +267,7 @@ static void output_junctions_for_target(JunctionsExtractor& extractor,
                                          float min_confidence_score,
                                          ostream* junction_bed_fh,
                                          ostream* intron_bed_fh,
+                                         ostream* intron_bed6_fh,
                                          ostream* intron_call_fh) {
     JunctionVector juncs = extractor.get_junctions();
     if (junction_bed_fh != NULL) {
@@ -271,7 +277,10 @@ static void output_junctions_for_target(JunctionsExtractor& extractor,
     if ((intron_bed_fh != NULL) or (intron_call_fh != NULL)) {
         juncs.sort_by_introns();
         if (intron_bed_fh != NULL) {
-            print_intron_bed(juncs, min_confidence_score, *intron_bed_fh);
+            print_intron_bed(juncs, min_confidence_score, 9, *intron_bed_fh);
+        }
+        if (intron_bed6_fh != NULL) {
+            print_intron_bed(juncs, min_confidence_score, 6, *intron_bed6_fh);
         }
         if (intron_call_fh != NULL) {
             print_intron_call_tsv(juncs, min_confidence_score, *intron_call_fh);
@@ -284,11 +293,12 @@ static void serial_extract_junctions(JunctionsExtractor& extractor,
                                      float min_confidence_score,
                                      ostream* junction_bed_fh,
                                      ostream* intron_bed_fh,
+                                     ostream* intron_bed6_fh,
                                      ostream* intron_call_fh) {
     for (int target_index = 0; target_index < extractor.get_num_targets(); target_index++) {
         extractor.identify_junctions_for_target(target_index);
         output_junctions_for_target(extractor, min_confidence_score,
-                                    junction_bed_fh, intron_bed_fh, intron_call_fh);
+                                    junction_bed_fh, intron_bed_fh, intron_bed6_fh, intron_call_fh);
         extractor.clear();
     }
     extractor.copy_unaligned_reads();
@@ -309,15 +319,17 @@ static void extract_junctions(CmdParser &opts) {
     extractor.open(opts.bam_file, opts.bam_pass_through);
     ostream* junction_bed_fh = open_out_or_null(opts.junction_bed);
     ostream* intron_bed_fh = open_out_or_null(opts.intron_bed);
+    ostream* intron_bed6_fh = open_out_or_null(opts.intron_bed6);
     ostream* intron_call_fh = open_out_or_null(opts.intron_call_tsv);
     if (intron_call_fh != NULL) {
         print_junction_call_header(*intron_call_fh);
     }
     serial_extract_junctions(extractor, opts.min_confidence_score,
-                             junction_bed_fh, intron_bed_fh, intron_call_fh);
+                             junction_bed_fh, intron_bed_fh, intron_bed6_fh, intron_call_fh);
 
     delete junction_bed_fh;
     delete intron_bed_fh;
+    delete intron_bed6_fh;
     delete intron_call_fh;
     delete trace_fh;
     delete genome;
