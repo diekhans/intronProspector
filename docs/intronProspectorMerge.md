@@ -1,21 +1,16 @@
-NAME
-====
+# NAME
 
 **intronProspectorMerge** — Merge putative introns junctions calls made `intronProspector`
 
-SYNOPSIS
-========
+# SYNOPSIS
 
 `intronProspectorMerge [options] [intronCallsTsv ...]`
 
-DESCRIPTION
-===========
+# DESCRIPTION
 
 Merge output of the `intronProspector` intron calls tab-separated (TSV) files, as created by the `--intron-calls` option.
 
-
-Options
--------
+# Options
 
 `-h, --help`
 
@@ -41,13 +36,11 @@ Options
 
 > Write the intron BED with the bounds of the intron. The score is the number of alignments spanning the junction, with a maximum score of 1000 for UCSC browser compatibility.  If genome is supplied, BED is colored green for U2 junctions, blue for U12, or red for unknown.
 
-BUGS
-====
+# BUGS
 
 See GitHub Issues: <https://github.com/diekhans/intronProspector/issues>
 
-AUTHOR
-======
+# AUTHOR
 
 Mark Diekhans <markd@ucsc.edu>
 

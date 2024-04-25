@@ -26,6 +26,8 @@
   To rebuild the configure script, GNU autoconf is required, then run:
      `autoreconf -fi`
      
-  To rebuild the documentation, pandoc is require.  Rebuild documentation
-  with:
+  To rebuild the documentation, pandoc is require.  The generated
+  files are check into the tree.   Rebuild documentation
+  creates built-in help files (src/*.man.h) and man pages (man/*.1)
+  and is run with:
       `make doc`

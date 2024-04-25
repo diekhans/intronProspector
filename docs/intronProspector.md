@@ -1,15 +1,12 @@
-NAME
-====
+# NAME
 
 **intronProspector** — Extract putative intron junctions from RNA-Seq alignments
 
-SYNOPSIS
-========
+# SYNOPSIS
 
 `intronProspector [options] [readaligns]`
 
-DESCRIPTION
-===========
+# DESCRIPTION
 
 Find putative intron junctions in a RNA-Seq alignment. The *readaligns* file maybe in SAM, BAM, or CRAM format and does not need to be sorted or indexed and maybe streamed. If omitted, stdin is used.
 
@@ -19,8 +16,7 @@ Both short-read (Illumina) and long-read RNA-Seq can be process.  For
 short-reads, it is recommended to use `--min-confidence-score=1.0`.  Introns
 are as determined by the aligner and indicated in the BAM by `N` operations.
 
-Options
--------
+# OPTIONS
 
 `-h, --help`
 
@@ -113,14 +109,12 @@ Options
 
 > Set the TS:A tag in the same manner as `--set-XS-strand-tag`.
 
-NOTES
-=====
+# NOTES
 The computation of strand is problematic.  If the strandness of the experiment is specified, then that is used to determine stand.  If the alignment provides the XS attribute, that is used.  Otherwise, the strand can't be determined from the BAM.  If the genome is provided and a known splice sites are detected, this is then used if the stand is not identified by other methods.
 
 Secondary alignments are not used to support introns.
 
-EXAMPLES
-========
+# EXAMPLES
 
 Call junctions from a BAM file, also creating BEDs of junctions and introns:
 ```
@@ -136,14 +130,12 @@ cat reads.sam \
 ```
 Note that the `cat` command could be an aligner output a SAM file and that the genome FASTA file must be index by `samtools faidx`.
 
-
-BUGS
-====
+ 
+# BUGS
 
 See GitHub Issues: <https://github.com/diekhans/intronProspector/issues>
 
-AUTHOR
-======
+# AUTHOR
 
 Mark Diekhans <markd@ucsc.edu>
 

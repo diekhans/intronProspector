@@ -80,6 +80,6 @@ AC_SUBST([CPPFLAGS])
 AC_SUBST([LDFLAGS])
 AC_SUBST([LIBS])
    
-AC_CONFIG_FILES([Makefile src/Makefile tests/Makefile src/version.hh])
+AC_CONFIG_FILES([Makefile src/Makefile tests/Makefile src/version.hh man/Makefile])
 
 AC_OUTPUT

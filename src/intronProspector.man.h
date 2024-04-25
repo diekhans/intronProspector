@@ -23,7 +23,7 @@
 "Introns are as determined by the aligner and indicated in the BAM by N\n"
 "operations.\n"
 "\n"
-"Options\n"
+"OPTIONS\n"
 "\n"
 "-h, --help\n"
 "\n"

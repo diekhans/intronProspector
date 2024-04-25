@@ -1,0 +1,18 @@
+# -*- mode: makefile -*-
+ROOT = ..
+all:
+
+# Generate man page files, which requires pandoc, so results ares checked
+# in and only genereated by developers.
+.PHONY: doc
+doc:  intronProspector.1 intronProspectorMerge.1
+
+date = $(shell date  +'%B %d, %Y')
+%.1: ../docs/%.md %.header
+	(sed 's/@DATE@/${date}/' $*.header && cat $<) | \
+	    pandoc -s -f markdown -t man >$@.tmp
+	mv $@.tmp $@
+
+# Local Variables:
+# mode: makefile-gmake
+# End:
