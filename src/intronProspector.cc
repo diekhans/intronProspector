@@ -274,7 +274,7 @@ static void output_junctions_for_target(JunctionsExtractor& extractor,
         juncs.sort_by_anchors();
         print_anchor_bed(juncs, min_confidence_score, *junction_bed_fh);
     }
-    if ((intron_bed_fh != NULL) or (intron_call_fh != NULL)) {
+    if ((intron_bed_fh != NULL) or (intron_bed6_fh != NULL) or (intron_call_fh != NULL)) {
         juncs.sort_by_introns();
         if (intron_bed_fh != NULL) {
             print_intron_bed(juncs, min_confidence_score, 9, *intron_bed_fh);
