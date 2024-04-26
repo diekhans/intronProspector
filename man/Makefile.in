@@ -4,14 +4,21 @@ all:
 
 # Generate man page files, which requires pandoc, so results ares checked
 # in and only genereated by developers.
-.PHONY: doc
-doc:  intronProspector.1 intronProspectorMerge.1
+# A two level make is used so that the rules will not be run unless specifically
+# requested.
+.PHONY: doc dodoc
+doc:
+	${MAKE} dodoc dodoc=yes
+
+ifeq (${dodoc},yes)
+dodoc:  intronProspector.1 intronProspectorMerge.1
 
 date = $(shell date  +'%B %d, %Y')
 %.1: ../docs/%.md %.header
 	(sed 's/@DATE@/${date}/' $*.header && cat $<) | \
 	    pandoc -s -f markdown -t man >$@.tmp
 	mv $@.tmp $@
+endif
 
 # Local Variables:
 # mode: makefile-gmake
