@@ -85,7 +85,9 @@ void Junction::merge(const Junction& j1) {
     } else if ((j1.strand == '.') and (strand != '.')) {
         // leave as-is
     } else if (j1.strand != strand) {
-        throw runtime_error("intron records have different strand:" + j1.get_description() + " with " + get_description());
+        // FIXME:  #15 temporary hack until we figure out how to vote
+        cerr << "intron records have different strand:" + j1.get_description() + " with " + get_description() << endl;
+        return;
     } else if (j1.splice_sites != splice_sites) {
         throw runtime_error("intron records have different splice sites:" + j1.get_description() + " with " + get_description());
     }

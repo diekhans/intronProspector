@@ -24,6 +24,9 @@ define diff_out
 	${diff} expected/$@.juncs.bed output/$@.juncs.bed
 	${diff} expected/$@.introns.bed output/$@.introns.bed
 endef
+define diff_tsv
+	${diff} expected/$@.introns.tsv output/$@.introns.tsv
+endef
 
 
 .PHONY: all
@@ -120,7 +123,7 @@ testSortBug: mkout
 #####
 # intronProspctorMerge tests
 #####
-intronProspctorMergeTests: testBasic134Merge testFake10abMerge
+intronProspctorMergeTests: testBasic134Merge testFake10abMerge testStrandConflictMerge
 
 testBasic134Merge: mkout
 	${intronProspectorMerge} --junction-bed=output/$@.juncs.bed --intron-bed=output/$@.introns.bed --intron-calls=output/$@.introns.tsv \
@@ -131,6 +134,12 @@ testFake10abMerge: mkout
 	${intronProspectorMerge} --intron-calls=output/$@.introns.tsv \
 	    expected/testFake10a.introns.tsv expected/testFake10b.introns.tsv
 	${diff} expected/$@.introns.tsv output/$@.introns.tsv
+
+testStrandConflictMerge: mkout
+	${intronProspectorMerge} --intron-calls=output/$@.introns.tsv \
+	   input/strand-confict/SRR6225360.calls.tsv input/strand-confict/SRR6225362.calls.tsv \
+	   input/strand-confict/SRR6225361.calls.tsv input/strand-confict/SRR6225363.calls.tsv 2> output/$@.err
+	${diff_tsv}
 
 ##
 # ONT tests

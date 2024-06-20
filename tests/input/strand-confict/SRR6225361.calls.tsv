@@ -1,0 +1,2 @@
+chrom	intron_start	intron_end	strand	uniq_mapped_count	multi_mapped_count	unsure_mapped_count	max_left_overhang	max_right_overhang	confidence	splice_sites	name
+CM054434.2	4734681	4735936	-	666	0	13	93	93	5.74		sj559
