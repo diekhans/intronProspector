@@ -1,6 +1,6 @@
 /*  tsv.hh -- really simplistic TSV reader
 
-    Copyright (c) 2029, Mark Diekhans, University of California, Santa Cruz
+    Copyright (c) 2019-2025, Mark Diekhans, University of California, Santa Cruz
 **/
 #ifndef tsv_hh
 #define tsv_hh

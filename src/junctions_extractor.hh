@@ -1,6 +1,6 @@
 /*  junctions_extractor.hh -- splice junction extraction.
 
-    Copyright (c) 2018, Mark Diekhans, University of California, Santa Cruz
+    Copyright (c) 2018-2025, Mark Diekhans, University of California, Santa Cruz
 
 This code is derived from the regtools package available at:
 

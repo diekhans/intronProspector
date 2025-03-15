@@ -1,6 +1,6 @@
 /*  type_ops.hh -- operations on types.
 
-    Copyright (c) 2019, Mark Diekhans, University of California, Santa Cruz
+    Copyright (c) 2019-2025, Mark Diekhans, University of California, Santa Cruz
 **/
 #ifndef type_ops_hh
 #define type_ops_hh

@@ -1,6 +1,6 @@
 /*  genome.hh -- splice junction extraction from genome.
 
-    Copyright (c) 2019, Mark Diekhans, University of California, Santa Cruz
+    Copyright (c) 2019-2025, Mark Diekhans, University of California, Santa Cruz
 
 **/
 #ifndef GENOME_HH
