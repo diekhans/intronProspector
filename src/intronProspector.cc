@@ -33,6 +33,7 @@ DEALINGS IN THE SOFTWARE.  */
 #include <getopt.h>
 #include <algorithm>
 #include <fstream>
+#include <vector>
 #include "junctions_extractor.hh"
 #include "strconvert.hh"
 #include "genome.hh"
@@ -93,18 +94,16 @@ static unsigned parse_exclude_cat(const string &cat) {
     }
 }
 
-// parse a range in the form chr:start-end, zero based, half-open
-
-
 // Parse command line
 class CmdParser {
     public:
     // input
-    string bam_file;
+    vector<string> bam_files;
     uint32_t min_anchor_length;
     uint32_t min_intron_length;
     uint32_t max_intron_length;
     bool allow_anchor_indels;
+    bool unsorted;
     uint32_t max_anchor_indel_size;
     float min_confidence_score;
     Strandness strandness;
@@ -123,7 +122,6 @@ class CmdParser {
     bool set_TS_strand_tag;
 
     CmdParser(int argc, char *argv[]):
-        bam_file("/dev/stdin"),
         min_anchor_length(DEFAULT_MIN_ANCHOR_LENGTH),
         min_intron_length(DEFAULT_MIN_INTRON_LENGTH),
         max_intron_length(DEFAULT_MAX_INTRON_LENGTH),
@@ -154,6 +152,7 @@ class CmdParser {
         struct option long_options[] = {
             {"help", no_argument, NULL, 'h'},
             {"version", no_argument, NULL, 'v'},
+            {"unsorted", no_argument, NULL, 'u'},
             {"min-anchor-length", required_argument, NULL, 'a'},
             {"min-intron-length", required_argument, NULL, 'i'},
             {"max-intron-length", required_argument, NULL, 'I'},
@@ -175,12 +174,15 @@ class CmdParser {
             {NULL, 0, NULL, 0}
         };
             
-        const char *short_options = "hva:i:I:C:s:X:g:S:j:n:b:c:p:UD:";
+        const char *short_options = "hvua:i:I:C:s:X:g:S:j:n:b:c:p:UD:";
         int c;
         while ((c = getopt_long(argc, argv, short_options, long_options, NULL)) != -1) {
             switch (c) {
                 case 'a':
                     min_anchor_length = atoi(optarg);
+                    break;
+                case 'u':
+                    unsorted = true;
                     break;
                 case 'd':
                     allow_anchor_indels = true;
@@ -249,11 +251,14 @@ class CmdParser {
             max_anchor_indel_size = 0;
         }
 
-        if (argc - optind > 1) {
-            cmd_error("too many positional arguments");
+        while (optind < argc) {
+            bam_files.push_back(string(argv[optind++]));
         }
-        if (argc - optind == 1) {
-            bam_file = string(argv[optind++]);
+        if (bam_files.size() == 0) {
+            bam_files.push_back("/dev/stdin");
+        }
+        if ((bam_files.size() > 1) and (bam_pass_through != "")) {
+            cmd_error("can only have one input BAM with --bam-pass-through");
         }
         if ((set_XS_strand_tag or set_TS_strand_tag)
             and ((bam_pass_through.size() == 0) or (genome_fa.size() == 0))) {
@@ -263,45 +268,104 @@ class CmdParser {
 };
 
 
-static void output_junctions_for_target(JunctionsExtractor& extractor,
-                                         float min_confidence_score,
-                                         ostream* junction_bed_fh,
-                                         ostream* intron_bed_fh,
-                                         ostream* intron_bed6_fh,
-                                         ostream* intron_call_fh) {
-    JunctionVector juncs = extractor.get_junctions();
-    if (junction_bed_fh != NULL) {
-        juncs.sort_by_anchors();
-        print_anchor_bed(juncs, min_confidence_score, *junction_bed_fh);
-    }
-    if ((intron_bed_fh != NULL) or (intron_bed6_fh != NULL) or (intron_call_fh != NULL)) {
-        juncs.sort_by_introns();
-        if (intron_bed_fh != NULL) {
-            print_intron_bed(juncs, min_confidence_score, 9, *intron_bed_fh);
-        }
-        if (intron_bed6_fh != NULL) {
-            print_intron_bed(juncs, min_confidence_score, 6, *intron_bed6_fh);
-        }
+class OutputFiles {
+    public:
+    const string bam_pass_through;
+    ostream* junction_bed_fh;
+    ostream* intron_bed_fh;
+    ostream* intron_bed6_fh;
+    ostream* intron_call_fh;
+
+    OutputFiles(const CmdParser& opts):
+        bam_pass_through(opts.bam_pass_through),
+        junction_bed_fh(open_out_or_null(opts.junction_bed)),
+        intron_bed_fh(open_out_or_null(opts.intron_bed)),
+        intron_bed6_fh(open_out_or_null(opts.intron_bed6)),
+        intron_call_fh(open_out_or_null(opts.intron_call_tsv)) {
         if (intron_call_fh != NULL) {
-            print_intron_call_tsv(juncs, min_confidence_score, *intron_call_fh);
+            print_junction_call_header(*intron_call_fh);
+        }
+    }
+
+    ~OutputFiles() {
+        delete junction_bed_fh;
+        delete intron_bed_fh;
+        delete intron_bed6_fh;
+        delete intron_call_fh;
+    }
+};
+
+static void output_junctions(JunctionsExtractor& extractor,
+                             float min_confidence_score,
+                             OutputFiles& output) {
+    JunctionVector juncs = extractor.get_junctions();
+    if (output.junction_bed_fh != NULL) {
+        juncs.sort_by_anchors();
+        print_anchor_bed(juncs, min_confidence_score, *output.junction_bed_fh);
+    }
+    if ((output.intron_bed_fh != NULL) or (output.intron_bed6_fh != NULL)
+        or (output.intron_call_fh != NULL)) {
+        juncs.sort_by_introns();
+        if (output.intron_bed_fh != NULL) {
+            print_intron_bed(juncs, min_confidence_score, 9, *output.intron_bed_fh);
+        }
+        if (output.intron_bed6_fh != NULL) {
+            print_intron_bed(juncs, min_confidence_score, 6, *output.intron_bed6_fh);
+        }
+        if (output.intron_call_fh != NULL) {
+            print_intron_call_tsv(juncs, min_confidence_score, *output.intron_call_fh);
         }
     }
 }
 
-/* extract junctions for the whole BAM */
-static void serial_extract_junctions(JunctionsExtractor& extractor,
-                                     float min_confidence_score,
-                                     ostream* junction_bed_fh,
-                                     ostream* intron_bed_fh,
-                                     ostream* intron_bed6_fh,
-                                     ostream* intron_call_fh) {
+/* Extract junctions for the single BAM, optimizing memory,
+ * by process one target at a time.
+ */
+static void extract_junctions_by_target(JunctionsExtractor& extractor,
+                                        const string& bam_file,
+                                        float min_confidence_score,
+                                        OutputFiles& output) {
+    extractor.open(bam_file);
+    if (output.bam_pass_through != "") {
+        extractor.open_pass_through(output.bam_pass_through);
+    }
     for (int target_index = 0; target_index < extractor.get_num_targets(); target_index++) {
         extractor.identify_junctions_for_target(target_index);
-        output_junctions_for_target(extractor, min_confidence_score,
-                                    junction_bed_fh, intron_bed_fh, intron_bed6_fh, intron_call_fh);
+        output_junctions(extractor, min_confidence_score, output);
         extractor.clear();
     }
     extractor.copy_unaligned_reads();
+    extractor.close();
+}
+
+/* Extract junctions for an unsorted BAM.  This allows pass-through.
+ */
+static void extract_junctions_unsorted(JunctionsExtractor& extractor,
+                                       const string& bam_file,
+                                       float min_confidence_score,
+                                       OutputFiles& output) {
+    extractor.open(bam_file);
+    if (output.bam_pass_through != "") {
+        extractor.open_pass_through(output.bam_pass_through);
+    }
+    extractor.identify_junctions_for_bam();
+    extractor.copy_unaligned_reads();
+    extractor.close();
+    output_junctions(extractor, min_confidence_score, output);
+}
+                                
+/* Extract junctions for the multiple BAM files.
+ */
+static void extract_junctions_multiple(JunctionsExtractor& extractor,
+                                       const vector<string>& bam_files,
+                                       float min_confidence_score,
+                                       OutputFiles& output) {
+    for (int ibam = 0; ibam < bam_files.size(); ibam++) {
+        extractor.open(bam_files[ibam]);
+        extractor.identify_junctions_for_bam();
+        extractor.close();
+    }
+    output_junctions(extractor, min_confidence_score, output);
 }
                                 
 static void extract_junctions(CmdParser &opts) {
@@ -316,21 +380,17 @@ static void extract_junctions(CmdParser &opts) {
                                  opts.skip_missing_targets,
                                  opts.set_XS_strand_tag, opts.set_TS_strand_tag,
                                  trace_fh);
-    extractor.open(opts.bam_file, opts.bam_pass_through);
-    ostream* junction_bed_fh = open_out_or_null(opts.junction_bed);
-    ostream* intron_bed_fh = open_out_or_null(opts.intron_bed);
-    ostream* intron_bed6_fh = open_out_or_null(opts.intron_bed6);
-    ostream* intron_call_fh = open_out_or_null(opts.intron_call_tsv);
-    if (intron_call_fh != NULL) {
-        print_junction_call_header(*intron_call_fh);
+    OutputFiles output(opts);
+    if (opts.bam_files.size() > 1) {
+        extract_junctions_multiple(extractor, opts.bam_files,
+                                   opts.min_confidence_score, output);
+    } else if (opts.unsorted) {
+        extract_junctions_unsorted(extractor, opts.bam_files[0],
+                                   opts.min_confidence_score, output);
+    } else {
+        extract_junctions_by_target(extractor, opts.bam_files[0],
+                                    opts.min_confidence_score, output);
     }
-    serial_extract_junctions(extractor, opts.min_confidence_score,
-                             junction_bed_fh, intron_bed_fh, intron_bed6_fh, intron_call_fh);
-
-    delete junction_bed_fh;
-    delete intron_bed_fh;
-    delete intron_bed6_fh;
-    delete intron_call_fh;
     delete trace_fh;
     delete genome;
  }

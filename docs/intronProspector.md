@@ -4,17 +4,24 @@
 
 # SYNOPSIS
 
-`intronProspector [options] [readaligns]`
+`intronProspector [options] [readaligns ...]`
 
 # DESCRIPTION
 
-Find putative intron junctions in a RNA-Seq alignment. The *readaligns* file maybe in SAM, BAM, or CRAM format and does not need to be sorted or indexed and maybe streamed. If omitted, stdin is used.
+Find putative intron junctions in a RNA-Seq alignment. The *readaligns* files maybe in SAM, BAM, or CRAM format and does not need to be sorted or indexed and maybe streamed. If omitted, stdin is used.
 
 This program allows for integrating splice junction calling into an alignment pipeline.  Pass-through mode copys the alignment file on `stdin` to `stdout`.  It can then sit between an aligner outputting SAM and `samtools` that converts to BAM/CRAM.
 
 Both short-read (Illumina) and long-read RNA-Seq can be process.  For
 short-reads, it is recommended to use `--min-confidence-score=1.0`.  Introns
 are as determined by the aligner and indicated in the BAM by `N` operations.
+
+Process multiple BAMs at once will use more more memory, as intron counts are
+not collected per chromosome.  This mode does not require a sorted BAM and is
+incompatible with `--pass-through`.  It may also improve the confidence
+scoring in some cases.
+
+
 
 # OPTIONS
 
@@ -52,6 +59,11 @@ are as determined by the aligner and indicated in the BAM by `N` operations.
 
 `-s STRING, --strandness=STRING`
 
+`-u, --unsorted`
+
+> SAM/BAM files are not sorted.  This will require more memory, as intron counts are
+> not collected per chromosome.
+
 > Strand specificity of RNA library preparation.  Use `UN` for unstranded, `RF` for first-strand, `FR` for second-strand (case-insensitive).  The default is `UN`.  This is used to set the strand in the junction-format BED file.
 
 `-g fasta, --genome-fasta=fasta`
@@ -59,6 +71,22 @@ are as determined by the aligner and indicated in the BAM by `N` operations.
 > Genome FASTA file, must be indexed by `samtools faidx`.  Donor and acceptor dinuclotides are identified if provided. 
 
 `-S, --skip-missing-targets`
+
+`-X category, --exclude=category`
+
+> Exclude reads or introns from this category.  Current categories are:
+> *multi* - excluding multi-mapped reads.
+
+`--set-XS-strand-tag`
+
+> Set the XS:A tag to the strand if stand for a read can be determined from the
+> introns based on a count of recognized vs unrecognized splice sites.
+> If the strand can't be determined, the tags are not modified, possible leaving
+> an existing XS:A tag in place. Requires `--pass-through` and `--genome-fasta`.
+
+`--set-TS-strand-tag`
+
+> Set the TS:A tag in the same manner as `--set-XS-strand-tag`.
 
 > Skip getting splice junctions when target sequence is missing in genome FASTA rather than generate an error and stop.
 
@@ -96,23 +124,6 @@ are as determined by the aligner and indicated in the BAM by `N` operations.
 `-D FILE, --debug-trace=FILE`
 
 > Output records, in TSV format, for reach read intron indicating the information going into classifying it, including read name.  First few columns are BED-like for easy conversion.
-
-`-X category, --exclude=category`
-
-> Exclude reads or introns from this category.  Current categories are:
-> *multi* - excluding multi-mapped reads.
-
-`--set-XS-strand-tag`
-
-> Set the XS:A tag to the strand if stand for a read can be determined from the
-> introns based on a count of recognized vs unrecognized splice sites.
-> If the strand can't be determined, the tags are not modified, possible leaving
-> an existing XS:A tag in place. Requires `--pass-through` and `--genome-fasta`.
-
-`--set-TS-strand-tag`
-
-> Set the TS:A tag in the same manner as `--set-XS-strand-tag`.
-
 # NOTES
 The computation of strand is problematic.  If the strandness of the experiment is specified, then that is used to determine stand.  If the alignment provides the XS attribute, that is used.  Otherwise, the strand can't be determined from the BAM.  If the genome is provided and a known splice sites are detected, this is then used if the stand is not identified by other methods.
 

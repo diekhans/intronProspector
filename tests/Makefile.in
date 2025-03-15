@@ -12,6 +12,8 @@ diff = diff -u
 basic_sam = input/test_basic.sam
 basic_bam = output/test_basic.bam
 multi_sam = input/test_multi.sam
+multi_one_sam = input/test_multi.one.sam
+multi_two_sam = input/test_multi.two.sam
 fake10_star_sam = input/fake10.star.sam
 fake10_hisat2_sam = input/fake10.hisat2.sam
 fake10_missing_sam = input/fake10.missing.sam
@@ -39,7 +41,7 @@ test: intronProspctorTests intronProspctorMergeTests
 #####
 # intronProspctor tests
 #####
-intronProspctorTests: basicTests multiTests fake10Tests regressTests ontTests
+intronProspctorTests: basicTests multiTests fake10Tests regressTests ontTests multiBamTests
 
 ###
 # basic tests
@@ -144,7 +146,7 @@ testStrandConflictMerge: mkout
 ##
 # ONT tests
 ##
-ontTests: testOnt1 testOntIndel testOntSkipTargets testOntOutOfOrderTargets
+ontTests: testOnt1 testOntIndel testOntSkipTargets testOntOutOfOrderTargets testOntUnsorted
 
 testOnt1: mkout
 	${intronProspector} --junction-bed=output/$@.juncs.bed --intron-bed=output/$@.introns.bed --intron-calls=output/$@.introns.tsv --pass-through=output/$@.sam ${ont_sam}
@@ -162,6 +164,33 @@ testOntSkipTargets: mkout
 testOntOutOfOrderTargets: mkout
 	${intronProspector} --allow-anchor-indels input/ont-out-of-order-targets.sam > output/$@.err 2>&1 || true
 	${diff} expected/$@.err output/$@.err
+
+##
+# test of multiple BAMs at once
+#
+# test_multi.sam is split into two parts
+##
+multiBamTests: testMultiSam
+
+testMultiSam: mkout
+	${intronProspector} --junction-bed=output/$@.juncs.bed --intron-bed=output/$@.introns.bed --intron-calls=output/$@.introns.tsv ${multi_one_sam} ${multi_two_sam}
+	${diff_out}
+
+testOntUnsorted: mkout
+	${intronProspector} --unsorted --allow-anchor-indels --junction-bed=output/$@.juncs.bed --intron-bed=output/$@.introns.bed --intron-calls=output/$@.introns.tsv input/ont-out-of-order-targets.sam
+	${diff_out}
+
+
+##
+# test of multiple BAMs at once
+#
+# test_multi.sam is split into two parts
+##
+multiBamTests: testMultiSam
+
+testMultiSam: mkout
+	${intronProspector} --junction-bed=output/$@.juncs.bed --intron-bed=output/$@.introns.bed --intron-calls=output/$@.introns.tsv ${multi_one_sam} ${multi_two_sam}
+	${diff_out}
 
 ###
 # other rules

@@ -155,9 +155,6 @@ private:
                            hts_pos_t intron_end, hts_pos_t anchor_end);
     char get_junction_strand_XS(bam1_t *aln);
     char get_junction_strand_flag(bam1_t *aln);
-    samFile* open_pass_through(samFile *in_sam,
-                               bam_hdr_t *in_header,
-                               const string& bam_pass_through);
     string get_splice_sites(const string& chrom, char strand,
                             hts_pos_t intron_start, hts_pos_t intron_end);
 
@@ -218,20 +215,30 @@ public:
         junctions_.clear();
     }
     
-    // Open BAMs
-    void open(const string& bam,
-              const string& bam_pass_through);
+    // Open a BAM file for process
+    void open(const string& bam);
+
+    // open the pass through, must be done after open.
+    void open_pass_through(const string& bam_pass_through);
+    
+    // close current BAM file, also closes pass-through if open
+    void close();
 
     // get the number of targets
     int get_num_targets() const {
         return targets_.size();
     }
     
-    // Identify exon-exon junctions
+    // Identify exon-exon junctions. This requires BAM to be sorted and
+    // works with pass-through.  It also optimizes memory usage.
     void identify_junctions_for_target(int target_index);
 
     // Copy remaining reads (unaligned) to pass-through, if it is open
     void copy_unaligned_reads();
+
+    // Identifies junctions for an entire BAM. This does not require
+    // the BAM to be sorted, however it uses more memory
+    void identify_junctions_for_bam();
 
     // Get a vector of all the junctions
     JunctionVector get_junctions() {

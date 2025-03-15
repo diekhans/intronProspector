@@ -405,12 +405,9 @@ char JunctionsExtractor::get_junction_strand(bam1_t *aln) {
 // Destructor
 JunctionsExtractor::~JunctionsExtractor() {
     clear();
-    if (out_sam_ != NULL) {
-        sam_close(out_sam_);
+    if (in_sam_ != NULL) {
+        close();
     }
-    bam_destroy1(aln_buf_);
-    bam_hdr_destroy(in_header_);
-    sam_close(in_sam_);
 }
 
 
@@ -597,28 +594,8 @@ void JunctionsExtractor::save_targets(bam_hdr_t *header) {
     }
 }
 
-// open pass-through file
-samFile* JunctionsExtractor::open_pass_through(samFile *in_sam,
-                                               bam_hdr_t *in_header,
-                                               const string& bam_pass_through) {
-    const htsFormat *fmt = hts_get_format(in_sam);
-    if (!((fmt->format == sam) || (fmt->format == bam))) {
-        throw invalid_argument("Error: pass-through is only implemented for SAM or BAM files: " + bam_pass_through);
-    }
-        
-    samFile *out_sam = hts_open_format(bam_pass_through.c_str(), "w", fmt);
-    if (out_sam == NULL) {
-        throw runtime_error("Error opening BAM/SAM/CRAM file: " + bam_pass_through);
-    }
-    if (sam_hdr_write(out_sam, in_header) < 0) {
-        throw runtime_error("Error writing SAM header: " + bam_pass_through);
-    }
-    return out_sam;
-}
-
-// Open BAMs
-void JunctionsExtractor::open(const string& bam,
-                              const string& bam_pass_through) {
+// Open BAM
+void JunctionsExtractor::open(const string& bam) {
     bam_ = bam;
     in_sam_ = sam_open(bam_.c_str(), "r");
     if (in_sam_ == NULL) {
@@ -633,10 +610,38 @@ void JunctionsExtractor::open(const string& bam,
                    << "\t" << "splice_sites"
                    << "\t" << "anchor_start" << "\t" << "anchor_end" << endl;
     }
-    if (bam_pass_through != "") {
-        out_sam_ = open_pass_through(in_sam_, in_header_, bam_pass_through);
-    }
     aln_buf_ = bam_init1();
+}
+
+// open pass-through file
+void JunctionsExtractor::open_pass_through(const string& bam_pass_through) {
+    const htsFormat *fmt = hts_get_format(in_sam_);
+    if (!((fmt->format == sam) || (fmt->format == bam))) {
+        throw invalid_argument("Error: pass-through is only implemented for SAM or BAM files: " + bam_pass_through);
+    }
+        
+    out_sam_ = hts_open_format(bam_pass_through.c_str(), "w", fmt);
+    if (out_sam_ == NULL) {
+        throw runtime_error("Error opening BAM/SAM/CRAM file: " + bam_pass_through);
+    }
+    if (sam_hdr_write(out_sam_, in_header_) < 0) {
+        throw runtime_error("Error writing SAM header: " + bam_pass_through);
+    }
+}
+
+// close current BAM file, also closes pass-through if open
+void JunctionsExtractor::close() {
+    assert(in_sam_ != NULL);
+    if (out_sam_ != NULL) {
+        sam_close(out_sam_);
+        out_sam_ = NULL;
+    }
+    bam_destroy1(aln_buf_);
+    bam_hdr_destroy(in_header_);
+    sam_close(in_sam_);
+    in_sam_ = NULL;
+    previous_target_= -1;
+    aln_pending_ = false;
 }
 
 // return pending or next
@@ -656,7 +661,7 @@ bam1_t* JunctionsExtractor::read_align() {
     }
 }
 
-// process an alignment, return false if not on this target
+// process an alignment, return false if not on this target.
 bool JunctionsExtractor::process_target_alignment(int target_index,
                                                   bam1_t *aln) {
     if (aln->core.tid != target_index) {
@@ -674,7 +679,8 @@ bool JunctionsExtractor::process_target_alignment(int target_index,
     }
 }
 
-// The workhorse - identifies junctions from BAM
+// Identify exon-exon junctions. This requires BAM to be sorted and
+// works with pass-through.  It also optimizes memory usage.
 void JunctionsExtractor::identify_junctions_for_target(int target_index) {
     bam1_t *aln;
     while((aln = read_align()) != NULL) {
@@ -692,6 +698,15 @@ void JunctionsExtractor::copy_unaligned_reads() {
         while((aln = read_align()) != NULL) {
             write_pass_through(aln, in_header_, out_sam_);
         }
+    }
+}
+
+// Identifies junctions for an entire BAM. This does not require
+// the BAM to be sorted, however it uses more memory
+void JunctionsExtractor::identify_junctions_for_bam() {
+    bam1_t *aln;
+    while((aln = read_align()) != NULL) {
+        process_alignment(aln);
     }
 }
 
