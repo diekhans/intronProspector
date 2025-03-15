@@ -6,3 +6,4 @@
 - autoreconf -fi
 - make doc 
   this requires pandoc
+- 

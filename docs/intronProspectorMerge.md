@@ -1,6 +1,6 @@
 # NAME
 
-**intronProspectorMerge** — Merge putative introns junctions calls made `intronProspector`
+**intronProspectorMerge** — Merge putative introns junctions calls made `intronProspector` and/or convert output formats
 
 # SYNOPSIS
 
@@ -9,6 +9,7 @@
 # DESCRIPTION
 
 Merge output of the `intronProspector` intron calls tab-separated (TSV) files, as created by the `--intron-calls` option.
+This program can also be used to convert the output format from a single run.
 
 # Options
 
