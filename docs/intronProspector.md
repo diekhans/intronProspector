@@ -81,7 +81,7 @@ multiple `intronProspector` runs.
 
 `--set-XS-strand-tag`
 
-> Set the XS:A tag to the strand if stand for a read can be determined from the
+> Set the XS:A tag to the strand if the strand for a read can be determined from the
 > introns based on a count of recognized vs unrecognized splice sites.
 > If the strand can't be determined, the tags are not modified, possible leaving
 > an existing XS:A tag in place. Requires `--pass-through` and `--genome-fasta`.
