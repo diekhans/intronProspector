@@ -30,6 +30,15 @@ define diff_tsv
 	${diff} expected/$@.introns.tsv output/$@.introns.tsv
 endef
 
+# $(call diff_out,nongztest)
+define diff_out_gz
+	zcat output/$@.introns.tsv.gz > output/$@.introns.tsv
+	${diff} expected/$1.introns.tsv output/$@.introns.tsv
+	zcat output/$@.juncs.bed.gz > output/$@.juncs.bed
+	${diff} expected/$1.juncs.bed output/$@.juncs.bed
+	zcat output/$@.introns.bed.gz > output/$@.introns.bed
+	${diff} expected/$1.introns.bed output/$@.introns.bed
+endef
 
 .PHONY: all
 all:
@@ -46,7 +55,7 @@ intronProspctorTests: basicTests multiTests fake10Tests regressTests ontTests mu
 ###
 # basic tests
 ##
-basicTests: testBasic1 testBasic2 testBasic3 testBasic4 testBasic5
+basicTests: testBasic1 testBasic1gz testBasic2 testBasic3 testBasic4 testBasic5
 
 # basic unstranded
 testBasic1: mkout
@@ -54,6 +63,12 @@ testBasic1: mkout
 	${diff_out}
 	${diff} expected/$@.introns.bed6 output/$@.introns.bed6
 	${diff} ${basic_sam} output/$@.sam
+
+testBasic1gz: mkout
+	${intronProspector} --junction-bed=output/$@.juncs.bed.gz --intron-bed=output/$@.introns.bed.gz --intron-bed6=output/$@.introns.bed6.gz --intron-calls=output/$@.introns.tsv.gz ${basic_sam}
+	$(call diff_out_gz,testBasic1)
+	zcat output/$@.introns.bed6.gz > output/$@.gz.introns.bed6
+	${diff} expected/testBasic1.introns.bed6 output/$@.gz.introns.bed6
 
 # RF strandness
 testBasic2: mkout
@@ -92,7 +107,7 @@ testMulti1: mkout
 ##
 # fake10 tests
 ##
-fake10Tests: testFake10a testFake10b testFake10c
+fake10Tests: testFake10a testFake10agz testFake10b testFake10c
 
 # fake10 STAR mappings (SAM doesn't have strand)
 testFake10a: mkout ${fake10_fa} ${fake10_fai}
@@ -100,6 +115,12 @@ testFake10a: mkout ${fake10_fa} ${fake10_fai}
 	${diff_out}
 	${diff} expected/$@.debug.tsv output/$@.debug.tsv
 	${diff} ${fake10_star_sam} output/$@.sam
+
+testFake10agz: mkout ${fake10_fa} ${fake10_fai}
+	${intronProspector} --genome-fasta=${fake10_fa} --junction-bed=output/$@.juncs.bed.gz --intron-bed=output/$@.introns.bed.gz --intron-calls=output/$@.introns.tsv.gz --debug-trace=output/$@.debug.tsv.gz ${fake10_star_sam}
+	$(call diff_out_gz,testFake10a)
+	zcat output/$@.debug.tsv.gz > output/$@.debug.tsv
+	${diff} expected/testFake10a.debug.tsv output/$@.debug.tsv
 
 # fake10 hisat2 mappings
 testFake10b: mkout ${fake10_fa} ${fake10_fai}
@@ -125,12 +146,20 @@ testSortBug: mkout
 #####
 # intronProspctorMerge tests
 #####
-intronProspctorMergeTests: testBasic134Merge testFake10abMerge testStrandConflictMerge
+intronProspctorMergeTests: testBasic134Merge testBasic134MergeGz testFake10abMerge testStrandConflictMerge
 
 testBasic134Merge: mkout
 	${intronProspectorMerge} --junction-bed=output/$@.juncs.bed --intron-bed=output/$@.introns.bed --intron-calls=output/$@.introns.tsv \
 	    expected/testBasic1.introns.tsv expected/testBasic3.introns.tsv expected/testBasic4.introns.tsv
 	${diff_out}
+
+testBasic134MergeGz: mkout
+	gzip -c expected/testBasic1.introns.tsv > output/testBasic1_gz.introns.tsv.gz
+	gzip -c expected/testBasic3.introns.tsv > output/testBasic3_gz.introns.tsv.gz
+	gzip -c expected/testBasic4.introns.tsv > output/testBasic4_gz.introns.tsv.gz
+	${intronProspectorMerge} --junction-bed=output/$@.juncs.bed.gz --intron-bed=output/$@.introns.bed.gz --intron-calls=output/$@.introns.tsv.gz \
+	    output/testBasic1_gz.introns.tsv.gz output/testBasic3_gz.introns.tsv.gz output/testBasic4_gz.introns.tsv.gz
+	$(call diff_out_gz,testBasic134Merge)
 
 testFake10abMerge: mkout
 	${intronProspectorMerge} --intron-calls=output/$@.introns.tsv \
@@ -180,17 +209,6 @@ testOntUnsorted: mkout
 	${intronProspector} --unsorted --allow-anchor-indels --junction-bed=output/$@.juncs.bed --intron-bed=output/$@.introns.bed --intron-calls=output/$@.introns.tsv input/ont-out-of-order-targets.sam
 	${diff_out}
 
-
-##
-# test of multiple BAMs at once
-#
-# test_multi.sam is split into two parts
-##
-multiBamTests: testMultiSam
-
-testMultiSam: mkout
-	${intronProspector} --junction-bed=output/$@.juncs.bed --intron-bed=output/$@.introns.bed --intron-calls=output/$@.introns.tsv ${multi_one_sam} ${multi_two_sam}
-	${diff_out}
 
 ###
 # other rules

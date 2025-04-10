@@ -7,7 +7,8 @@
  * This version is standard-compliant and compatible with gcc 3.x.
  *
  * Code obtained from:
- *  https://github.com/madler/zlib/tree/develop/contrib/iostream3
+ *    https://github.com/madler/zlib/tree/develop/contrib/iostream3
+ * Added open with string.
  */
 
 #ifndef ZFSTREAM_H
@@ -67,6 +68,16 @@ public:
   */
   gzfilebuf*
   open(const char* name,
+       std::ios_base::openmode mode);
+
+  /**
+   *  @brief  Open gzipped file.
+   *  @param  name  File name.
+   *  @param  mode  Open mode flags.
+   *  @return  @c this on success, NULL on failure.
+  */
+  gzfilebuf*
+  open(const std::string& name,
        std::ios_base::openmode mode);
 
   /**
@@ -250,6 +261,15 @@ public:
              std::ios_base::openmode mode = std::ios_base::in);
 
   /**
+   *  @brief  Construct stream on gzipped file to be opened.
+   *  @param  name  File name.
+   *  @param  mode  Open mode flags (forced to contain ios::in).
+  */
+  explicit
+  gzifstream(const std::string& name,
+             std::ios_base::openmode mode = std::ios_base::in);
+
+  /**
    *  @brief  Construct stream on already open gzipped file.
    *  @param  fd    File descriptor.
    *  @param  mode  Open mode flags (forced to contain ios::in).
@@ -286,6 +306,22 @@ public:
   */
   void
   open(const char* name,
+       std::ios_base::openmode mode = std::ios_base::in);
+
+  /**
+   *  @brief  Open gzipped file.
+   *  @param  name  File name.
+   *  @param  mode  Open mode flags (forced to contain ios::in).
+   *
+   *  Stream will be in state good() if file opens successfully;
+   *  otherwise in state fail(). This differs from the behavior of
+   *  ifstream, which never sets the state to good() and therefore
+   *  won't allow you to reuse the stream for a second file unless
+   *  you manually clear() the state. The choice is a matter of
+   *  convenience.
+  */
+  void
+  open(const std::string& name,
        std::ios_base::openmode mode = std::ios_base::in);
 
   /**
@@ -339,6 +375,15 @@ public:
              std::ios_base::openmode mode = std::ios_base::out);
 
   /**
+   *  @brief  Construct stream on gzipped file to be opened.
+   *  @param  name  File name.
+   *  @param  mode  Open mode flags (forced to contain ios::out).
+  */
+  explicit
+  gzofstream(const std::string& name,
+             std::ios_base::openmode mode = std::ios_base::out);
+
+  /**
    *  @brief  Construct stream on already open gzipped file.
    *  @param  fd    File descriptor.
    *  @param  mode  Open mode flags (forced to contain ios::out).
@@ -375,6 +420,22 @@ public:
   */
   void
   open(const char* name,
+       std::ios_base::openmode mode = std::ios_base::out);
+
+  /**
+   *  @brief  Open gzipped file.
+   *  @param  name  File name.
+   *  @param  mode  Open mode flags (forced to contain ios::out).
+   *
+   *  Stream will be in state good() if file opens successfully;
+   *  otherwise in state fail(). This differs from the behavior of
+   *  ofstream, which never sets the state to good() and therefore
+   *  won't allow you to reuse the stream for a second file unless
+   *  you manually clear() the state. The choice is a matter of
+   *  convenience.
+  */
+  void
+  open(const std::string& name,
        std::ios_base::openmode mode = std::ios_base::out);
 
   /**

@@ -11,6 +11,9 @@
 Merge output of the `intronProspector` intron calls tab-separated (TSV) files, as created by the `--intron-calls` option.
 This program can also be used to convert the output format from a single run.
 
+Compressed intron calls TSV files are recognized if they end in `.gz`.
+TSV and BED files will be automatically compressed with `gzip` if they end in `.gz`.
+
 # Options
 
 `-h, --help`

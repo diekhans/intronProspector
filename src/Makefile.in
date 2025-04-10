@@ -18,7 +18,7 @@ intronProspectorMerge_OBJS = ${intronProspectorMerge_SRCS:%.cc=${OBJDIR}/%.o}
 DEPENDS = ${SRCS:%.cc=%.depend}
 
 CXX = @CXX@
-CXXFLAGS = @CXXFLAGS@ -std=c++11
+CXXFLAGS = @CXXFLAGS@ -std=c++14
 CPPFLAGS = @CPPFLAGS@
 LDFLAGS = @LDFLAGS@
 LIBS = @LIBS@

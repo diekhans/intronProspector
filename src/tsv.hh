@@ -4,11 +4,11 @@
 **/
 #ifndef tsv_hh
 #define tsv_hh
-#include <fstream>
 #include <sstream>
 #include <map>
 #include <vector>
 #include <stdexcept>
+#include "AutoGzip.hh"
 #include "type_ops.hh"
 
 using namespace std;
@@ -20,7 +20,7 @@ class Tsv {
     typedef map<string, int> ColMap;
     
     const string tsv_file_;
-    ifstream tsv_fh_;
+    AutoGzipInput tsv_fh_;
     int num_columns_;
     ColMap col_map_;  // name to column index
     vector<string> row_;   // current row
@@ -54,7 +54,7 @@ class Tsv {
     // open file and read headers
     Tsv(const string& tsv_file):
         tsv_file_(tsv_file),
-        tsv_fh_(tsv_file.c_str()),
+        tsv_fh_(tsv_file),
         num_columns_(0) {
         if (tsv_fh_.bad() | tsv_fh_.fail()) {
             throw runtime_error("can't open " + tsv_file);

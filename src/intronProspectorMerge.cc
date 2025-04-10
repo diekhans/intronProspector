@@ -32,9 +32,9 @@ DEALINGS IN THE SOFTWARE.  */
 
 #include <getopt.h>
 #include <algorithm>
-#include <fstream>
 #include <string>
 #include <vector>
+#include "zfstream.hh"
 #include "junctions.hh"
 #include "tsv.hh"
 #include "version.hh"
@@ -126,12 +126,11 @@ class CmdParser {
     }
 
     void read_input_call_list(const string& intron_calls_files) {
-        ifstream infh(intron_calls_files);
+        AutoGzipInput infh(intron_calls_files);
         string line;
         while (getline(infh, line)) {
             input_calls_tsvs.push_back(line);
         }
-        infh.close();
     }
 };
 
@@ -188,21 +187,21 @@ static void intron_prospector_merge(CmdParser &opts) {
     juncs.sort_by_anchors();
     renumber_junctions(juncs);
     if (opts.junction_bed != "") {
-        ofstream out(opts.junction_bed.c_str());
+        AutoGzipOutput out(opts.junction_bed);
         print_anchor_bed(juncs, 0.0, out);
     }
     if ((opts.intron_bed != "") or (opts.intron_bed6 != "") or (opts.intron_call_tsv != "")) {
         juncs.sort_by_introns();
         if (opts.intron_bed != "") {
-            ofstream out(opts.intron_bed.c_str());
+            AutoGzipOutput out(opts.intron_bed);
             print_intron_bed(juncs, 0.0, 9, out);
         }
         if (opts.intron_bed6 != "") {
-            ofstream out(opts.intron_bed6.c_str());
+            AutoGzipOutput out(opts.intron_bed6);
             print_intron_bed(juncs, 0.0, 6, out);
         }
         if (opts.intron_call_tsv != "") {
-            ofstream out(opts.intron_call_tsv.c_str());
+            AutoGzipOutput out(opts.intron_call_tsv);
             print_junction_call_header(out);
             print_intron_call_tsv(juncs, 0.0, out);
         }

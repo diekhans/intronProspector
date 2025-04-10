@@ -245,10 +245,4 @@ public:
         return junctions_.get_junctions();
     }
 };
-
-// open a output file if not empty, otherwise return NULL
-inline ostream* open_out_or_null(const string& fname) {
-    return (fname != "") ? new ofstream(fname.c_str()) : NULL;
-}
-
 #endif

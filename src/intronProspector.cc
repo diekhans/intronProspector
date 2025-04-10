@@ -32,8 +32,8 @@ DEALINGS IN THE SOFTWARE.  */
 
 #include <getopt.h>
 #include <algorithm>
-#include <fstream>
 #include <vector>
+#include "AutoGzip.hh"
 #include "junctions_extractor.hh"
 #include "strconvert.hh"
 #include "genome.hh"
@@ -64,6 +64,12 @@ static void cmd_error(const string& msg) {
     cerr << "Error: "  << msg << endl;
     cerr << "Use --help to get usage" << endl;
     exit(1);
+}
+
+
+// open a output file if not empty, otherwise return NULL
+static inline ostream* open_out_or_null(const string& fname) {
+    return (fname != "") ? new AutoGzipOutput(fname) : NULL;
 }
 
 // convert a specification for strandness to constant.
@@ -373,7 +379,7 @@ static void extract_junctions(CmdParser &opts) {
     if (opts.genome_fa.size() > 0) {
         genome = new Genome(opts.genome_fa);
     }
-    ofstream *trace_fh = opts.debug_trace_tsv.size() > 0 ? new ofstream(opts.debug_trace_tsv.c_str()) :  NULL;
+    ostream *trace_fh = open_out_or_null(opts.debug_trace_tsv);
     JunctionsExtractor extractor(opts.min_anchor_length, opts.max_anchor_indel_size,
                                  opts.min_intron_length, opts.max_intron_length,
                                  opts.strandness, opts.excludes, genome,

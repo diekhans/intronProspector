@@ -7,7 +7,8 @@
  * This version is standard-compliant and compatible with gcc 3.x.
  *
  * Code obtained from:
- *  https://github.com/madler/zlib/tree/develop/contrib/iostream3
+ *    https://github.com/madler/zlib/tree/develop/contrib/iostream3
+ * Added open with string.
  */
 
 #include "zfstream.hh"
@@ -51,7 +52,7 @@ gzfilebuf::setcompression(int comp_level,
 
 // Open gzipped file
 gzfilebuf*
-gzfilebuf::open(const char *name,
+gzfilebuf::open(const std::string &name,
                 std::ios_base::openmode mode)
 {
   // Fail if file already open
@@ -67,7 +68,7 @@ gzfilebuf::open(const char *name,
     return NULL;
 
   // Attempt to open file
-  if ((file = gzopen(name, char_mode)) == NULL)
+  if ((file = gzopen(name.c_str(), char_mode)) == NULL)
     return NULL;
 
   // On success, allocate internal buffer and set flags
@@ -75,6 +76,14 @@ gzfilebuf::open(const char *name,
   io_mode = mode;
   own_fd = true;
   return this;
+}
+
+// Open gzipped file
+gzfilebuf*
+gzfilebuf::open(const char *name,
+                std::ios_base::openmode mode) {
+    return open(std::string(name), mode);
+    
 }
 
 // Attach to gzipped file
@@ -387,6 +396,15 @@ gzifstream::gzifstream(const char* name,
   this->open(name, mode);
 }
 
+// Initialize stream buffer and open file
+gzifstream::gzifstream(const std::string& name,
+                       std::ios_base::openmode mode)
+: std::istream(NULL), sb()
+{
+  this->init(&sb);
+  this->open(name, mode);
+}
+
 // Initialize stream buffer and attach to file
 gzifstream::gzifstream(int fd,
                        std::ios_base::openmode mode)
@@ -399,6 +417,17 @@ gzifstream::gzifstream(int fd,
 // Open file and go into fail() state if unsuccessful
 void
 gzifstream::open(const char* name,
+                 std::ios_base::openmode mode)
+{
+  if (!sb.open(name, mode | std::ios_base::in))
+    this->setstate(std::ios_base::failbit);
+  else
+    this->clear();
+}
+
+// Open file and go into fail() state if unsuccessful
+void
+gzifstream::open(const std::string& name,
                  std::ios_base::openmode mode)
 {
   if (!sb.open(name, mode | std::ios_base::in))
@@ -442,6 +471,15 @@ gzofstream::gzofstream(const char* name,
   this->open(name, mode);
 }
 
+// Initialize stream buffer and open file
+gzofstream::gzofstream(const std::string& name,
+                       std::ios_base::openmode mode)
+: std::ostream(NULL), sb()
+{
+  this->init(&sb);
+  this->open(name, mode);
+}
+
 // Initialize stream buffer and attach to file
 gzofstream::gzofstream(int fd,
                        std::ios_base::openmode mode)
@@ -454,6 +492,17 @@ gzofstream::gzofstream(int fd,
 // Open file and go into fail() state if unsuccessful
 void
 gzofstream::open(const char* name,
+                 std::ios_base::openmode mode)
+{
+  if (!sb.open(name, mode | std::ios_base::out))
+    this->setstate(std::ios_base::failbit);
+  else
+    this->clear();
+}
+
+// Open file and go into fail() state if unsuccessful
+void
+gzofstream::open(const std::string& name,
                  std::ios_base::openmode mode)
 {
   if (!sb.open(name, mode | std::ios_base::out))

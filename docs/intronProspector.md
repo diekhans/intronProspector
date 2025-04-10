@@ -25,6 +25,8 @@ The `intronProspectorMerge` program can be used to convert to from the
 `--intron-calls` format to other formats as well as merge the output from
 multiple `intronProspector` runs.
 
+TSV and BED files will be automatically compressed with `gzip` if they end in `.gz`.
+
 # OPTIONS
 
 `-h, --help`
