@@ -34,10 +34,12 @@ AC_PROG_CXX()
 
 # FIXME: some of this is wonky, including using HTSLIB_EXTRA and
 # having to add -rpath.  Need to dig into this
+case "$host_os" in
+     darwin*) use_rpath="yes" ;;
+           *) use_rpath="no" ;;
+esac
 
 AC_MSG_NOTICE([checking for location of htslib include and library])
-
-HTSLIB_EXTRA="-lcurl -lssl -lcrypt -lbz2 -lz -llzma"
 
 if test x"${with_htslib}" != "x" ; then
    # --with-htslib=DIR specified
@@ -50,7 +52,11 @@ if test x"${with_htslib}" != "x" ; then
        [AC_MSG_NOTICE([htslib/sam.h found])],
        [AC_MSG_ERROR([htslib/sam.h not found])])
 
-   ldrpath="-L${with_htslib}/lib -Wl,-rpath,${with_htslib}/lib -Wl,-rpath-link,${with_htslib}/lib"
+   ldrpath="-L${with_htslib}/lib -Wl,-rpath,${with_htslib}/lib"
+   if test "${use_rpath}" = "yes" ; then
+      ldrpath="${ldrpath} -Wl,-rpath-link,${with_htslib}/lib"
+   fi
+   HTSLIB_EXTRA="-lcurl -lssl -lcrypt -lbz2 -lz -llzma"
    LIBS="${LIBS} ${ldrpath} -lhts ${HTSLIB_EXTRA}"
    AC_MSG_NOTICE(checking for htslib library using ${LIBS})
    AC_CHECK_LIB(hts, hts_version,
@@ -63,14 +69,26 @@ else
         [AC_MSG_ERROR([pkg-config did not find htslib])])
     CPPFLAGS="${CPPFLAGS} ${htslib_CFLAGS}"
 
-    # FIXME: with conda get warnings like
-    # ld: warning: libdeflate.so.0, needed by .../lib/libhts.so, not found (try using -rpath or -rpath-link)
-
     htslibdir=`pkg-config --libs-only-L htslib | sed -e 's/^-L//' -e 's/ *$//'`
-    ldrpath="-Wl,-rpath,${htslibdir} -Wl,-rpath-link,${htslibdir}"
-    LIBS="${LIBS} ${ldrpath} ${htslib_LIBS} ${HTSLIB_EXTRA}"
+    ldrpath="-Wl,-rpath,${htslibdir}"
+    if test "${use_rpath}" = "yes" ; then
+         ldrpath="${ldrpath} -Wl,-rpath-link,${htslibdir}"
+    fi
+    LIBS="${LIBS} ${ldrpath} ${htslib_LIBS}"
 fi
 
+AC_MSG_NOTICE([checking for zlib])
+PKG_CHECK_MODULES([zlib], [zlib],
+  [AC_MSG_RESULT([found via pkg-config])
+   CPPFLAGS="${CPPFLAGS} ${zlib_CFLAGS}"
+   LIBS="${LIBS} ${zlib_LIBS}"],
+  [AC_CHECK_LIB([z], [inflate],
+     [AC_CHECK_HEADER([zlib.h],
+        [AC_MSG_RESULT([zlib found manually])
+         LIBS="${LIBS} -lz"],
+        [AC_MSG_ERROR([zlib.h not found])])],
+     [AC_MSG_ERROR([libz not found])])])
+     
 if test x$static_link = xtrue; then
     LDFLAGS="$LDFLAGS -static"
 fi
