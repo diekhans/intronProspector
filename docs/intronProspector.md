@@ -37,6 +37,14 @@ TSV and BED files will be automatically compressed with `gzip` if they end in `.
 
 > Prints the current version number.
 
+`-g fasta, --genome-fasta=fasta`
+
+> Genome FASTA file, must be indexed by `samtools faidx`.  Donor and acceptor dinuclotides are identified if provided. THIS SHOULD NORMALLY BE PROVIDE!
+
+`-S, --skip-missing-targets`
+
+> If a target sequence is not in the genome, skip the alignment rather than generate an error.
+
 `-a INT, --min-anchor-length=INT`
 
 > Minimum anchor length. Junctions which satisfy a minimum anchor length on both sides are reported.  Mismatch bases don't count towards the meeting this threshold.  The default is 8 bases.
@@ -69,12 +77,6 @@ TSV and BED files will be automatically compressed with `gzip` if they end in `.
 > not collected per chromosome.
 
 > Strand specificity of RNA library preparation.  Use `UN` for unstranded, `RF` for first-strand, `FR` for second-strand (case-insensitive).  The default is `UN`.  This is used to set the strand in the junction-format BED file.
-
-`-g fasta, --genome-fasta=fasta`
-
-> Genome FASTA file, must be indexed by `samtools faidx`.  Donor and acceptor dinuclotides are identified if provided. 
-
-`-S, --skip-missing-targets`
 
 `-X category, --exclude=category`
 
@@ -137,14 +139,14 @@ Secondary alignments are not used to support introns.
 
 Call junctions from a BAM file, also creating BEDs of junctions and introns:
 ```
-intronProspector --intron-calls=introns.tsv --junction-bed=juncs.bed --intron-bed=introns.bed reads.bam
+intronProspector --genome-fasta=thegenome.fa.gz --intron-calls=introns.tsv --junction-bed=juncs.bed --intron-bed=introns.bed reads.bam
 ```
 
 Pipeline to call introns and create a CRAM file:
 ```
 cat reads.sam \
     | samtools sort -O sam  \
-    | ./intronProspector -c introns.tsv -p /dev/stdout \
+    | ./intronProspector -c introns.tsv --genome-fasta=thegenome.fa.gz -p /dev/stdout \
     | samtools view -O CRAM -T grch38.fa >reads.cram
 ```
 Note that the `cat` command could be an aligner output a SAM file and that the genome FASTA file must be index by `samtools faidx`.
