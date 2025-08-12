@@ -42,6 +42,7 @@ autom4te.cache
 .emacs.bak
 
 bin/
+/tests/output/
 
 # generated files
 src/version.hh

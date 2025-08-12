@@ -13,8 +13,9 @@ Find putative intron junctions in a RNA-Seq alignment. The *readaligns* files ma
 This program allows for integrating splice junction calling into an alignment pipeline.  Pass-through mode copys the alignment file on `stdin` to `stdout`.  It can then sit between an aligner outputting SAM and `samtools` that converts to BAM/CRAM.
 
 Both short-read (Illumina) and long-read RNA-Seq can be process.  For
-short-reads, it is recommended to use `--min-confidence-score=1.0`.  Introns
-are as determined by the aligner and indicated in the BAM by `N` operations.
+short-reads, it is recommended to use `--min-confidence-score=1.0`, which is the default.
+Long-read or low coverage experiments may want to use a lower value or disable with`--min-confidence-score=0.0`.
+Introns are as determined by the aligner and indicated in the BAM by `N` operations.
 
 Process multiple BAMs at once will use more more memory, as intron counts are
 not collected per chromosome.  This mode does not require a sorted BAM and is
@@ -71,7 +72,7 @@ TSV and BED files will be automatically compressed with `gzip` if they end in `.
 
 `-C FLOAT, --min-confidence-score=FLOAT`
 
-> Calculate the Shannon-Wiener Diversity Index to use as a confidence score and discard intron calls below this value.  The default is 0.0, which discards no calls. A value of 1.0 is a good threshold for filtering. This methodology it taken from JuncBASE DOI: 10.1101/gr.108662.110.
+> Calculate the Shannon-Wiener Diversity Index to use as a confidence score and discard intron calls below this value. A value of 1.0 is a good threshold for filtering. A value of 0.0 disables filtering.  The default is 1.0. This methodology it taken from JuncBASE DOI: 10.1101/gr.108662.110.
 
 `-s STRING, --strandness=STRING`
 
