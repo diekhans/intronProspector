@@ -44,6 +44,10 @@ TSV and BED files will be automatically compressed with `gzip` if they end in `.
 
 > Write the intron BED 6 with the bounds of the introns. The score is the number of alignments spanning the junction.   This is for software not wanting to create a browser track.
 
+`-f spec, --sj-filter=spec`
+
+> Filter based on splice junctions motif. A spec of `canon` keeps only canonical splice junctions (AT/AG, GC/AG, and AT/AC).  A spec of `all` passes all through. The `intronProspector` runs must have used a genome for this option to have an effect.
+
 # BUGS
 
 See GitHub Issues: <https://github.com/diekhans/intronProspector/issues>

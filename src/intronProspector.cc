@@ -150,7 +150,6 @@ class CmdParser {
         }
     }
 
-
     private:
     int parse_options(int argc, char *argv[]) {
         // definitions for long-only options
@@ -254,7 +253,7 @@ class CmdParser {
                     exit(0);
                 case '?':
                 default:
-                    cmd_error("invalid option");
+                    cmd_error("bug: option not handled");
             }
         }
         return optind;

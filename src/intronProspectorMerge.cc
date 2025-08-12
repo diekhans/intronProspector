@@ -37,6 +37,7 @@ DEALINGS IN THE SOFTWARE.  */
 #include "zfstream.hh"
 #include "junctions.hh"
 #include "tsv.hh"
+#include "splice_juncs.hh"
 #include "version.hh"
 
 using namespace std;
@@ -71,8 +72,21 @@ class CmdParser {
     string intron_bed6;
     string intron_call_tsv;
 
-    CmdParser(int argc, char *argv[]) {
-        
+    // filter
+    JunctionFilter junction_filter;
+    
+    CmdParser(int argc, char *argv[]):
+        junction_filter(NULL_SJ_FILTER) {
+        try {
+            parse_cmd_args(argc, argv);
+        } catch (const std::exception& ex) {
+            cerr << "Error parsing command line: " << ex.what() << endl;
+            exit(1);
+        }
+    }
+
+    private:
+    int parse_options(int argc, char *argv[]) {
         struct option long_options[] = {
             {"help", no_argument, NULL, 'h'},
             {"version", no_argument, NULL, 'v'},
@@ -81,10 +95,11 @@ class CmdParser {
             {"intron-bed", required_argument, NULL, 'n'},
             {"intron-bed6", required_argument, NULL, 'b'},
             {"intron-calls", required_argument, NULL, 'c'},
+            {"sj-filter", required_argument, NULL, 'f'},
             {NULL, 0, NULL, 0}
         };
             
-        const char *short_options = "hvi:j:n:b:c:";
+        const char *short_options = "hvi:j:n:b:c:f:";
         int c;
         while ((c = getopt_long(argc, argv, short_options, long_options, NULL)) != -1) {
             switch (c) {
@@ -103,6 +118,9 @@ class CmdParser {
                 case 'c':
                     intron_call_tsv = optarg;
                     break;
+                case 'f':
+                    junction_filter = junction_filter_parse(string(optarg));
+                    break;
                 case 'h':
                     usage();
                 case 'v':
@@ -110,12 +128,23 @@ class CmdParser {
                     exit(0);
                 case '?':
                 default:
-                    cmd_error("invalid option");
+                    cmd_error("bug: option not handled");
             }
         }
+        return optind;
+    }
 
-        while (optind < argc) {
-            input_calls_tsvs.push_back(string(argv[optind++]));
+    void read_input_call_list(const string& intron_calls_files) {
+        AutoGzipInput infh(intron_calls_files);
+        string line;
+        while (getline(infh, line)) {
+            input_calls_tsvs.push_back(line);
+        }
+    }
+
+    void collect_input_calls(int argc, char *argv[], int nextopt) {
+        while (nextopt < argc) {
+            input_calls_tsvs.push_back(string(argv[nextopt++]));
         }
         if (intron_calls_files.size() > 0) {
             read_input_call_list(intron_calls_files);
@@ -125,12 +154,9 @@ class CmdParser {
         }
     }
 
-    void read_input_call_list(const string& intron_calls_files) {
-        AutoGzipInput infh(intron_calls_files);
-        string line;
-        while (getline(infh, line)) {
-            input_calls_tsvs.push_back(line);
-        }
+    void parse_cmd_args(int argc, char *argv[]) {
+        int nextopt = parse_options(argc, argv);
+        collect_input_calls(argc, argv, nextopt);
     }
 };
 
@@ -150,7 +176,8 @@ static Junction read_junction(const Tsv& tsv) {
     return junc;
 }
 
-static void process_junction(JunctionTable& junction_tbl,
+static void process_junction(JunctionFilter junction_filter,
+                             JunctionTable& junction_tbl,
                              const Junction& junc) {
     JunctionKey key(junc.chrom, junc.intron_start, junc.intron_end);
     if (junction_tbl.count(key) == 0) {
@@ -160,12 +187,14 @@ static void process_junction(JunctionTable& junction_tbl,
     }
 }
 
-
-static void process_calls_tsv(JunctionTable& junction_tbl,
+static void process_calls_tsv(JunctionFilter junction_filter,
+                              JunctionTable& junction_tbl,
                               const string& tsv_file) {
     Tsv tsv(tsv_file);
     while (tsv.next_row()) {
-        process_junction(junction_tbl, read_junction(tsv));
+        if (junction_filter_check(junction_filter, tsv.get_col("splice_sites"))) {
+            process_junction(junction_filter, junction_tbl, read_junction(tsv));
+        }
     }
 }
 
@@ -179,7 +208,7 @@ static void intron_prospector_merge(CmdParser &opts) {
     // load and merge
     JunctionTable junction_tbl;
     for (int i = 0; i < opts.input_calls_tsvs.size(); i++) {
-        process_calls_tsv(junction_tbl, opts.input_calls_tsvs[i]);
+        process_calls_tsv(opts.junction_filter, junction_tbl, opts.input_calls_tsvs[i]);
     }
 
     // output

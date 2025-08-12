@@ -163,7 +163,8 @@ testSortBug: mkout
 #####
 # intronProspctorMerge tests
 #####
-intronProspctorMergeTests: testBasic134Merge testBasic134MergeGz testFake10abMerge testStrandConflictMerge
+intronProspctorMergeTests: testBasic134Merge testBasic134MergeGz testFake10abMerge testStrandConflictMerge \
+	testSjFilterCanonMerge testSjFilterAllMerge testSjFilterDefaultMerge
 
 testBasic134Merge: mkout
 	${intronProspectorMerge} --junction-bed=output/$@.juncs.bed --intron-bed=output/$@.introns.bed --intron-calls=output/$@.introns.tsv \
@@ -188,6 +189,21 @@ testStrandConflictMerge: mkout
 	   input/strand-confict/SRR6225360.calls.tsv input/strand-confict/SRR6225362.calls.tsv \
 	   input/strand-confict/SRR6225361.calls.tsv input/strand-confict/SRR6225363.calls.tsv 2> output/$@.err
 	${diff_tsv}
+
+testSjFilterCanonMerge: mkout
+	${intronProspectorMerge} --sj-filter=canon --junction-bed=output/$@.juncs.bed --intron-bed=output/$@.introns.bed --intron-calls=output/$@.introns.tsv \
+	   expected/testSjFilterAll.introns.tsv	    
+	${diff_out}
+
+testSjFilterAllMerge: mkout
+	${intronProspectorMerge} --sj-filter=all --junction-bed=output/$@.juncs.bed --intron-bed=output/$@.introns.bed --intron-calls=output/$@.introns.tsv \
+	   expected/testSjFilterAll.introns.tsv	    
+	${diff_out}
+
+testSjFilterDefaultMerge: mkout
+	${intronProspectorMerge} --junction-bed=output/$@.juncs.bed --intron-bed=output/$@.introns.bed --intron-calls=output/$@.introns.tsv \
+	   expected/testSjFilterAll.introns.tsv	    
+	${diff_out}
 
 ##
 # ONT tests
