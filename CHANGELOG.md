@@ -1,6 +1,6 @@
 # Major and user-visible changes
 
-## version 1.4.0 [in progress]
+## version 1.4.0 2025-08-12
 * Add --sj-filter=canon option `intronProspector` to keep only canonical splice junctions.
   This is the default if a genome is provide.  Filtering can be disabled with
   --sj-filter=all. [incompatibility]
