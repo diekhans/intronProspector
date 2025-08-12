@@ -6,7 +6,7 @@ BINDIR = ${ROOT}/bin
 intronProspector = ${BINDIR}/intronProspector
 intronProspectorMerge = ${BINDIR}/intronProspectorMerge
 
-shared_SRCS = junctions.cc junctions_extractor.cc genome.cc zfstream.cc
+shared_SRCS = junctions.cc junctions_extractor.cc genome.cc zfstream.cc splice_juncs.cc
 intronProspector_SRCS =  intronProspector.cc
 intronProspectorMerge_SRCS = intronProspectorMerge.cc
 SRCS = ${shared_SRCS} ${intronProspector_SRCS} ${intronProspectorMerge_SRCS}

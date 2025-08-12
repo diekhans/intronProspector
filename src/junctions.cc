@@ -266,4 +266,3 @@ void print_intron_call_tsv(const JunctionVector& juncs,
         }
     }
 }
-

@@ -112,6 +112,7 @@ class CmdParser {
     bool unsorted;
     uint32_t max_anchor_indel_size;
     float min_confidence_score;
+    JunctionFilter junction_filter;
     Strandness strandness;
     unsigned excludes;
     string genome_fa;
@@ -134,6 +135,7 @@ class CmdParser {
         allow_anchor_indels(DEFAULT_ALLOW_ANCHOR_INDELS),
         max_anchor_indel_size(DEFAULT_MAX_ANCHOR_INDEL_SIZE),
         min_confidence_score(DEFAULT_MIN_CONFIDENCE_SCORE),
+        junction_filter(NULL_SJ_FILTER),
         strandness(DEFAULT_STRANDED),
         excludes(EXCLUDE_NONE),
         skip_missing_targets(false),
@@ -150,7 +152,7 @@ class CmdParser {
 
 
     private:
-    void parse_cmd_args(int argc, char *argv[]) {
+    int parse_options(int argc, char *argv[]) {
         // definitions for long-only options
         static const int OPT_SET_XS_STRAND_TAG = 256;
         static const int OPT_SET_TS_STRAND_TAG = 257;
@@ -168,6 +170,7 @@ class CmdParser {
             {"strandness", required_argument, NULL, 's'},
             {"excludes", required_argument, NULL, 'X'},
             {"genome-fasta", required_argument, NULL, 'g'},
+            {"sj-filter", required_argument, NULL, 'f'},
             {"skip-missing-targets", no_argument, NULL, 'S'},
             {"junction-bed", required_argument, NULL, 'j'},
             {"intron-bed", required_argument, NULL, 'n'},
@@ -180,7 +183,7 @@ class CmdParser {
             {NULL, 0, NULL, 0}
         };
             
-        const char *short_options = "hvua:i:I:C:s:X:g:S:j:n:b:c:p:UD:";
+        const char *short_options = "hvua:i:I:C:s:X:g:S:j:n:b:c:p:D:f:";
         int c;
         while ((c = getopt_long(argc, argv, short_options, long_options, NULL)) != -1) {
             switch (c) {
@@ -213,6 +216,9 @@ class CmdParser {
                     break;
                 case 'g':
                     genome_fa = string(optarg);
+                    break;
+                case 'f':
+                    junction_filter = junction_filter_parse(string(optarg));
                     break;
                 case 'S':
                     skip_missing_targets = true;
@@ -251,14 +257,12 @@ class CmdParser {
                     cmd_error("invalid option");
             }
         }
+        return optind;
+    }
 
-        // if indels are not allowed, also indicate this my setting max size
-        if (not allow_anchor_indels) {
-            max_anchor_indel_size = 0;
-        }
-
-        while (optind < argc) {
-            bam_files.push_back(string(argv[optind++]));
+    void collect_bams(int argc, char *argv[], int nextopt) {
+        while (nextopt < argc) {
+            bam_files.push_back(string(argv[nextopt++]));
         }
         if (bam_files.size() == 0) {
             bam_files.push_back("/dev/stdin");
@@ -266,8 +270,31 @@ class CmdParser {
         if ((bam_files.size() > 1) and (bam_pass_through != "")) {
             cmd_error("can only have one input BAM with --bam-pass-through");
         }
-        if ((set_XS_strand_tag or set_TS_strand_tag)
-            and ((bam_pass_through.size() == 0) or (genome_fa.size() == 0))) {
+    }
+
+    void setup_junction_filter() {
+        if ((junction_filter == CANON_SJ_FILTER) and (genome_fa == "")) {
+            cmd_error("--sj-filter=canon requires --genome_fa");
+        }
+        if ((junction_filter == NULL_SJ_FILTER) and (genome_fa != "")) {
+            // default to canon with genome
+            junction_filter = CANON_SJ_FILTER;
+        }
+    }
+
+    void parse_cmd_args(int argc, char *argv[]) {
+        int nextopt = parse_options(argc, argv);
+        collect_bams(argc, argv, nextopt);
+        setup_junction_filter();
+        
+        // if indels are not allowed, also indicate this by setting max size
+        if (not allow_anchor_indels) {
+            max_anchor_indel_size = 0;
+        }
+
+        // can only sets strand on pass through with genome
+        if ((set_XS_strand_tag or set_TS_strand_tag) and
+            ((bam_pass_through.size() == 0) or (genome_fa.size() == 0))) {
             cmd_error("--set-XS-strand-tag and --set-TS-strand-tag require --pass-through and --genome-fasta");
         }
     }
@@ -382,6 +409,7 @@ static void extract_junctions(CmdParser &opts) {
     ostream *trace_fh = open_out_or_null(opts.debug_trace_tsv);
     JunctionsExtractor extractor(opts.min_anchor_length, opts.max_anchor_indel_size,
                                  opts.min_intron_length, opts.max_intron_length,
+                                 opts.junction_filter,
                                  opts.strandness, opts.excludes, genome,
                                  opts.skip_missing_targets,
                                  opts.set_XS_strand_tag, opts.set_TS_strand_tag,

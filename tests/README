@@ -16,5 +16,9 @@ Test cases:
     reuse.  The STAR junctions and regtools calls are also included for
     debugging.
 
+  - fake10_scramble_genome.fa
+    fake10_genome.fa with lines after base 340,000 scrambles to have
+    bad junctions.
+
 
  -  ont reads from LRGASP aligned to GRCh38

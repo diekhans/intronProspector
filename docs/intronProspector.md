@@ -45,6 +45,10 @@ TSV and BED files will be automatically compressed with `gzip` if they end in `.
 
 > If a target sequence is not in the genome, skip the alignment rather than generate an error.
 
+`-f spec, --sj-filter=spec`
+
+> Filter based on splice junctions motif. A spec of `canon` keeps only canonical splice junctions (AT/AG, GC/AG, and AT/AC).  A spec of `all` passes all through.  If `canon` is specified, a genome must be supplied, and if a genome is supplied, `canon` becomes the default.
+
 `-a INT, --min-anchor-length=INT`
 
 > Minimum anchor length. Junctions which satisfy a minimum anchor length on both sides are reported.  Mismatch bases don't count towards the meeting this threshold.  The default is 8 bases.

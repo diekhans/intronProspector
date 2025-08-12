@@ -53,8 +53,6 @@ typedef enum {
 } ReadCategory;
 static const unsigned READ_CATEGORY_MAX = UNSURE_READ;
 
-
-
 // class used to map Junction objects
 class JunctionKey {
     public:
@@ -187,10 +185,11 @@ public:
 
     // is this a canonical intron?
     bool is_canonical() const {
+        // canonical sites are capitalized
         return (splice_sites.size() > 0) and (splice_sites[0] >= 'A')
             and (splice_sites[0] <= 'Z');
     }
-    
+   
     // Print BED with anchors as blocks and intron as gap.
     void print_anchor_bed(ostream& out) const;
 

@@ -45,6 +45,7 @@ DEALINGS IN THE SOFTWARE.  */
 #include <vector>
 #include "htslib/sam.h"
 #include "junctions.hh"
+#include "splice_juncs.hh"
 
 class Genome;
 
@@ -61,7 +62,7 @@ typedef enum {
 
 // categories to exclude
 typedef enum {
-    EXCLUDE_NONE = 0,
+    EXCLUDE_NONE = 0x00,
     EXCLUDE_MULTI = 0x01,
 } ExcludeCats;
 
@@ -85,6 +86,10 @@ private:
     // Maximum length of an intron, i.e max junction width
     uint32_t max_intron_length_;
 
+    // filter for types of junctions to keep
+    JunctionFilter junction_filter_;
+
+    
     //strandness of data; 0 = unstranded, 1 = RF, 2 = FR
     Strandness strandness_;
 
@@ -136,7 +141,8 @@ private:
     bool junction_qc(bam1_t *aln, hts_pos_t anchor_start, hts_pos_t intron_start,
                      hts_pos_t intron_end, hts_pos_t anchor_end,
                      uint32_t left_mismatch_cnt, uint32_t right_mismatch_cnt,
-                     uint32_t left_indel_cnt, uint32_t right_indel_cnt);
+                     uint32_t left_indel_cnt, uint32_t right_indel_cnt,
+                     const string& splice_sites);
     void process_alignment(bam1_t *aln);
     void write_pass_through(bam1_t *aln,
                             bam_hdr_t *in_header,
@@ -145,19 +151,22 @@ private:
     Junction *create_junction(bam1_t *aln, const JunctionKey &key,
                               const string& chrom, char strand,
                               hts_pos_t anchor_start, hts_pos_t intron_start,
-                              hts_pos_t intron_end, hts_pos_t anchor_end);
+                              hts_pos_t intron_end, hts_pos_t anchor_end,
+                              const string& splice_sites);
     Junction *update_junction(bam1_t *aln, const JunctionKey &key,
                               const string& chrom, char strand,
                               hts_pos_t anchor_start, hts_pos_t intron_start,
                               hts_pos_t intron_end, hts_pos_t anchor_end);
     Junction *add_junction(bam1_t *aln, const string& chrom, char strand,
                            hts_pos_t anchor_start, hts_pos_t intron_start, 
-                           hts_pos_t intron_end, hts_pos_t anchor_end);
+                           hts_pos_t intron_end, hts_pos_t anchor_end,
+                           const string& splice_sites);
     char get_junction_strand_XS(bam1_t *aln);
     char get_junction_strand_flag(bam1_t *aln);
     string get_splice_sites(const string& chrom, char strand,
                             hts_pos_t intron_start, hts_pos_t intron_end);
-
+    char correct_strand(char strand,
+                        string& splice_sites);
     bam1_t* read_align();
     bool process_target_alignment(int target_index,
                                   bam1_t *aln);
@@ -170,6 +179,7 @@ public:
                        uint32_t max_anchor_indel_size,
                        uint32_t min_intron_length,
                        uint32_t max_intron_length,
+                       JunctionFilter junction_filter,
                        Strandness strandness,
                        unsigned excludes,
                        Genome *genome,
@@ -181,6 +191,7 @@ public:
         max_anchor_indel_size_(max_anchor_indel_size),
         min_intron_length_(min_intron_length),
         max_intron_length_(max_intron_length),
+        junction_filter_(junction_filter),
         strandness_(strandness),
         excludes_(excludes),
         genome_(genome),

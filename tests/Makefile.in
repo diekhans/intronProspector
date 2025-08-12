@@ -19,6 +19,8 @@ fake10_hisat2_sam = input/fake10.hisat2.sam
 fake10_missing_sam = input/fake10.missing.sam
 fake10_fa = output/fake10_genome.fa
 fake10_fai = output/fake10_genome.fa.fai
+fake10_scramble_fa = output/fake10_scramble_genome.fa
+fake10_scramble_fai = output/fake10_scramble_genome.fa.fai
 ont_sam = input/ont.sam
 
 define diff_out
@@ -50,7 +52,8 @@ test: intronProspctorTests intronProspctorMergeTests
 #####
 # intronProspctor tests
 #####
-intronProspctorTests: basicTests multiTests fake10Tests regressTests ontTests multiBamTests
+intronProspctorTests: basicTests multiTests fake10Tests regressTests ontTests multiBamTests \
+	sjfilterTests
 
 ###
 # basic tests
@@ -132,6 +135,20 @@ testFake10b: mkout ${fake10_fa} ${fake10_fai}
 testFake10c: mkout ${fake10_fa} ${fake10_fai}
 	${intronProspector} --genome-fasta=${fake10_fa} --skip-missing-targets --junction-bed=output/$@.juncs.bed --intron-bed=output/$@.introns.bed --intron-calls=output/$@.introns.tsv ${fake10_missing_sam} > output/$@.err 2>&1
 	${diff} expected/$@.err output/$@.err
+	${diff_out}
+
+sjfilterTests: testSjFilterDefault testSjFilterCanon testSjFilterAll
+
+testSjFilterDefault: mkout ${fake10_scramble_fa} ${fake10_scramble_fai}
+	${intronProspector} --genome-fasta=${fake10_scramble_fa} --junction-bed=output/$@.juncs.bed --intron-bed=output/$@.introns.bed --intron-calls=output/$@.introns.tsv ${fake10_star_sam}
+	${diff_out}
+
+testSjFilterCanon: mkout ${fake10_scramble_fa} ${fake10_scramble_fai}
+	${intronProspector} --sj-filter=canon --genome-fasta=${fake10_scramble_fa} --junction-bed=output/$@.juncs.bed --intron-bed=output/$@.introns.bed --intron-calls=output/$@.introns.tsv ${fake10_star_sam}
+	${diff_out}
+
+testSjFilterAll: mkout ${fake10_scramble_fa} ${fake10_scramble_fai}
+	${intronProspector} --sj-filter=all --genome-fasta=${fake10_scramble_fa} --junction-bed=output/$@.juncs.bed --intron-bed=output/$@.introns.bed --intron-calls=output/$@.introns.tsv ${fake10_star_sam}
 	${diff_out}
 
 

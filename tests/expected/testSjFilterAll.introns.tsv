@@ -1,0 +1,11 @@
+chrom	intron_start	intron_end	strand	uniq_mapped_count	multi_mapped_count	unsure_mapped_count	max_left_overhang	max_right_overhang	confidence	splice_sites	name
+fake10	10026	489051	.	0	1	0	14	67	0	gc/tt	sj0
+fake10	34666	35513	-	0	1	0	81	20	0	GT/AG	sj2
+fake10	130577	131433	+	0	1	0	72	29	0	GT/AG	sj3
+fake10	131550	132801	+	0	1	0	85	16	0	GT/AG	sj4
+fake10	132879	133326	+	1	0	0	80	17	0	GT/AG	sj5
+fake10	133449	136100	+	0	1	0	15	85	0	GT/AG	sj6
+fake10	136650	139594	+	0	1	0	75	26	0	GT/AG	sj7
+fake10	487560	488264	.	37	0	0	68	90	3.92	ct/gt	sj8
+fake10	488522	488947	.	44	2	0	87	91	4.47	gg/tt	sj9
+fake10	489118	490086	.	42	2	0	93	90	4.85	gg/tt	sj1
