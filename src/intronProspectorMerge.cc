@@ -84,7 +84,7 @@ class CmdParser {
             {NULL, 0, NULL, 0}
         };
             
-        const char *short_options = "hvi:j:n:b:c:U";
+        const char *short_options = "hvi:j:n:b:c:";
         int c;
         while ((c = getopt_long(argc, argv, short_options, long_options, NULL)) != -1) {
             switch (c) {
