@@ -141,8 +141,7 @@ private:
     bool junction_qc(bam1_t *aln, hts_pos_t anchor_start, hts_pos_t intron_start,
                      hts_pos_t intron_end, hts_pos_t anchor_end,
                      uint32_t left_mismatch_cnt, uint32_t right_mismatch_cnt,
-                     uint32_t left_indel_cnt, uint32_t right_indel_cnt,
-                     const string& splice_sites);
+                     uint32_t left_indel_cnt, uint32_t right_indel_cnt);
     void process_alignment(bam1_t *aln);
     void write_pass_through(bam1_t *aln,
                             bam_hdr_t *in_header,
@@ -159,8 +158,7 @@ private:
                               hts_pos_t intron_end, hts_pos_t anchor_end);
     Junction *add_junction(bam1_t *aln, const string& chrom, char strand,
                            hts_pos_t anchor_start, hts_pos_t intron_start, 
-                           hts_pos_t intron_end, hts_pos_t anchor_end,
-                           const string& splice_sites);
+                           hts_pos_t intron_end, hts_pos_t anchor_end);
     char get_junction_strand_XS(bam1_t *aln);
     char get_junction_strand_flag(bam1_t *aln);
     string get_splice_sites(const string& chrom, char strand,

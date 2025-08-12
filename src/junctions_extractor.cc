@@ -384,8 +384,7 @@ JunctionsExtractor::~JunctionsExtractor() {
 bool JunctionsExtractor::junction_qc(bam1_t *aln, hts_pos_t anchor_start, hts_pos_t intron_start,
                                      hts_pos_t intron_end, hts_pos_t anchor_end,
                                      uint32_t left_mismatch_cnt, uint32_t right_mismatch_cnt,
-                                     uint32_t left_indel_cnt, uint32_t right_indel_cnt,
-                                     const string& splice_sites) {
+                                     uint32_t left_indel_cnt, uint32_t right_indel_cnt) {
     if ((aln->core).flag & BAM_FSECONDARY) {
         return false;  // secondary alignment
     } else if (((excludes_ & EXCLUDE_MULTI) != 0) && (get_num_aligns(aln) > 1)) {
@@ -396,8 +395,6 @@ bool JunctionsExtractor::junction_qc(bam1_t *aln, hts_pos_t anchor_start, hts_po
     } else if ((((intron_start - anchor_start) - (left_mismatch_cnt + left_indel_cnt)) < min_anchor_length_) ||
                (((anchor_end - intron_end) - (right_mismatch_cnt + right_indel_cnt)) < min_anchor_length_)) {
         return false;  // anchor missing threshold
-    } else if (not junction_filter_check(junction_filter_, splice_sites)) {
-        return false; // non-canonical filter
     } else {
         return true;
     }
@@ -490,20 +487,19 @@ Junction *JunctionsExtractor::update_junction(bam1_t *aln, const JunctionKey &ke
 // Add a junction to the junctions map
 Junction *JunctionsExtractor::add_junction(bam1_t *aln, const string& chrom, char strand,
                                            hts_pos_t anchor_start, hts_pos_t intron_start,
-                                           hts_pos_t intron_end, hts_pos_t anchor_end,
-                                           const string& splice_sites) {
-    if (trace_fh_ != NULL) {
-        *trace_fh_ << chrom << "\t" << intron_start << "\t" << intron_end
-                   << "\t" << bam_get_qname(aln) << "\t" << (aln->core).flag
-                   << "\t" << strand << "\t" << splice_sites
-                   << "\t" << anchor_start << "\t" << anchor_end << endl;
-    }
+                                           hts_pos_t intron_end, hts_pos_t anchor_end) {
     JunctionKey key(chrom, intron_start, intron_end);
 
     // Check if new junction
     if (junctions_.count(key) == 0) {
-        return create_junction(aln, key, chrom, strand, anchor_start, intron_start, intron_end, anchor_end,
-                               splice_sites);
+        string splice_sites = get_splice_sites(chrom, strand, intron_start, intron_end);
+        strand = correct_strand(strand, splice_sites);
+        if (junction_filter_check(junction_filter_, splice_sites)) {
+            return create_junction(aln, key, chrom, strand, anchor_start, intron_start, intron_end, anchor_end,
+                                   splice_sites);
+        } else {
+            return NULL;
+        }
     } else {
         return update_junction(aln, key, chrom, strand, anchor_start, intron_start, intron_end, anchor_end);
     }
@@ -522,15 +518,12 @@ void JunctionsExtractor::record_junction(bam1_t *aln, const string& chrom, char 
     assert(anchor_start < anchor_end);
     assert((anchor_start < intron_start) && (intron_end < anchor_end));
 
-    string splice_sites = get_splice_sites(chrom, strand, intron_start, intron_end);
-    strand = correct_strand(strand, splice_sites);
-
+    // check for canonical is delayed to avoid multiple genome fasta queries
     if (junction_qc(aln, anchor_start, intron_start, intron_end, anchor_end,
                     left_mismatch_cnt, right_mismatch_cnt,
-                    left_indel_cnt, right_indel_cnt, splice_sites)) {
-        Junction *junc = add_junction(aln, chrom, strand, anchor_start, intron_start, intron_end, anchor_end,
-                                      splice_sites);
-        if (junc->is_canonical()) {
+                    left_indel_cnt, right_indel_cnt)) {
+        Junction *junc = add_junction(aln, chrom, strand, anchor_start, intron_start, intron_end, anchor_end);
+        if ((junc != NULL) and junc->is_canonical()) {
             *orientCnt += (junc->strand == '+') ? 1 : -1;
         }
     }
