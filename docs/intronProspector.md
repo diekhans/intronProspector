@@ -13,9 +13,12 @@ Find putative intron junctions in a RNA-Seq alignment. The *readaligns* files ma
 This program allows for integrating splice junction calling into an alignment pipeline.  Pass-through mode copys the alignment file on `stdin` to `stdout`.  It can then sit between an aligner outputting SAM and `samtools` that converts to BAM/CRAM.
 
 Both short-read (Illumina) and long-read RNA-Seq can be process.  For
-short-reads, it is recommended to use `--min-confidence-score=1.0`, which is the default.
-Long-read or low coverage experiments may want to use a lower value or disable with`--min-confidence-score=0.0`.
+short-reads, it is recommended to use `--min-confidence-score=1.0`, which is the default. 
+For long-read experiments this should be disable with`--min-confidence-score=0.0`.
+Low coverage experiment may wish to disable or use a lower confidence filter. 
 Introns are as determined by the aligner and indicated in the BAM by `N` operations.
+
+If a genome is provided, only canonical introns are kept (AT/AG, GC/AG, and AT/AC).  This can be overridden with `--sj-filter=all`
 
 Process multiple BAMs at once will use more more memory, as intron counts are
 not collected per chromosome.  This mode does not require a sorted BAM and is
@@ -135,6 +138,7 @@ TSV and BED files will be automatically compressed with `gzip` if they end in `.
 `-D FILE, --debug-trace=FILE`
 
 > Output records, in TSV format, for reach read intron indicating the information going into classifying it, including read name.  First few columns are BED-like for easy conversion.
+
 # NOTES
 The computation of strand is problematic.  If the strandness of the experiment is specified, then that is used to determine stand.  If the alignment provides the XS attribute, that is used.  Otherwise, the strand can't be determined from the BAM.  If the genome is provided and a known splice sites are detected, this is then used if the stand is not identified by other methods.
 
