@@ -158,7 +158,7 @@ cat reads.sam \
     | ./intronProspector -c introns.tsv --genome-fasta=thegenome.fa.gz -p /dev/stdout \
     | samtools view -O CRAM -T grch38.fa >reads.cram
 ```
-Note that the `cat` command could be an aligner output a SAM file and that the genome FASTA file must be index by `samtools faidx`.
+Note that the `cat` command could be an aligner outputting a SAM file and that the genome FASTA file must be index by `samtools faidx`.
 
  
 # BUGS
