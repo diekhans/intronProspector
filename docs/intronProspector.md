@@ -51,7 +51,7 @@ TSV and BED files will be automatically compressed with `gzip` if they end in `.
 
 `-f spec, --sj-filter=spec`
 
-> Filter based on splice junctions motif. A spec of `canon` keeps only canonical splice junctions (AT/AG, GC/AG, and AT/AC).  A spec of `all` passes all through.  If `canon` is specified, a genome must be supplied, and if a genome is supplied, `canon` becomes the default.
+> Filter based on splice junctions motif. A spec of `canon` keeps only canonical splice junctions (GT/AG, GC/AG, and AT/AC).  A spec of `all` passes all through.  If `canon` is specified, a genome must be supplied, and if a genome is supplied, `canon` becomes the default.
 
 `-a INT, --min-anchor-length=INT`
 
