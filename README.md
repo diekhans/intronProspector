@@ -12,3 +12,10 @@ and [intronProspectorMerge manual page](docs/intronProspectorMerge.md)
 ## Installation
 
 [See INSTALL.md for instation](INSTALL.md)
+
+The only dependencies are `htslib` and a modern C++ compiler
+
+## Origins
+
+This code is derived from the Griffith Lab's excellent 
+[`RegTools`](https://github.com/griffithlab/regtools) package.
