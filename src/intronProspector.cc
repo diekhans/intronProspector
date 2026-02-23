@@ -341,19 +341,19 @@ static void output_junctions(JunctionsExtractor& extractor,
     JunctionVector juncs = extractor.get_junctions();
     if (output.junction_bed_fh != NULL) {
         juncs.sort_by_anchors();
-        print_anchor_bed(juncs, min_confidence_score, *output.junction_bed_fh);
+        print_anchor_bed(juncs, min_confidence_score, min_read_count, *output.junction_bed_fh);
     }
     if ((output.intron_bed_fh != NULL) or (output.intron_bed6_fh != NULL)
         or (output.intron_call_fh != NULL)) {
         juncs.sort_by_introns();
         if (output.intron_bed_fh != NULL) {
-            print_intron_bed(juncs, min_confidence_score, 9, *output.intron_bed_fh);
+            print_intron_bed(juncs, min_confidence_score, min_read_count, 9, *output.intron_bed_fh);
         }
         if (output.intron_bed6_fh != NULL) {
-            print_intron_bed(juncs, min_confidence_score, 6, *output.intron_bed6_fh);
+            print_intron_bed(juncs, min_confidence_score, min_read_count, 6, *output.intron_bed6_fh);
         }
         if (output.intron_call_fh != NULL) {
-            print_intron_call_tsv(juncs, min_confidence_score, *output.intron_call_fh);
+            print_intron_call_tsv(juncs, min_confidence_score, min_read_count, *output.intron_call_fh);
         }
     }
 }

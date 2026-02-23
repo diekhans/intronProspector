@@ -248,11 +248,13 @@ class JunctionTable: public map<JunctionKey, Junction*> {
 // Print BED with anchors as blocks and intron as gap.
 void print_anchor_bed(const JunctionVector& juncs,
                       float min_confidence_score,
+                      uint32_t min_read_count,
                       ostream& out);
 
 // Print BED with intron as block
 void print_intron_bed(const JunctionVector& juncs,
                       float min_confidence_score,
+                      uint32_t min_read_count,
                       int columns,
                       ostream& out);
 
@@ -262,6 +264,7 @@ void print_junction_call_header(ostream& out);
 // Print TSV with intron information
 void print_intron_call_tsv(const JunctionVector& juncs,
                            float min_confidence_score,
+                           uint32_t min_read_count,
                            ostream& out);
 
 #endif

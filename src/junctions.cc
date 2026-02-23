@@ -227,9 +227,10 @@ void Junction::print_junction_call_row(ostream& out) const {
 // Print BED with anchors as blocks and intron as gap.
 void print_anchor_bed(const JunctionVector& juncs,
                       float min_confidence_score,
+                      uint32_t min_read_count,
                       ostream& out) {
     for (unsigned i = 0; i < juncs.size(); i++) {
-        if (juncs[i]->get_confidence() >= min_confidence_score) {
+        if (juncs[i]->get_confidence() >= min_confidence_score && juncs[i]->total_read_count() >= min_read_count) {
             juncs[i]->print_anchor_bed(out);
         }
     }
@@ -238,10 +239,11 @@ void print_anchor_bed(const JunctionVector& juncs,
 // Print BED with intron as block
 void print_intron_bed(const JunctionVector& juncs,
                       float min_confidence_score,
+                      uint32_t min_read_count,
                       int columns,
                       ostream& out) {
     for (unsigned i = 0; i < juncs.size(); i++) {
-        if (juncs[i]->get_confidence() >= min_confidence_score) {
+        if (juncs[i]->get_confidence() >= min_confidence_score && juncs[i]->total_read_count() >= min_read_count) {
             juncs[i]->print_intron_bed(out, columns);
         }
     }
@@ -258,10 +260,11 @@ void print_junction_call_header(ostream& out) {
 // Print TSV with intron information
 void print_intron_call_tsv(const JunctionVector& juncs,
                            float min_confidence_score,
+                           uint32_t min_read_count,
                            ostream& out) {
     out.precision(3);
     for (unsigned i = 0; i < juncs.size(); i++) {
-        if (juncs[i]->get_confidence() >= min_confidence_score) {
+        if (juncs[i]->get_confidence() >= min_confidence_score && juncs[i]->total_read_count() >= min_read_count) {
             juncs[i]->print_junction_call_row(out);
         }
     }

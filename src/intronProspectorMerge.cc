@@ -217,22 +217,22 @@ static void intron_prospector_merge(CmdParser &opts) {
     renumber_junctions(juncs);
     if (opts.junction_bed != "") {
         AutoGzipOutput out(opts.junction_bed);
-        print_anchor_bed(juncs, 0.0, out);
+        print_anchor_bed(juncs, 0.0, 0.0, out);
     }
     if ((opts.intron_bed != "") or (opts.intron_bed6 != "") or (opts.intron_call_tsv != "")) {
         juncs.sort_by_introns();
         if (opts.intron_bed != "") {
             AutoGzipOutput out(opts.intron_bed);
-            print_intron_bed(juncs, 0.0, 9, out);
+            print_intron_bed(juncs, 0.0, 0.0, 9, out);
         }
         if (opts.intron_bed6 != "") {
             AutoGzipOutput out(opts.intron_bed6);
-            print_intron_bed(juncs, 0.0, 6, out);
+            print_intron_bed(juncs, 0.0, 0.0, 6, out);
         }
         if (opts.intron_call_tsv != "") {
             AutoGzipOutput out(opts.intron_call_tsv);
             print_junction_call_header(out);
-            print_intron_call_tsv(juncs, 0.0, out);
+            print_intron_call_tsv(juncs, 0.0, 0.0, out);
         }
     }
  }
