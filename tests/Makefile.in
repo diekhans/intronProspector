@@ -98,7 +98,7 @@ testBasic5: mkout ${basic_bam}
 	${intronProspector} --exclude=multi ${conf0} --junction-bed=output/$@.juncs.bed --intron-bed=output/$@.introns.bed --intron-calls=output/$@.introns.tsv ${basic_bam}
 	${diff_out}
 
-# test confidence score filter
+# test read count filter
 testBasic6: mkout ${basic_bam}
 	${intronProspector} ${conf0} --min-read-count=45 --junction-bed=output/$@.juncs.bed --intron-bed=output/$@.introns.bed --intron-calls=output/$@.introns.tsv ${basic_bam}
 	${diff_out}
