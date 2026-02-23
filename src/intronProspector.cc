@@ -47,6 +47,7 @@ static const uint32_t DEFAULT_MAX_INTRON_LENGTH = 500000;
 static const bool DEFAULT_ALLOW_ANCHOR_INDELS = false;
 static const uint32_t DEFAULT_MAX_ANCHOR_INDEL_SIZE = 36;
 static const float DEFAULT_MIN_CONFIDENCE_SCORE = 1.0;
+static const uint32_t DEFAULT_MIN_READ_COUNT = 0;
 static const Strandness DEFAULT_STRANDED = UNSTRANDED;
 
 static const char *usage_msg =
@@ -112,6 +113,7 @@ class CmdParser {
     bool unsorted;
     uint32_t max_anchor_indel_size;
     float min_confidence_score;
+    uint32_t min_read_count;
     JunctionFilter junction_filter;
     Strandness strandness;
     unsigned excludes;
@@ -135,6 +137,7 @@ class CmdParser {
         allow_anchor_indels(DEFAULT_ALLOW_ANCHOR_INDELS),
         max_anchor_indel_size(DEFAULT_MAX_ANCHOR_INDEL_SIZE),
         min_confidence_score(DEFAULT_MIN_CONFIDENCE_SCORE),
+        min_read_count(DEFAULT_MIN_READ_COUNT),
         junction_filter(NULL_SJ_FILTER),
         strandness(DEFAULT_STRANDED),
         excludes(EXCLUDE_NONE),
@@ -166,6 +169,7 @@ class CmdParser {
             {"allow-anchor-indels", no_argument, NULL, 'd'},
             {"max-anchor-indel-size", required_argument, NULL, 'm'},
             {"min-confidence-score", required_argument, NULL, 'C'},
+            {"min-read-count", required_argument, NULL, 'r'},
             {"strandness", required_argument, NULL, 's'},
             {"excludes", required_argument, NULL, 'X'},
             {"genome-fasta", required_argument, NULL, 'g'},
@@ -182,7 +186,7 @@ class CmdParser {
             {NULL, 0, NULL, 0}
         };
             
-        const char *short_options = "hvua:i:I:C:s:X:g:S:j:n:b:c:p:D:f:";
+        const char *short_options = "hvua:i:I:C:r:s:X:g:S:j:n:b:c:p:D:f:";
         int c;
         while ((c = getopt_long(argc, argv, short_options, long_options, NULL)) != -1) {
             switch (c) {
@@ -206,6 +210,9 @@ class CmdParser {
                     break;
                 case 'C':
                     min_confidence_score = toFloat(optarg);
+                    break;
+                case 'r':
+                    min_read_count = toUnsigned(optarg);
                     break;
                 case 's':
                     strandness = str_to_strandness(optarg);
