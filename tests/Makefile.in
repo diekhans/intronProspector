@@ -61,7 +61,7 @@ intronProspctorTests: basicTests multiTests fake10Tests regressTests ontTests mu
 ###
 # basic tests
 ##
-basicTests: testBasic1 testBasic1gz testBasic2 testBasic3 testBasic4 testBasic5
+basicTests: testBasic1 testBasic1gz testBasic2 testBasic3 testBasic4 testBasic5 testBasic6
 
 # basic unstranded
 testBasic1: mkout
@@ -98,6 +98,10 @@ testBasic5: mkout ${basic_bam}
 	${intronProspector} --exclude=multi ${conf0} --junction-bed=output/$@.juncs.bed --intron-bed=output/$@.introns.bed --intron-calls=output/$@.introns.tsv ${basic_bam}
 	${diff_out}
 
+# test confidence score filter
+testBasic6: mkout ${basic_bam}
+	${intronProspector} ${conf0} --min-read-count=45 --junction-bed=output/$@.juncs.bed --intron-bed=output/$@.introns.bed --intron-calls=output/$@.introns.tsv ${basic_bam}
+	${diff_out}
 
 ###
 # multi-introns per read tests
