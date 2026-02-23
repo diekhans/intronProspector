@@ -336,6 +336,7 @@ class OutputFiles {
 
 static void output_junctions(JunctionsExtractor& extractor,
                              float min_confidence_score,
+                             uint32_t min_read_count,
                              OutputFiles& output) {
     JunctionVector juncs = extractor.get_junctions();
     if (output.junction_bed_fh != NULL) {
@@ -363,6 +364,7 @@ static void output_junctions(JunctionsExtractor& extractor,
 static void extract_junctions_by_target(JunctionsExtractor& extractor,
                                         const string& bam_file,
                                         float min_confidence_score,
+                                        uint32_t min_read_count,
                                         OutputFiles& output) {
     extractor.open(bam_file);
     if (output.bam_pass_through != "") {
@@ -370,7 +372,7 @@ static void extract_junctions_by_target(JunctionsExtractor& extractor,
     }
     for (int target_index = 0; target_index < extractor.get_num_targets(); target_index++) {
         extractor.identify_junctions_for_target(target_index);
-        output_junctions(extractor, min_confidence_score, output);
+        output_junctions(extractor, min_confidence_score, min_read_count, output);
         extractor.clear();
     }
     extractor.copy_unaligned_reads();
@@ -382,6 +384,7 @@ static void extract_junctions_by_target(JunctionsExtractor& extractor,
 static void extract_junctions_unsorted(JunctionsExtractor& extractor,
                                        const string& bam_file,
                                        float min_confidence_score,
+                                       uint32_t min_read_count,
                                        OutputFiles& output) {
     extractor.open(bam_file);
     if (output.bam_pass_through != "") {
@@ -390,7 +393,7 @@ static void extract_junctions_unsorted(JunctionsExtractor& extractor,
     extractor.identify_junctions_for_bam();
     extractor.copy_unaligned_reads();
     extractor.close();
-    output_junctions(extractor, min_confidence_score, output);
+    output_junctions(extractor, min_confidence_score, min_read_count, output);
 }
                                 
 /* Extract junctions for the multiple BAM files.
@@ -398,13 +401,14 @@ static void extract_junctions_unsorted(JunctionsExtractor& extractor,
 static void extract_junctions_multiple(JunctionsExtractor& extractor,
                                        const vector<string>& bam_files,
                                        float min_confidence_score,
+                                       uint32_t min_read_count,
                                        OutputFiles& output) {
     for (int ibam = 0; ibam < bam_files.size(); ibam++) {
         extractor.open(bam_files[ibam]);
         extractor.identify_junctions_for_bam();
         extractor.close();
     }
-    output_junctions(extractor, min_confidence_score, output);
+    output_junctions(extractor, min_confidence_score, min_read_count, output);
 }
                                 
 static void extract_junctions(CmdParser &opts) {
@@ -423,13 +427,13 @@ static void extract_junctions(CmdParser &opts) {
     OutputFiles output(opts);
     if (opts.bam_files.size() > 1) {
         extract_junctions_multiple(extractor, opts.bam_files,
-                                   opts.min_confidence_score, output);
+                                   opts.min_confidence_score, opts.min_read_count, output);
     } else if (opts.unsorted) {
         extract_junctions_unsorted(extractor, opts.bam_files[0],
-                                   opts.min_confidence_score, output);
+                                   opts.min_confidence_score, opts.min_read_count, output);
     } else {
         extract_junctions_by_target(extractor, opts.bam_files[0],
-                                    opts.min_confidence_score, output);
+                                    opts.min_confidence_score, opts.min_read_count, output);
     }
     delete trace_fh;
     delete genome;
