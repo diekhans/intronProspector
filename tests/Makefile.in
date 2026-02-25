@@ -51,17 +51,16 @@ all:
 .PHONY: test
 test: intronProspctorTests intronProspctorMergeTests
 
-
 #####
 # intronProspctor tests
 #####
-intronProspctorTests: basicTests multiTests fake10Tests regressTests ontTests multiBamTests \
+intronProspctorTests: basicTests minReadCountTests multiTests fake10Tests regressTests ontTests multiBamTests \
 	sjfilterTests
 
 ###
 # basic tests
 ##
-basicTests: testBasic1 testBasic1gz testBasic2 testBasic3 testBasic4 testBasic5 testBasic6
+basicTests: testBasic1 testBasic1gz testBasic2 testBasic3 testBasic4 testBasic5
 
 # basic unstranded
 testBasic1: mkout
@@ -98,8 +97,13 @@ testBasic5: mkout ${basic_bam}
 	${intronProspector} --exclude=multi ${conf0} --junction-bed=output/$@.juncs.bed --intron-bed=output/$@.introns.bed --intron-calls=output/$@.introns.tsv ${basic_bam}
 	${diff_out}
 
-# test read count filter
-testBasic6: mkout ${basic_bam}
+##
+# Minimum junction supporting read count tests
+##
+minReadCountTests: testMinReadThreshold
+
+# test read count filter against multi junction bam file. Threshold matches the read count of a junction exactly. The junciton with read count 45 should be in the output.
+testMinReadThreshold: mkout ${basic_bam}
 	${intronProspector} ${conf0} --min-read-count=45 --junction-bed=output/$@.juncs.bed --intron-bed=output/$@.introns.bed --intron-calls=output/$@.introns.tsv ${basic_bam}
 	${diff_out}
 
