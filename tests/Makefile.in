@@ -37,11 +37,11 @@ endef
 
 # $(call diff_out,nongztest)
 define diff_out_gz
-	zcat output/$@.introns.tsv.gz > output/$@.introns.tsv
+	gunzip -c output/$@.introns.tsv.gz > output/$@.introns.tsv
 	${diff} expected/$1.introns.tsv output/$@.introns.tsv
-	zcat output/$@.juncs.bed.gz > output/$@.juncs.bed
+	gunzip -c output/$@.juncs.bed.gz > output/$@.juncs.bed
 	${diff} expected/$1.juncs.bed output/$@.juncs.bed
-	zcat output/$@.introns.bed.gz > output/$@.introns.bed
+	gunzip -c output/$@.introns.bed.gz > output/$@.introns.bed
 	${diff} expected/$1.introns.bed output/$@.introns.bed
 endef
 
@@ -73,7 +73,7 @@ testBasic1: mkout
 testBasic1gz: mkout
 	${intronProspector} ${conf0} --junction-bed=output/$@.juncs.bed.gz --intron-bed=output/$@.introns.bed.gz --intron-bed6=output/$@.introns.bed6.gz --intron-calls=output/$@.introns.tsv.gz ${basic_sam}
 	$(call diff_out_gz,testBasic1)
-	zcat output/$@.introns.bed6.gz > output/$@.gz.introns.bed6
+	gunzip -c output/$@.introns.bed6.gz > output/$@.gz.introns.bed6
 	${diff} expected/testBasic1.introns.bed6 output/$@.gz.introns.bed6
 
 # RF strandness
@@ -129,7 +129,7 @@ testFake10a: mkout ${fake10_fa} ${fake10_fai}
 testFake10agz: mkout ${fake10_fa} ${fake10_fai}
 	${intronProspector} ${conf0} --genome-fasta=${fake10_fa} --junction-bed=output/$@.juncs.bed.gz --intron-bed=output/$@.introns.bed.gz --intron-calls=output/$@.introns.tsv.gz --debug-trace=output/$@.debug.tsv.gz ${fake10_star_sam}
 	$(call diff_out_gz,testFake10a)
-	zcat output/$@.debug.tsv.gz > output/$@.debug.tsv
+	gunzip -c output/$@.debug.tsv.gz > output/$@.debug.tsv
 	${diff} expected/testFake10a.debug.tsv output/$@.debug.tsv
 
 # condidence default
