@@ -49,12 +49,12 @@ endef
 all:
 
 .PHONY: test
-test: intronProspctorTests intronProspctorMergeTests
+test: intronProspectorTests intronProspctorMergeTests
 
 #####
 # intronProspctor tests
 #####
-intronProspctorTests: basicTests minReadCountTests multiTests fake10Tests regressTests ontTests multiBamTests \
+intronProspectorTests: basicTests minReadCountTests multiTests fake10Tests regressTests ontTests multiBamTests \
 	sjfilterTests
 
 ###
