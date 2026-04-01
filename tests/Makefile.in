@@ -98,9 +98,16 @@ testBasic5: mkout ${basic_bam}
 	${diff_out}
 
 ##
-# Minimum junction supporting read count tests
+# Minimum junction supporting read count tests. Uses ${basic_bam} for tests
 ##
-minReadCountTests: testMinReadThreshold
+minReadCountTests: testMinReadDefault testMinReadThreshold
+
+# test that passing an explicit threshold of 0 matches the default behavior of 0
+testMinReadDefault: mkout ${basic_bam}
+	${intronProspector} ${conf0} --junction-bed=output/$@.juncs.bed --intron-bed=output/$@.introns.bed --intron-calls=output/$@.introns.tsv ${basic_bam}
+	${diff_out}
+	${intronProspector} ${conf0} --min-read-count=0 --junction-bed=output/$@.juncs.bed --intron-bed=output/$@.introns.bed --intron-calls=output/$@.introns.tsv ${basic_bam}	
+	${diff_out}
 
 # test read count filter against multi junction bam file. Threshold matches the read count of a junction exactly. The junciton with read count 45 should be in the output.
 testMinReadThreshold: mkout ${basic_bam}
