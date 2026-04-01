@@ -47,6 +47,7 @@ static const uint32_t DEFAULT_MAX_INTRON_LENGTH = 500000;
 static const bool DEFAULT_ALLOW_ANCHOR_INDELS = false;
 static const uint32_t DEFAULT_MAX_ANCHOR_INDEL_SIZE = 36;
 static const float DEFAULT_MIN_CONFIDENCE_SCORE = 1.0;
+static const uint32_t DEFAULT_MIN_READ_COUNT = 0;
 static const Strandness DEFAULT_STRANDED = UNSTRANDED;
 
 static const char *usage_msg =
@@ -112,6 +113,7 @@ class CmdParser {
     bool unsorted;
     uint32_t max_anchor_indel_size;
     float min_confidence_score;
+    uint32_t min_read_count;
     JunctionFilter junction_filter;
     Strandness strandness;
     unsigned excludes;
@@ -135,6 +137,7 @@ class CmdParser {
         allow_anchor_indels(DEFAULT_ALLOW_ANCHOR_INDELS),
         max_anchor_indel_size(DEFAULT_MAX_ANCHOR_INDEL_SIZE),
         min_confidence_score(DEFAULT_MIN_CONFIDENCE_SCORE),
+        min_read_count(DEFAULT_MIN_READ_COUNT),
         junction_filter(NULL_SJ_FILTER),
         strandness(DEFAULT_STRANDED),
         excludes(EXCLUDE_NONE),
@@ -166,6 +169,7 @@ class CmdParser {
             {"allow-anchor-indels", no_argument, NULL, 'd'},
             {"max-anchor-indel-size", required_argument, NULL, 'm'},
             {"min-confidence-score", required_argument, NULL, 'C'},
+            {"min-read-count", required_argument, NULL, 'r'},
             {"strandness", required_argument, NULL, 's'},
             {"excludes", required_argument, NULL, 'X'},
             {"genome-fasta", required_argument, NULL, 'g'},
@@ -182,7 +186,7 @@ class CmdParser {
             {NULL, 0, NULL, 0}
         };
             
-        const char *short_options = "hvua:i:I:C:s:X:g:S:j:n:b:c:p:D:f:";
+        const char *short_options = "hvua:i:I:C:r:s:X:g:S:j:n:b:c:p:D:f:";
         int c;
         while ((c = getopt_long(argc, argv, short_options, long_options, NULL)) != -1) {
             switch (c) {
@@ -206,6 +210,9 @@ class CmdParser {
                     break;
                 case 'C':
                     min_confidence_score = toFloat(optarg);
+                    break;
+                case 'r':
+                    min_read_count = toUnsigned(optarg);
                     break;
                 case 's':
                     strandness = str_to_strandness(optarg);
@@ -329,23 +336,24 @@ class OutputFiles {
 
 static void output_junctions(JunctionsExtractor& extractor,
                              float min_confidence_score,
+                             uint32_t min_read_count,
                              OutputFiles& output) {
     JunctionVector juncs = extractor.get_junctions();
     if (output.junction_bed_fh != NULL) {
         juncs.sort_by_anchors();
-        print_anchor_bed(juncs, min_confidence_score, *output.junction_bed_fh);
+        print_anchor_bed(juncs, min_confidence_score, min_read_count, *output.junction_bed_fh);
     }
     if ((output.intron_bed_fh != NULL) or (output.intron_bed6_fh != NULL)
         or (output.intron_call_fh != NULL)) {
         juncs.sort_by_introns();
         if (output.intron_bed_fh != NULL) {
-            print_intron_bed(juncs, min_confidence_score, 9, *output.intron_bed_fh);
+            print_intron_bed(juncs, min_confidence_score, min_read_count, 9, *output.intron_bed_fh);
         }
         if (output.intron_bed6_fh != NULL) {
-            print_intron_bed(juncs, min_confidence_score, 6, *output.intron_bed6_fh);
+            print_intron_bed(juncs, min_confidence_score, min_read_count, 6, *output.intron_bed6_fh);
         }
         if (output.intron_call_fh != NULL) {
-            print_intron_call_tsv(juncs, min_confidence_score, *output.intron_call_fh);
+            print_intron_call_tsv(juncs, min_confidence_score, min_read_count, *output.intron_call_fh);
         }
     }
 }
@@ -356,6 +364,7 @@ static void output_junctions(JunctionsExtractor& extractor,
 static void extract_junctions_by_target(JunctionsExtractor& extractor,
                                         const string& bam_file,
                                         float min_confidence_score,
+                                        uint32_t min_read_count,
                                         OutputFiles& output) {
     extractor.open(bam_file);
     if (output.bam_pass_through != "") {
@@ -363,7 +372,7 @@ static void extract_junctions_by_target(JunctionsExtractor& extractor,
     }
     for (int target_index = 0; target_index < extractor.get_num_targets(); target_index++) {
         extractor.identify_junctions_for_target(target_index);
-        output_junctions(extractor, min_confidence_score, output);
+        output_junctions(extractor, min_confidence_score, min_read_count, output);
         extractor.clear();
     }
     extractor.copy_unaligned_reads();
@@ -375,6 +384,7 @@ static void extract_junctions_by_target(JunctionsExtractor& extractor,
 static void extract_junctions_unsorted(JunctionsExtractor& extractor,
                                        const string& bam_file,
                                        float min_confidence_score,
+                                       uint32_t min_read_count,
                                        OutputFiles& output) {
     extractor.open(bam_file);
     if (output.bam_pass_through != "") {
@@ -383,7 +393,7 @@ static void extract_junctions_unsorted(JunctionsExtractor& extractor,
     extractor.identify_junctions_for_bam();
     extractor.copy_unaligned_reads();
     extractor.close();
-    output_junctions(extractor, min_confidence_score, output);
+    output_junctions(extractor, min_confidence_score, min_read_count, output);
 }
                                 
 /* Extract junctions for the multiple BAM files.
@@ -391,13 +401,14 @@ static void extract_junctions_unsorted(JunctionsExtractor& extractor,
 static void extract_junctions_multiple(JunctionsExtractor& extractor,
                                        const vector<string>& bam_files,
                                        float min_confidence_score,
+                                       uint32_t min_read_count,
                                        OutputFiles& output) {
     for (int ibam = 0; ibam < bam_files.size(); ibam++) {
         extractor.open(bam_files[ibam]);
         extractor.identify_junctions_for_bam();
         extractor.close();
     }
-    output_junctions(extractor, min_confidence_score, output);
+    output_junctions(extractor, min_confidence_score, min_read_count, output);
 }
                                 
 static void extract_junctions(CmdParser &opts) {
@@ -416,13 +427,13 @@ static void extract_junctions(CmdParser &opts) {
     OutputFiles output(opts);
     if (opts.bam_files.size() > 1) {
         extract_junctions_multiple(extractor, opts.bam_files,
-                                   opts.min_confidence_score, output);
+                                   opts.min_confidence_score, opts.min_read_count, output);
     } else if (opts.unsorted) {
         extract_junctions_unsorted(extractor, opts.bam_files[0],
-                                   opts.min_confidence_score, output);
+                                   opts.min_confidence_score, opts.min_read_count, output);
     } else {
         extract_junctions_by_target(extractor, opts.bam_files[0],
-                                    opts.min_confidence_score, output);
+                                    opts.min_confidence_score, opts.min_read_count, output);
     }
     delete trace_fh;
     delete genome;

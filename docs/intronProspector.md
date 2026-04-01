@@ -77,6 +77,10 @@ TSV and BED files will be automatically compressed with `gzip` if they end in `.
 
 > Calculate the Shannon-Wiener Diversity Index to use as a confidence score and discard intron calls below this value. A value of 1.0 is a good threshold for filtering. A value of 0.0 disables filtering.  The default is 1.0. This methodology it taken from JuncBASE DOI: 10.1101/gr.108662.110.
 
+`-r INT, --min-read-count=INT`
+
+> Minimum number of reads supporting a junction for it to be reported. Junctions with fewer reads than this threshold are discarded. The default is 0 (no filtering).
+
 `-s STRING, --strandness=STRING`
 
 `-u, --unsorted`

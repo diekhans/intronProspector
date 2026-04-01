@@ -37,11 +37,11 @@ endef
 
 # $(call diff_out,nongztest)
 define diff_out_gz
-	zcat output/$@.introns.tsv.gz > output/$@.introns.tsv
+	gunzip -c output/$@.introns.tsv.gz > output/$@.introns.tsv
 	${diff} expected/$1.introns.tsv output/$@.introns.tsv
-	zcat output/$@.juncs.bed.gz > output/$@.juncs.bed
+	gunzip -c output/$@.juncs.bed.gz > output/$@.juncs.bed
 	${diff} expected/$1.juncs.bed output/$@.juncs.bed
-	zcat output/$@.introns.bed.gz > output/$@.introns.bed
+	gunzip -c output/$@.introns.bed.gz > output/$@.introns.bed
 	${diff} expected/$1.introns.bed output/$@.introns.bed
 endef
 
@@ -49,13 +49,12 @@ endef
 all:
 
 .PHONY: test
-test: intronProspctorTests intronProspctorMergeTests
-
+test: intronProspectorTests intronProspctorMergeTests
 
 #####
 # intronProspctor tests
 #####
-intronProspctorTests: basicTests multiTests fake10Tests regressTests ontTests multiBamTests \
+intronProspectorTests: basicTests minReadCountTests multiTests fake10Tests regressTests ontTests multiBamTests \
 	sjfilterTests
 
 ###
@@ -73,7 +72,7 @@ testBasic1: mkout
 testBasic1gz: mkout
 	${intronProspector} ${conf0} --junction-bed=output/$@.juncs.bed.gz --intron-bed=output/$@.introns.bed.gz --intron-bed6=output/$@.introns.bed6.gz --intron-calls=output/$@.introns.tsv.gz ${basic_sam}
 	$(call diff_out_gz,testBasic1)
-	zcat output/$@.introns.bed6.gz > output/$@.gz.introns.bed6
+	gunzip -c output/$@.introns.bed6.gz > output/$@.gz.introns.bed6
 	${diff} expected/testBasic1.introns.bed6 output/$@.gz.introns.bed6
 
 # RF strandness
@@ -98,6 +97,47 @@ testBasic5: mkout ${basic_bam}
 	${intronProspector} --exclude=multi ${conf0} --junction-bed=output/$@.juncs.bed --intron-bed=output/$@.introns.bed --intron-calls=output/$@.introns.tsv ${basic_bam}
 	${diff_out}
 
+##
+# Minimum junction supporting read count tests.
+##
+minReadCountTests: testMinReadDefault testMinReadGTE testMinReadBelowThreshold testMinReadFilterAllJuncs
+
+# test that passing an explicit threshold of 0 matches the default behavior of 0
+testMinReadDefault: mkout ${basic_bam}
+	${intronProspector} ${conf0} --junction-bed=output/$@.juncs.bed --intron-bed=output/$@.introns.bed --intron-calls=output/$@.introns.tsv ${basic_bam}
+	${diff_out}
+	${intronProspector} ${conf0} --min-read-count=0 --junction-bed=output/$@.juncs.bed --intron-bed=output/$@.introns.bed --intron-calls=output/$@.introns.tsv ${basic_bam}	
+	${diff_out}
+
+# test that read count filter removes reads below the threshold.
+testMinReadBelowThreshold: mkout ${basic_bam}
+	${intronProspector} ${conf0} --min-read-count=30 --junction-bed=output/$@.juncs.bed --intron-bed=output/$@.introns.bed --intron-calls=output/$@.introns.tsv ${basic_bam}
+	${diff_out}
+
+# test read count filter against multi junction bam file and filter out junctions that are less than the threshold and keep anything greater than or equal to the threshold. 
+# Threshold matches the read count of a junction exactly. The junciton with read count 45 should be in the output.
+testMinReadGTE: mkout ${basic_bam}
+	${intronProspector} ${conf0} --min-read-count=45 --junction-bed=output/$@.juncs.bed --intron-bed=output/$@.introns.bed --intron-calls=output/$@.introns.tsv ${basic_bam}
+	${diff_out}
+
+# test that high min read count threshold still outputs files even if they are empty
+testMinReadFilterAllJuncs: mkout ${basic_bam}
+	${intronProspector} ${conf0} --min-read-count=100000 --junction-bed=output/$@.juncs.bed --intron-bed=output/$@.introns.bed --intron-calls=output/$@.introns.tsv ${basic_bam}
+	${diff_out}
+
+# test that when inputting multiple files, junctions are filtered after they are aggregated. Consider junction on CM000676.2 at 52661304. Both multi_one_sam and multi_two_sam have read count 2 when
+# generated individually (see *.introns.bed). When generated as multi sam that junction has score 4. Use min read count of 3. If filtering happens before aggregation, that junction won't appear. Since filtering
+# is intended to happen after aggregation, the junction should still be reported.
+testMinReadMultiSam: mkout ${multi_one_sam} ${multi_two_sam}
+	${intronProspector} ${conf0} --min-read-count=3 --junction-bed=output/$@.juncs.bed --intron-bed=output/$@.introns.bed --intron-calls=output/$@.introns.tsv ${multi_one_sam} ${multi_two_sam}
+	${diff_out}
+
+# Not Tests. Use the following to generate multi_one_sam and multi_two_sam to visualize the case for junction CM000676.2 at 52661304 for testMinReadMultiSam
+tempGenerateSamOne: ${multi_one_sam}
+	${intronProspector} ${conf0} --junction-bed=output/$@.juncs.bed --intron-bed=output/$@.introns.bed --intron-calls=output/$@.introns.tsv ${multi_one_sam}
+
+tempGenerateSamTwo: ${multi_two_sam}
+	${intronProspector} ${conf0} --junction-bed=output/$@.juncs.bed --intron-bed=output/$@.introns.bed --intron-calls=output/$@.introns.tsv ${multi_two_sam}
 
 ###
 # multi-introns per read tests
@@ -125,7 +165,7 @@ testFake10a: mkout ${fake10_fa} ${fake10_fai}
 testFake10agz: mkout ${fake10_fa} ${fake10_fai}
 	${intronProspector} ${conf0} --genome-fasta=${fake10_fa} --junction-bed=output/$@.juncs.bed.gz --intron-bed=output/$@.introns.bed.gz --intron-calls=output/$@.introns.tsv.gz --debug-trace=output/$@.debug.tsv.gz ${fake10_star_sam}
 	$(call diff_out_gz,testFake10a)
-	zcat output/$@.debug.tsv.gz > output/$@.debug.tsv
+	gunzip -c output/$@.debug.tsv.gz > output/$@.debug.tsv
 	${diff} expected/testFake10a.debug.tsv output/$@.debug.tsv
 
 # condidence default
