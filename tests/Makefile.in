@@ -100,7 +100,7 @@ testBasic5: mkout ${basic_bam}
 ##
 # Minimum junction supporting read count tests. Uses ${basic_bam} for tests
 ##
-minReadCountTests: testMinReadDefault testMinReadGTE testMinReadBelowThreshold
+minReadCountTests: testMinReadDefault testMinReadGTE testMinReadBelowThreshold testMinReadFilterAllJuncs
 
 # test that passing an explicit threshold of 0 matches the default behavior of 0
 testMinReadDefault: mkout ${basic_bam}
@@ -118,6 +118,11 @@ testMinReadBelowThreshold: mkout ${basic_bam}
 # Threshold matches the read count of a junction exactly. The junciton with read count 45 should be in the output.
 testMinReadGTE: mkout ${basic_bam}
 	${intronProspector} ${conf0} --min-read-count=45 --junction-bed=output/$@.juncs.bed --intron-bed=output/$@.introns.bed --intron-calls=output/$@.introns.tsv ${basic_bam}
+	${diff_out}
+
+# test that high min read count threshold still outputs files even if they are empty
+testMinReadFilterAllJuncs: mkout ${basic_bam}
+	${intronProspector} ${conf0} --min-read-count=100000 --junction-bed=output/$@.juncs.bed --intron-bed=output/$@.introns.bed --intron-calls=output/$@.introns.tsv ${basic_bam}
 	${diff_out}
 
 ###
