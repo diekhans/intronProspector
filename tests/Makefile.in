@@ -144,7 +144,7 @@ tempGenerateSamTwo: ${multi_two_sam}
 ##
 multiTests: testMulti1
 
-testMulti1: mkout ${multi_sam}
+testMulti1: mkout
 	${intronProspector} ${conf0} --junction-bed=output/$@.juncs.bed --intron-bed=output/$@.introns.bed --intron-calls=output/$@.introns.tsv ${multi_sam}
 	${diff_out}
 	bedToBigBed output/$@.juncs.bed input/test_multi.size output/$@.juncs.bigBed
