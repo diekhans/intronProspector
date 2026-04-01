@@ -98,7 +98,7 @@ testBasic5: mkout ${basic_bam}
 	${diff_out}
 
 ##
-# Minimum junction supporting read count tests. Uses ${basic_bam} for tests
+# Minimum junction supporting read count tests.
 ##
 minReadCountTests: testMinReadDefault testMinReadGTE testMinReadBelowThreshold testMinReadFilterAllJuncs
 
@@ -124,6 +124,20 @@ testMinReadGTE: mkout ${basic_bam}
 testMinReadFilterAllJuncs: mkout ${basic_bam}
 	${intronProspector} ${conf0} --min-read-count=100000 --junction-bed=output/$@.juncs.bed --intron-bed=output/$@.introns.bed --intron-calls=output/$@.introns.tsv ${basic_bam}
 	${diff_out}
+
+# test that when inputting multiple files, junctions are filtered after they are aggregated. Consider junction on CM000676.2 at 52661304. Both multi_one_sam and multi_two_sam have read count 2 when
+# generated individually (see *.introns.bed). When generated as multi sam that junction has score 4. Use min read count of 3. If filtering happens before aggregation, that junction won't appear. Since filtering
+# is intended to happen after aggregation, the junction should still be reported.
+testMinReadMultiSam: mkout ${multi_one_sam} ${multi_two_sam}
+	${intronProspector} ${conf0} --min-read-count=3 --junction-bed=output/$@.juncs.bed --intron-bed=output/$@.introns.bed --intron-calls=output/$@.introns.tsv ${multi_one_sam} ${multi_two_sam}
+	${diff_out}
+
+# Not Tests. Use the following to generate multi_one_sam and multi_two_sam to visualize the case for junction CM000676.2 at 52661304 for testMinReadMultiSam
+tempGenerateSamOne: ${multi_one_sam}
+	${intronProspector} ${conf0} --junction-bed=output/$@.juncs.bed --intron-bed=output/$@.introns.bed --intron-calls=output/$@.introns.tsv ${multi_one_sam}
+
+tempGenerateSamTwo: ${multi_two_sam}
+	${intronProspector} ${conf0} --junction-bed=output/$@.juncs.bed --intron-bed=output/$@.introns.bed --intron-calls=output/$@.introns.tsv ${multi_two_sam}
 
 ###
 # multi-introns per read tests
