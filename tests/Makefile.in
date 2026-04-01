@@ -111,7 +111,7 @@ testMinReadDefault: mkout ${basic_bam}
 
 # test that read count filter removes reads below the threshold.
 testMinReadBelowThreshold: mkout ${basic_bam}
-	${intronProspector} ${conf0} --min-read-count=40 --junction-bed=output/$@.juncs.bed --intron-bed=output/$@.introns.bed --intron-calls=output/$@.introns.tsv ${basic_bam}
+	${intronProspector} ${conf0} --min-read-count=30 --junction-bed=output/$@.juncs.bed --intron-bed=output/$@.introns.bed --intron-calls=output/$@.introns.tsv ${basic_bam}
 	${diff_out}
 
 # test read count filter against multi junction bam file and filter out junctions that are less than the threshold and keep anything greater than or equal to the threshold. 
