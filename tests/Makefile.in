@@ -289,7 +289,7 @@ testMergeMinReadFilterAllJuncs: mkout
 	    expected/testBasic1.introns.tsv expected/testBasic3.introns.tsv expected/testBasic4.introns.tsv
 	${diff_out}
 
-# Test that the read counts are filtered after the junctions are merged. The chr10	5000666 junction for example has 1 read count in testBasic1.introns.tsv and in testBasic2.introns.tsv
+# Test that the read counts are filtered after the junctions are merged. The chr10	5000666 junction for example has 1 read count in testBasic1.introns.tsv and in testBasic3.introns.tsv
 # To make sure we filter after aggregation, filter on min-read-count=2 so that if the filtering was done before the aggregation, chr10	5000666 would not appear in the output.
 testMergeFilterPostAggregation: mkout
 	${intronProspectorMerge} --min-read-count=2 --junction-bed=output/$@.juncs.bed --intron-bed=output/$@.introns.bed --intron-calls=output/$@.introns.tsv \
