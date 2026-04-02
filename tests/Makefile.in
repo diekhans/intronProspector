@@ -49,10 +49,10 @@ endef
 all:
 
 .PHONY: test
-test: intronProspectorTests intronProspctorMergeTests
+test: intronProspectorTests intronProspectorMergeTests
 
 #####
-# intronProspctor tests
+# intronProspector tests
 #####
 intronProspectorTests: basicTests minReadCountTests multiTests fake10Tests regressTests ontTests multiBamTests \
 	sjfilterTests
@@ -212,10 +212,10 @@ testSortBug: mkout
 	bedToBigBed -type=bed9 -tab output/$@.introns.bed input/sort-bug.size output/$@.introns.bigBed
 
 #####
-# intronProspctorMerge tests
+# intronProspectorMerge tests
 #####
-intronProspctorMergeTests: testBasic134Merge testBasic134MergeGz testFake10abMerge testStrandConflictMerge \
-	testSjFilterCanonMerge testSjFilterAllMerge testSjFilterDefaultMerge
+intronProspectorMergeTests: testBasic134Merge testBasic134MergeGz testFake10abMerge testStrandConflictMerge \
+	testSjFilterCanonMerge testSjFilterAllMerge testSjFilterDefaultMerge minReadCountMergeTests
 
 testBasic134Merge: mkout
 	${intronProspectorMerge} --junction-bed=output/$@.juncs.bed --intron-bed=output/$@.introns.bed --intron-calls=output/$@.introns.tsv \
@@ -255,6 +255,47 @@ testSjFilterDefaultMerge: mkout
 	${intronProspectorMerge} --junction-bed=output/$@.juncs.bed --intron-bed=output/$@.introns.bed --intron-calls=output/$@.introns.tsv \
 	   expected/testSjFilterAll.introns.tsv	    
 	${diff_out}
+
+##
+# Minimum junction supporting read count tests for intronProspectorMerge.
+##
+minReadCountMergeTests: testMergeMinReadDefault testMergeMinReadBelowThreshold testMergeMinReadGTE \
+	testMergeMinReadFilterAllJuncs testMergeFilterPostAggregation
+
+# test that passing an explicit threshold of 0 matches default behavior. Merges basic 1, 3, and 4.
+testMergeMinReadDefault: mkout
+	${intronProspectorMerge} --junction-bed=output/$@.juncs.bed --intron-bed=output/$@.introns.bed --intron-calls=output/$@.introns.tsv \
+	    expected/testBasic1.introns.tsv expected/testBasic3.introns.tsv expected/testBasic4.introns.tsv
+	${diff_out}
+	${intronProspectorMerge} --min-read-count=0 --junction-bed=output/$@.juncs.bed --intron-bed=output/$@.introns.bed --intron-calls=output/$@.introns.tsv \
+	    expected/testBasic1.introns.tsv expected/testBasic3.introns.tsv expected/testBasic4.introns.tsv
+	${diff_out}
+
+# test that read count filter removes merged junctions below threshold.
+testMergeMinReadBelowThreshold: mkout
+	${intronProspectorMerge} --min-read-count=30 --junction-bed=output/$@.juncs.bed --intron-bed=output/$@.introns.bed --intron-calls=output/$@.introns.tsv \
+	    expected/testBasic1.introns.tsv expected/testBasic3.introns.tsv expected/testBasic4.introns.tsv
+	${diff_out}
+
+# test read count filter where threshold equals an expected merged junction count. Tests that the functionality is >= and not just >.
+testMergeMinReadGTE: mkout
+	${intronProspectorMerge} --min-read-count=135 --junction-bed=output/$@.juncs.bed --intron-bed=output/$@.introns.bed --intron-calls=output/$@.introns.tsv \
+	    expected/testBasic1.introns.tsv expected/testBasic3.introns.tsv expected/testBasic4.introns.tsv
+	${diff_out}
+
+# test that high threshold still outputs valid (possibly empty) files.
+testMergeMinReadFilterAllJuncs: mkout
+	${intronProspectorMerge} --min-read-count=100000 --junction-bed=output/$@.juncs.bed --intron-bed=output/$@.introns.bed --intron-calls=output/$@.introns.tsv \
+	    expected/testBasic1.introns.tsv expected/testBasic3.introns.tsv expected/testBasic4.introns.tsv
+	${diff_out}
+
+# Test that the read counts are filtered after the junctions are merged. The chr10	5000666 junction for example has 1 read count in testBasic1.introns.tsv and in testBasic3.introns.tsv
+# To make sure we filter after aggregation, filter on min-read-count=2 so that if the filtering was done before the aggregation, chr10	5000666 would not appear in the output.
+testMergeFilterPostAggregation: mkout
+	${intronProspectorMerge} --min-read-count=2 --junction-bed=output/$@.juncs.bed --intron-bed=output/$@.introns.bed --intron-calls=output/$@.introns.tsv \
+	    expected/testBasic1.introns.tsv expected/testBasic3.introns.tsv expected/testBasic4.introns.tsv
+	${diff_out}
+
 
 ##
 # ONT tests

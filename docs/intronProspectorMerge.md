@@ -48,6 +48,10 @@ TSV and BED files will be automatically compressed with `gzip` if they end in `.
 
 > Filter based on splice junctions motif. A spec of `canon` keeps only canonical splice junctions (AT/AG, GC/AG, and AT/AC).  A spec of `all` passes all through. The `intronProspector` runs must have used a genome for this option to have an effect.
 
+`-r INT, --min-read-count=INT`
+
+> Minimum number of reads supporting a junction for it to be reported. Junctions with fewer reads than this threshold are discarded. The default is 0 (no filtering).
+
 # BUGS
 
 See GitHub Issues: <https://github.com/diekhans/intronProspector/issues>
