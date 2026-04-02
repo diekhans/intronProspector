@@ -277,7 +277,7 @@ testMergeMinReadBelowThreshold: mkout
 	    expected/testBasic1.introns.tsv expected/testBasic3.introns.tsv expected/testBasic4.introns.tsv
 	${diff_out}
 
-# test read count filter where threshold equals an expected merged junction count.
+# test read count filter where threshold equals an expected merged junction count. Tests that the functionality is >= and not just >.
 testMergeMinReadGTE: mkout
 	${intronProspectorMerge} --min-read-count=135 --junction-bed=output/$@.juncs.bed --intron-bed=output/$@.introns.bed --intron-calls=output/$@.introns.tsv \
 	    expected/testBasic1.introns.tsv expected/testBasic3.introns.tsv expected/testBasic4.introns.tsv
