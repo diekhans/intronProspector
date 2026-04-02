@@ -1,5 +1,8 @@
 # Major and user-visible changes
 
+## version 1.4.0 2026-04-02
+* Add --min-read-count option to filter introns based on number of supporting reads.
+
 ## version 1.4.0 2025-08-12
 * Add --sj-filter=canon option `intronProspector` to keep only canonical splice junctions.
   This is the default if a genome is provide.  Filtering can be disabled with
