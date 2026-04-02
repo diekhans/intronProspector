@@ -49,10 +49,10 @@ endef
 all:
 
 .PHONY: test
-test: intronProspectorTests intronProspctorMergeTests
+test: intronProspectorTests intronProspectorMergeTests
 
 #####
-# intronProspctor tests
+# intronProspector tests
 #####
 intronProspectorTests: basicTests minReadCountTests multiTests fake10Tests regressTests ontTests multiBamTests \
 	sjfilterTests
@@ -212,9 +212,9 @@ testSortBug: mkout
 	bedToBigBed -type=bed9 -tab output/$@.introns.bed input/sort-bug.size output/$@.introns.bigBed
 
 #####
-# intronProspctorMerge tests
+# intronProspectorMerge tests
 #####
-intronProspctorMergeTests: testBasic134Merge testBasic134MergeGz testFake10abMerge testStrandConflictMerge \
+intronProspectorMergeTests: testBasic134Merge testBasic134MergeGz testFake10abMerge testStrandConflictMerge \
 	testSjFilterCanonMerge testSjFilterAllMerge testSjFilterDefaultMerge minReadCountMergeTests
 
 testBasic134Merge: mkout
