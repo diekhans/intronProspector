@@ -38,9 +38,12 @@ DEALINGS IN THE SOFTWARE.  */
 #include "junctions.hh"
 #include "tsv.hh"
 #include "splice_juncs.hh"
+#include "strconvert.hh"
 #include "version.hh"
 
 using namespace std;
+
+static const uint32_t DEFAULT_MIN_READ_COUNT = 0;
 
 static const char *usage_msg =
 #include "intronProspectorMerge.man.h"
@@ -74,9 +77,11 @@ class CmdParser {
 
     // filter
     JunctionFilter junction_filter;
+    uint32_t min_read_count;
     
     CmdParser(int argc, char *argv[]):
-        junction_filter(NULL_SJ_FILTER) {
+        junction_filter(NULL_SJ_FILTER),
+        min_read_count(DEFAULT_MIN_READ_COUNT) {
         try {
             parse_cmd_args(argc, argv);
         } catch (const std::exception& ex) {
@@ -95,11 +100,12 @@ class CmdParser {
             {"intron-bed", required_argument, NULL, 'n'},
             {"intron-bed6", required_argument, NULL, 'b'},
             {"intron-calls", required_argument, NULL, 'c'},
+            {"min-read-count", required_argument, NULL, 'r'},
             {"sj-filter", required_argument, NULL, 'f'},
             {NULL, 0, NULL, 0}
         };
             
-        const char *short_options = "hvi:j:n:b:c:f:";
+        const char *short_options = "hvi:j:n:b:c:r:f:";
         int c;
         while ((c = getopt_long(argc, argv, short_options, long_options, NULL)) != -1) {
             switch (c) {
@@ -117,6 +123,9 @@ class CmdParser {
                     break;
                 case 'c':
                     intron_call_tsv = optarg;
+                    break;
+                case 'r':
+                    min_read_count = toUnsigned(optarg);
                     break;
                 case 'f':
                     junction_filter = junction_filter_parse(string(optarg));
@@ -217,22 +226,22 @@ static void intron_prospector_merge(CmdParser &opts) {
     renumber_junctions(juncs);
     if (opts.junction_bed != "") {
         AutoGzipOutput out(opts.junction_bed);
-        print_anchor_bed(juncs, 0.0, 0.0, out);
+        print_anchor_bed(juncs, 0.0, opts.min_read_count, out);
     }
     if ((opts.intron_bed != "") or (opts.intron_bed6 != "") or (opts.intron_call_tsv != "")) {
         juncs.sort_by_introns();
         if (opts.intron_bed != "") {
             AutoGzipOutput out(opts.intron_bed);
-            print_intron_bed(juncs, 0.0, 0.0, 9, out);
+            print_intron_bed(juncs, 0.0, opts.min_read_count, 9, out);
         }
         if (opts.intron_bed6 != "") {
             AutoGzipOutput out(opts.intron_bed6);
-            print_intron_bed(juncs, 0.0, 0.0, 6, out);
+            print_intron_bed(juncs, 0.0, opts.min_read_count, 6, out);
         }
         if (opts.intron_call_tsv != "") {
             AutoGzipOutput out(opts.intron_call_tsv);
             print_junction_call_header(out);
-            print_intron_call_tsv(juncs, 0.0, 0.0, out);
+            print_intron_call_tsv(juncs, 0.0, opts.min_read_count, out);
         }
     }
  }
