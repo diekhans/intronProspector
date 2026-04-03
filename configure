@@ -3886,11 +3886,11 @@ fi
 	# Put the nasty error message in config.log where it belongs
 	echo "$htslib_PKG_ERRORS" >&5
 
-	as_fn_error $? "pkg-config did not find htslib" "$LINENO" 5
+	as_fn_error $? "pkg-config did not find htslib. If using conda, ensure PKG_CONFIG_PATH includes the conda environment, e.g.: export PKG_CONFIG_PATH=\$CONDA_PREFIX/lib/pkgconfig:\$PKG_CONFIG_PATH" "$LINENO" 5
 elif test $pkg_failed = untried; then
      	{ $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
 $as_echo "no" >&6; }
-	as_fn_error $? "pkg-config did not find htslib" "$LINENO" 5
+	as_fn_error $? "pkg-config did not find htslib. If using conda, ensure PKG_CONFIG_PATH includes the conda environment, e.g.: export PKG_CONFIG_PATH=\$CONDA_PREFIX/lib/pkgconfig:\$PKG_CONFIG_PATH" "$LINENO" 5
 else
 	htslib_CFLAGS=$pkg_cv_htslib_CFLAGS
 	htslib_LIBS=$pkg_cv_htslib_LIBS

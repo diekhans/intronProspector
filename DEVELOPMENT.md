@@ -5,11 +5,15 @@
 - update version in configure.ac
 - autoreconf -fi
 - make doc 
+  this builds help and manual pages from markdown
 - test:
   - make distclean
-  - ./configure --prefix=${MED_OPT}
+  - ./configure --prefix=/some/test/dir
   - make
   - make install
   - make test
 - git commit -am 'v1.5.0 release'
-- tag in the form v1.5.0
+- git tag v1.5.0
+- git push
+- git push --tags
+- github draft a release with CHANGELOG text as description

@@ -66,7 +66,7 @@ else
     # use pkgconfig
     PKG_CHECK_MODULES([htslib], [htslib >= 0.20.0],
         [AC_MSG_RESULT([htslib found])],
-        [AC_MSG_ERROR([pkg-config did not find htslib])])
+        [AC_MSG_ERROR([pkg-config did not find htslib. If using conda, ensure PKG_CONFIG_PATH includes the conda environment, e.g.: export PKG_CONFIG_PATH=\$CONDA_PREFIX/lib/pkgconfig:\$PKG_CONFIG_PATH])])
     CPPFLAGS="${CPPFLAGS} ${htslib_CFLAGS}"
 
     htslibdir=`pkg-config --libs-only-L htslib | sed -e 's/^-L//' -e 's/ *$//'`
