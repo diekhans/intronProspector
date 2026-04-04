@@ -1,8 +1,12 @@
 # Major and user-visible changes
 
-## version 1.5.0 2026-04-02
+## version 1.5.0 2026-04-04
 * Add --min-read-count option to filter introns based on number of supporting reads.
 * If htslib is not found by configure, error message makes suggestion when using Conda.
+* The intronProspector and intronProspectorMerge commands have been renamed to 
+  intron-prospector and intron-prospector-merge to follow more common conventions and
+  decrease wear on the shift key.  Wrapper scripts are provide for compatibility, which
+  will be removed in the next major release.
 
 ## version 1.4.0 2025-08-12
 * Add --sj-filter=canon option `intronProspector` to keep only canonical splice junctions.

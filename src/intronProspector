@@ -1,0 +1,8 @@
+#!/bin/sh -e
+
+echo "=====" >&2
+echo "===== Notice: intronProspector has been renamed to intron-prospector" >&2
+echo "===== support for the old name will be removed in a future release " >&2
+echo "=====" >&2
+
+exec intron-prospector "$@"

@@ -11,7 +11,7 @@ doc:
 	${MAKE} dodoc dodoc=yes
 
 ifeq (${dodoc},yes)
-dodoc:  intronProspector.1 intronProspectorMerge.1
+dodoc:  intron-prospector.1 intron-prospector-merge.1
 
 date = $(shell date  +'%B %d, %Y')
 %.1: ../docs/%.md %.header

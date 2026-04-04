@@ -2,8 +2,8 @@
 ROOT = ..
 BINDIR = ${ROOT}/bin
 
-intronProspector = ${BINDIR}/intronProspector
-intronProspectorMerge = ${BINDIR}/intronProspectorMerge
+intron_prospector = ${BINDIR}/intron-prospector
+intron_prospector_merge = ${BINDIR}/intron-prospector-merge
 
 # Test run command in various ways and compares to expected output
 
@@ -49,12 +49,12 @@ endef
 all:
 
 .PHONY: test
-test: intronProspectorTests intronProspectorMergeTests
+test: intron_prospectorTests intron_prospector_mergeTests
 
 #####
-# intronProspector tests
+# intron_prospector tests
 #####
-intronProspectorTests: basicTests minReadCountTests multiTests fake10Tests regressTests ontTests multiBamTests \
+intron_prospectorTests: basicTests minReadCountTests multiTests fake10Tests regressTests ontTests multiBamTests \
 	sjfilterTests
 
 ###
@@ -64,37 +64,37 @@ basicTests: testBasic1 testBasic1gz testBasic2 testBasic3 testBasic4 testBasic5
 
 # basic unstranded
 testBasic1: mkout
-	${intronProspector} ${conf0} --junction-bed=output/$@.juncs.bed --intron-bed=output/$@.introns.bed --intron-bed6=output/$@.introns.bed6 --intron-calls=output/$@.introns.tsv --pass-through=output/$@.sam ${basic_sam}
+	${intron_prospector} ${conf0} --junction-bed=output/$@.juncs.bed --intron-bed=output/$@.introns.bed --intron-bed6=output/$@.introns.bed6 --intron-calls=output/$@.introns.tsv --pass-through=output/$@.sam ${basic_sam}
 	${diff_out}
 	${diff} expected/$@.introns.bed6 output/$@.introns.bed6
 	${diff} ${basic_sam} output/$@.sam
 
 testBasic1gz: mkout
-	${intronProspector} ${conf0} --junction-bed=output/$@.juncs.bed.gz --intron-bed=output/$@.introns.bed.gz --intron-bed6=output/$@.introns.bed6.gz --intron-calls=output/$@.introns.tsv.gz ${basic_sam}
+	${intron_prospector} ${conf0} --junction-bed=output/$@.juncs.bed.gz --intron-bed=output/$@.introns.bed.gz --intron-bed6=output/$@.introns.bed6.gz --intron-calls=output/$@.introns.tsv.gz ${basic_sam}
 	$(call diff_out_gz,testBasic1)
 	gunzip -c output/$@.introns.bed6.gz > output/$@.gz.introns.bed6
 	${diff} expected/testBasic1.introns.bed6 output/$@.gz.introns.bed6
 
 # RF strandness
 testBasic2: mkout
-	${intronProspector} --strandness=RF ${conf0} --junction-bed=output/$@.juncs.bed --intron-bed=output/$@.introns.bed --intron-calls=output/$@.introns.tsv ${basic_sam}
+	${intron_prospector} --strandness=RF ${conf0} --junction-bed=output/$@.juncs.bed --intron-bed=output/$@.introns.bed --intron-calls=output/$@.introns.tsv ${basic_sam}
 	${diff_out}
 
 # testBasic1 with BAM
 testBasic3: mkout ${basic_bam}
-	${intronProspector} ${conf0} --junction-bed=output/$@.juncs.bed --intron-bed=output/$@.introns.bed --pass-through=output/$@.bam --intron-calls=output/$@.introns.tsv ${basic_bam}
+	${intron_prospector} ${conf0} --junction-bed=output/$@.juncs.bed --intron-bed=output/$@.introns.bed --pass-through=output/$@.bam --intron-calls=output/$@.introns.tsv ${basic_bam}
 	${diff_out}
 	samtools view -h --no-PG output/$@.bam >output/$@.sam
 	${diff} ${basic_sam} output/$@.sam
 
 # test confidence score filter
 testBasic4: mkout ${basic_bam}
-	${intronProspector} --min-confidence-score=1.0 --junction-bed=output/$@.juncs.bed --intron-bed=output/$@.introns.bed --intron-calls=output/$@.introns.tsv ${basic_bam}
+	${intron_prospector} --min-confidence-score=1.0 --junction-bed=output/$@.juncs.bed --intron-bed=output/$@.introns.bed --intron-calls=output/$@.introns.tsv ${basic_bam}
 	${diff_out}
 
 # test exclude multi filter
 testBasic5: mkout ${basic_bam}
-	${intronProspector} --exclude=multi ${conf0} --junction-bed=output/$@.juncs.bed --intron-bed=output/$@.introns.bed --intron-calls=output/$@.introns.tsv ${basic_bam}
+	${intron_prospector} --exclude=multi ${conf0} --junction-bed=output/$@.juncs.bed --intron-bed=output/$@.introns.bed --intron-calls=output/$@.introns.tsv ${basic_bam}
 	${diff_out}
 
 ##
@@ -104,40 +104,40 @@ minReadCountTests: testMinReadDefault testMinReadGTE testMinReadBelowThreshold t
 
 # test that passing an explicit threshold of 0 matches the default behavior of 0
 testMinReadDefault: mkout ${basic_bam}
-	${intronProspector} ${conf0} --junction-bed=output/$@.juncs.bed --intron-bed=output/$@.introns.bed --intron-calls=output/$@.introns.tsv ${basic_bam}
+	${intron_prospector} ${conf0} --junction-bed=output/$@.juncs.bed --intron-bed=output/$@.introns.bed --intron-calls=output/$@.introns.tsv ${basic_bam}
 	${diff_out}
-	${intronProspector} ${conf0} --min-read-count=0 --junction-bed=output/$@.juncs.bed --intron-bed=output/$@.introns.bed --intron-calls=output/$@.introns.tsv ${basic_bam}	
+	${intron_prospector} ${conf0} --min-read-count=0 --junction-bed=output/$@.juncs.bed --intron-bed=output/$@.introns.bed --intron-calls=output/$@.introns.tsv ${basic_bam}	
 	${diff_out}
 
 # test that read count filter removes reads below the threshold.
 testMinReadBelowThreshold: mkout ${basic_bam}
-	${intronProspector} ${conf0} --min-read-count=30 --junction-bed=output/$@.juncs.bed --intron-bed=output/$@.introns.bed --intron-calls=output/$@.introns.tsv ${basic_bam}
+	${intron_prospector} ${conf0} --min-read-count=30 --junction-bed=output/$@.juncs.bed --intron-bed=output/$@.introns.bed --intron-calls=output/$@.introns.tsv ${basic_bam}
 	${diff_out}
 
 # test read count filter against multi junction bam file and filter out junctions that are less than the threshold and keep anything greater than or equal to the threshold. 
 # Threshold matches the read count of a junction exactly. The junciton with read count 45 should be in the output.
 testMinReadGTE: mkout ${basic_bam}
-	${intronProspector} ${conf0} --min-read-count=45 --junction-bed=output/$@.juncs.bed --intron-bed=output/$@.introns.bed --intron-calls=output/$@.introns.tsv ${basic_bam}
+	${intron_prospector} ${conf0} --min-read-count=45 --junction-bed=output/$@.juncs.bed --intron-bed=output/$@.introns.bed --intron-calls=output/$@.introns.tsv ${basic_bam}
 	${diff_out}
 
 # test that high min read count threshold still outputs files even if they are empty
 testMinReadFilterAllJuncs: mkout ${basic_bam}
-	${intronProspector} ${conf0} --min-read-count=100000 --junction-bed=output/$@.juncs.bed --intron-bed=output/$@.introns.bed --intron-calls=output/$@.introns.tsv ${basic_bam}
+	${intron_prospector} ${conf0} --min-read-count=100000 --junction-bed=output/$@.juncs.bed --intron-bed=output/$@.introns.bed --intron-calls=output/$@.introns.tsv ${basic_bam}
 	${diff_out}
 
 # test that when inputting multiple files, junctions are filtered after they are aggregated. Consider junction on CM000676.2 at 52661304. Both multi_one_sam and multi_two_sam have read count 2 when
 # generated individually (see *.introns.bed). When generated as multi sam that junction has score 4. Use min read count of 3. If filtering happens before aggregation, that junction won't appear. Since filtering
 # is intended to happen after aggregation, the junction should still be reported.
 testMinReadMultiSam: mkout ${multi_one_sam} ${multi_two_sam}
-	${intronProspector} ${conf0} --min-read-count=3 --junction-bed=output/$@.juncs.bed --intron-bed=output/$@.introns.bed --intron-calls=output/$@.introns.tsv ${multi_one_sam} ${multi_two_sam}
+	${intron_prospector} ${conf0} --min-read-count=3 --junction-bed=output/$@.juncs.bed --intron-bed=output/$@.introns.bed --intron-calls=output/$@.introns.tsv ${multi_one_sam} ${multi_two_sam}
 	${diff_out}
 
 # Not Tests. Use the following to generate multi_one_sam and multi_two_sam to visualize the case for junction CM000676.2 at 52661304 for testMinReadMultiSam
 tempGenerateSamOne: ${multi_one_sam}
-	${intronProspector} ${conf0} --junction-bed=output/$@.juncs.bed --intron-bed=output/$@.introns.bed --intron-calls=output/$@.introns.tsv ${multi_one_sam}
+	${intron_prospector} ${conf0} --junction-bed=output/$@.juncs.bed --intron-bed=output/$@.introns.bed --intron-calls=output/$@.introns.tsv ${multi_one_sam}
 
 tempGenerateSamTwo: ${multi_two_sam}
-	${intronProspector} ${conf0} --junction-bed=output/$@.juncs.bed --intron-bed=output/$@.introns.bed --intron-calls=output/$@.introns.tsv ${multi_two_sam}
+	${intron_prospector} ${conf0} --junction-bed=output/$@.juncs.bed --intron-bed=output/$@.introns.bed --intron-calls=output/$@.introns.tsv ${multi_two_sam}
 
 ###
 # multi-introns per read tests
@@ -145,7 +145,7 @@ tempGenerateSamTwo: ${multi_two_sam}
 multiTests: testMulti1
 
 testMulti1: mkout
-	${intronProspector} ${conf0} --junction-bed=output/$@.juncs.bed --intron-bed=output/$@.introns.bed --intron-calls=output/$@.introns.tsv ${multi_sam}
+	${intron_prospector} ${conf0} --junction-bed=output/$@.juncs.bed --intron-bed=output/$@.introns.bed --intron-calls=output/$@.introns.tsv ${multi_sam}
 	${diff_out}
 	bedToBigBed output/$@.juncs.bed input/test_multi.size output/$@.juncs.bigBed
 	bedToBigBed output/$@.introns.bed input/test_multi.size output/$@.introns.bigBed
@@ -157,20 +157,20 @@ fake10Tests: testFake10a testFake10agz testFake10aConf testFake10b testFake10c
 
 # fake10 STAR mappings (SAM doesn't have strand)
 testFake10a: mkout ${fake10_fa} ${fake10_fai}
-	${intronProspector} ${conf0} --genome-fasta=${fake10_fa} --junction-bed=output/$@.juncs.bed --intron-bed=output/$@.introns.bed --intron-calls=output/$@.introns.tsv --pass-through=output/$@.sam --debug-trace=output/$@.debug.tsv ${fake10_star_sam}
+	${intron_prospector} ${conf0} --genome-fasta=${fake10_fa} --junction-bed=output/$@.juncs.bed --intron-bed=output/$@.introns.bed --intron-calls=output/$@.introns.tsv --pass-through=output/$@.sam --debug-trace=output/$@.debug.tsv ${fake10_star_sam}
 	${diff_out}
 	${diff} expected/$@.debug.tsv output/$@.debug.tsv
 	${diff} ${fake10_star_sam} output/$@.sam
 
 testFake10agz: mkout ${fake10_fa} ${fake10_fai}
-	${intronProspector} ${conf0} --genome-fasta=${fake10_fa} --junction-bed=output/$@.juncs.bed.gz --intron-bed=output/$@.introns.bed.gz --intron-calls=output/$@.introns.tsv.gz --debug-trace=output/$@.debug.tsv.gz ${fake10_star_sam}
+	${intron_prospector} ${conf0} --genome-fasta=${fake10_fa} --junction-bed=output/$@.juncs.bed.gz --intron-bed=output/$@.introns.bed.gz --intron-calls=output/$@.introns.tsv.gz --debug-trace=output/$@.debug.tsv.gz ${fake10_star_sam}
 	$(call diff_out_gz,testFake10a)
 	gunzip -c output/$@.debug.tsv.gz > output/$@.debug.tsv
 	${diff} expected/testFake10a.debug.tsv output/$@.debug.tsv
 
 # condidence default
 testFake10aConf: mkout ${fake10_fa} ${fake10_fai}
-	${intronProspector} --genome-fasta=${fake10_fa} --junction-bed=output/$@.juncs.bed --intron-bed=output/$@.introns.bed --intron-calls=output/$@.introns.tsv --pass-through=output/$@.sam --debug-trace=output/$@.debug.tsv ${fake10_star_sam}
+	${intron_prospector} --genome-fasta=${fake10_fa} --junction-bed=output/$@.juncs.bed --intron-bed=output/$@.introns.bed --intron-calls=output/$@.introns.tsv --pass-through=output/$@.sam --debug-trace=output/$@.debug.tsv ${fake10_star_sam}
 	${diff_out}
 	${diff} expected/$@.debug.tsv output/$@.debug.tsv
 	${diff} ${fake10_star_sam} output/$@.sam
@@ -178,28 +178,28 @@ testFake10aConf: mkout ${fake10_fa} ${fake10_fai}
 
 # fake10 hisat2 mappings
 testFake10b: mkout ${fake10_fa} ${fake10_fai}
-	${intronProspector} ${conf0} --genome-fasta=${fake10_fa}  --junction-bed=output/$@.juncs.bed --intron-bed=output/$@.introns.bed --intron-calls=output/$@.introns.tsv --pass-through=output/$@.sam ${fake10_hisat2_sam}
+	${intron_prospector} ${conf0} --genome-fasta=${fake10_fa}  --junction-bed=output/$@.juncs.bed --intron-bed=output/$@.introns.bed --intron-calls=output/$@.introns.tsv --pass-through=output/$@.sam ${fake10_hisat2_sam}
 	${diff_out}
 	${diff} ${fake10_hisat2_sam} output/$@.sam
 
 # fake10 hisat2 mappings with missing target sequence
 testFake10c: mkout ${fake10_fa} ${fake10_fai}
-	${intronProspector} ${conf0} --genome-fasta=${fake10_fa} --skip-missing-targets --junction-bed=output/$@.juncs.bed --intron-bed=output/$@.introns.bed --intron-calls=output/$@.introns.tsv ${fake10_missing_sam} > output/$@.err 2>&1
+	${intron_prospector} ${conf0} --genome-fasta=${fake10_fa} --skip-missing-targets --junction-bed=output/$@.juncs.bed --intron-bed=output/$@.introns.bed --intron-calls=output/$@.introns.tsv ${fake10_missing_sam} > output/$@.err 2>&1
 	${diff} expected/$@.err output/$@.err
 	${diff_out}
 
 sjfilterTests: testSjFilterDefault testSjFilterCanon testSjFilterAll
 
 testSjFilterDefault: mkout ${fake10_scramble_fa} ${fake10_scramble_fai}
-	${intronProspector} ${conf0} --genome-fasta=${fake10_scramble_fa} --junction-bed=output/$@.juncs.bed --intron-bed=output/$@.introns.bed --intron-calls=output/$@.introns.tsv ${fake10_star_sam}
+	${intron_prospector} ${conf0} --genome-fasta=${fake10_scramble_fa} --junction-bed=output/$@.juncs.bed --intron-bed=output/$@.introns.bed --intron-calls=output/$@.introns.tsv ${fake10_star_sam}
 	${diff_out}
 
 testSjFilterCanon: mkout ${fake10_scramble_fa} ${fake10_scramble_fai}
-	${intronProspector} ${conf0} --sj-filter=canon --genome-fasta=${fake10_scramble_fa} --junction-bed=output/$@.juncs.bed --intron-bed=output/$@.introns.bed --intron-calls=output/$@.introns.tsv ${fake10_star_sam}
+	${intron_prospector} ${conf0} --sj-filter=canon --genome-fasta=${fake10_scramble_fa} --junction-bed=output/$@.juncs.bed --intron-bed=output/$@.introns.bed --intron-calls=output/$@.introns.tsv ${fake10_star_sam}
 	${diff_out}
 
 testSjFilterAll: mkout ${fake10_scramble_fa} ${fake10_scramble_fai}
-	${intronProspector} ${conf0} --sj-filter=all --genome-fasta=${fake10_scramble_fa} --junction-bed=output/$@.juncs.bed --intron-bed=output/$@.introns.bed --intron-calls=output/$@.introns.tsv ${fake10_star_sam}
+	${intron_prospector} ${conf0} --sj-filter=all --genome-fasta=${fake10_scramble_fa} --junction-bed=output/$@.juncs.bed --intron-bed=output/$@.introns.bed --intron-calls=output/$@.introns.tsv ${fake10_star_sam}
 	${diff_out}
 
 
@@ -207,18 +207,18 @@ regressTests: testSortBug
 
 # bug where bed was incorrectly sorted
 testSortBug: mkout
-	${intronProspector} --junction-bed=output/$@.juncs.bed --intron-bed=output/$@.introns.bed input/sort-bug.sam
+	${intron_prospector} --junction-bed=output/$@.juncs.bed --intron-bed=output/$@.introns.bed input/sort-bug.sam
 	bedToBigBed -type=bed12 -tab output/$@.juncs.bed input/sort-bug.size output/$@.juncs.bigBed
 	bedToBigBed -type=bed9 -tab output/$@.introns.bed input/sort-bug.size output/$@.introns.bigBed
 
 #####
-# intronProspectorMerge tests
+# intron_prospector_merge tests
 #####
-intronProspectorMergeTests: testBasic134Merge testBasic134MergeGz testFake10abMerge testStrandConflictMerge \
+intron_prospector_mergeTests: testBasic134Merge testBasic134MergeGz testFake10abMerge testStrandConflictMerge \
 	testSjFilterCanonMerge testSjFilterAllMerge testSjFilterDefaultMerge minReadCountMergeTests
 
 testBasic134Merge: mkout
-	${intronProspectorMerge} --junction-bed=output/$@.juncs.bed --intron-bed=output/$@.introns.bed --intron-calls=output/$@.introns.tsv \
+	${intron_prospector_merge} --junction-bed=output/$@.juncs.bed --intron-bed=output/$@.introns.bed --intron-calls=output/$@.introns.tsv \
 	    expected/testBasic1.introns.tsv expected/testBasic3.introns.tsv expected/testBasic4.introns.tsv
 	${diff_out}
 
@@ -226,73 +226,73 @@ testBasic134MergeGz: mkout
 	gzip -c expected/testBasic1.introns.tsv > output/testBasic1_gz.introns.tsv.gz
 	gzip -c expected/testBasic3.introns.tsv > output/testBasic3_gz.introns.tsv.gz
 	gzip -c expected/testBasic4.introns.tsv > output/testBasic4_gz.introns.tsv.gz
-	${intronProspectorMerge} --junction-bed=output/$@.juncs.bed.gz --intron-bed=output/$@.introns.bed.gz --intron-calls=output/$@.introns.tsv.gz \
+	${intron_prospector_merge} --junction-bed=output/$@.juncs.bed.gz --intron-bed=output/$@.introns.bed.gz --intron-calls=output/$@.introns.tsv.gz \
 	    output/testBasic1_gz.introns.tsv.gz output/testBasic3_gz.introns.tsv.gz output/testBasic4_gz.introns.tsv.gz
 	$(call diff_out_gz,testBasic134Merge)
 
 testFake10abMerge: mkout
-	${intronProspectorMerge} --intron-calls=output/$@.introns.tsv \
+	${intron_prospector_merge} --intron-calls=output/$@.introns.tsv \
 	    expected/testFake10a.introns.tsv expected/testFake10b.introns.tsv
 	${diff} expected/$@.introns.tsv output/$@.introns.tsv
 
 testStrandConflictMerge: mkout
-	${intronProspectorMerge} --intron-calls=output/$@.introns.tsv \
+	${intron_prospector_merge} --intron-calls=output/$@.introns.tsv \
 	   input/strand-confict/SRR6225360.calls.tsv input/strand-confict/SRR6225362.calls.tsv \
 	   input/strand-confict/SRR6225361.calls.tsv input/strand-confict/SRR6225363.calls.tsv 2> output/$@.err
 	${diff_tsv}
 
 testSjFilterCanonMerge: mkout
-	${intronProspectorMerge} --sj-filter=canon --junction-bed=output/$@.juncs.bed --intron-bed=output/$@.introns.bed --intron-calls=output/$@.introns.tsv \
+	${intron_prospector_merge} --sj-filter=canon --junction-bed=output/$@.juncs.bed --intron-bed=output/$@.introns.bed --intron-calls=output/$@.introns.tsv \
 	   expected/testSjFilterAll.introns.tsv	    
 	${diff_out}
 
 testSjFilterAllMerge: mkout
-	${intronProspectorMerge} --sj-filter=all --junction-bed=output/$@.juncs.bed --intron-bed=output/$@.introns.bed --intron-calls=output/$@.introns.tsv \
+	${intron_prospector_merge} --sj-filter=all --junction-bed=output/$@.juncs.bed --intron-bed=output/$@.introns.bed --intron-calls=output/$@.introns.tsv \
 	   expected/testSjFilterAll.introns.tsv	    
 	${diff_out}
 
 testSjFilterDefaultMerge: mkout
-	${intronProspectorMerge} --junction-bed=output/$@.juncs.bed --intron-bed=output/$@.introns.bed --intron-calls=output/$@.introns.tsv \
+	${intron_prospector_merge} --junction-bed=output/$@.juncs.bed --intron-bed=output/$@.introns.bed --intron-calls=output/$@.introns.tsv \
 	   expected/testSjFilterAll.introns.tsv	    
 	${diff_out}
 
 ##
-# Minimum junction supporting read count tests for intronProspectorMerge.
+# Minimum junction supporting read count tests for intron_prospector_merge.
 ##
 minReadCountMergeTests: testMergeMinReadDefault testMergeMinReadBelowThreshold testMergeMinReadGTE \
 	testMergeMinReadFilterAllJuncs testMergeFilterPostAggregation
 
 # test that passing an explicit threshold of 0 matches default behavior. Merges basic 1, 3, and 4.
 testMergeMinReadDefault: mkout
-	${intronProspectorMerge} --junction-bed=output/$@.juncs.bed --intron-bed=output/$@.introns.bed --intron-calls=output/$@.introns.tsv \
+	${intron_prospector_merge} --junction-bed=output/$@.juncs.bed --intron-bed=output/$@.introns.bed --intron-calls=output/$@.introns.tsv \
 	    expected/testBasic1.introns.tsv expected/testBasic3.introns.tsv expected/testBasic4.introns.tsv
 	${diff_out}
-	${intronProspectorMerge} --min-read-count=0 --junction-bed=output/$@.juncs.bed --intron-bed=output/$@.introns.bed --intron-calls=output/$@.introns.tsv \
+	${intron_prospector_merge} --min-read-count=0 --junction-bed=output/$@.juncs.bed --intron-bed=output/$@.introns.bed --intron-calls=output/$@.introns.tsv \
 	    expected/testBasic1.introns.tsv expected/testBasic3.introns.tsv expected/testBasic4.introns.tsv
 	${diff_out}
 
 # test that read count filter removes merged junctions below threshold.
 testMergeMinReadBelowThreshold: mkout
-	${intronProspectorMerge} --min-read-count=30 --junction-bed=output/$@.juncs.bed --intron-bed=output/$@.introns.bed --intron-calls=output/$@.introns.tsv \
+	${intron_prospector_merge} --min-read-count=30 --junction-bed=output/$@.juncs.bed --intron-bed=output/$@.introns.bed --intron-calls=output/$@.introns.tsv \
 	    expected/testBasic1.introns.tsv expected/testBasic3.introns.tsv expected/testBasic4.introns.tsv
 	${diff_out}
 
 # test read count filter where threshold equals an expected merged junction count. Tests that the functionality is >= and not just >.
 testMergeMinReadGTE: mkout
-	${intronProspectorMerge} --min-read-count=135 --junction-bed=output/$@.juncs.bed --intron-bed=output/$@.introns.bed --intron-calls=output/$@.introns.tsv \
+	${intron_prospector_merge} --min-read-count=135 --junction-bed=output/$@.juncs.bed --intron-bed=output/$@.introns.bed --intron-calls=output/$@.introns.tsv \
 	    expected/testBasic1.introns.tsv expected/testBasic3.introns.tsv expected/testBasic4.introns.tsv
 	${diff_out}
 
 # test that high threshold still outputs valid (possibly empty) files.
 testMergeMinReadFilterAllJuncs: mkout
-	${intronProspectorMerge} --min-read-count=100000 --junction-bed=output/$@.juncs.bed --intron-bed=output/$@.introns.bed --intron-calls=output/$@.introns.tsv \
+	${intron_prospector_merge} --min-read-count=100000 --junction-bed=output/$@.juncs.bed --intron-bed=output/$@.introns.bed --intron-calls=output/$@.introns.tsv \
 	    expected/testBasic1.introns.tsv expected/testBasic3.introns.tsv expected/testBasic4.introns.tsv
 	${diff_out}
 
 # Test that the read counts are filtered after the junctions are merged. The chr10	5000666 junction for example has 1 read count in testBasic1.introns.tsv and in testBasic3.introns.tsv
 # To make sure we filter after aggregation, filter on min-read-count=2 so that if the filtering was done before the aggregation, chr10	5000666 would not appear in the output.
 testMergeFilterPostAggregation: mkout
-	${intronProspectorMerge} --min-read-count=2 --junction-bed=output/$@.juncs.bed --intron-bed=output/$@.introns.bed --intron-calls=output/$@.introns.tsv \
+	${intron_prospector_merge} --min-read-count=2 --junction-bed=output/$@.juncs.bed --intron-bed=output/$@.introns.bed --intron-calls=output/$@.introns.tsv \
 	    expected/testBasic1.introns.tsv expected/testBasic3.introns.tsv expected/testBasic4.introns.tsv
 	${diff_out}
 
@@ -303,20 +303,20 @@ testMergeFilterPostAggregation: mkout
 ontTests: testOnt1 testOntIndel testOntSkipTargets testOntOutOfOrderTargets testOntUnsorted
 
 testOnt1: mkout
-	${intronProspector} ${conf0} --junction-bed=output/$@.juncs.bed --intron-bed=output/$@.introns.bed --intron-calls=output/$@.introns.tsv --pass-through=output/$@.sam ${ont_sam}
+	${intron_prospector} ${conf0} --junction-bed=output/$@.juncs.bed --intron-bed=output/$@.introns.bed --intron-calls=output/$@.introns.tsv --pass-through=output/$@.sam ${ont_sam}
 	${diff_out}
 	${diff} ${ont_sam} output/$@.sam
 
 testOntIndel: mkout
-	${intronProspector} ${conf0} --allow-anchor-indels --junction-bed=output/$@.juncs.bed --intron-bed=output/$@.introns.bed --intron-calls=output/$@.introns.tsv ${ont_sam}
+	${intron_prospector} ${conf0} --allow-anchor-indels --junction-bed=output/$@.juncs.bed --intron-bed=output/$@.introns.bed --intron-calls=output/$@.introns.tsv ${ont_sam}
 	${diff_out}
 
 testOntSkipTargets: mkout
-	${intronProspector} ${conf0} --allow-anchor-indels --junction-bed=output/$@.juncs.bed --intron-bed=output/$@.introns.bed --intron-calls=output/$@.introns.tsv input/ont-skip-targets.sam
+	${intron_prospector} ${conf0} --allow-anchor-indels --junction-bed=output/$@.juncs.bed --intron-bed=output/$@.introns.bed --intron-calls=output/$@.introns.tsv input/ont-skip-targets.sam
 	${diff_out}
 
 testOntOutOfOrderTargets: mkout
-	${intronProspector} --allow-anchor-indels input/ont-out-of-order-targets.sam > output/$@.err 2>&1 || true
+	${intron_prospector} --allow-anchor-indels input/ont-out-of-order-targets.sam > output/$@.err 2>&1 || true
 	${diff} expected/$@.err output/$@.err
 
 ##
@@ -327,11 +327,11 @@ testOntOutOfOrderTargets: mkout
 multiBamTests: testMultiSam
 
 testMultiSam: mkout
-	${intronProspector} ${conf0} --junction-bed=output/$@.juncs.bed --intron-bed=output/$@.introns.bed --intron-calls=output/$@.introns.tsv ${multi_one_sam} ${multi_two_sam}
+	${intron_prospector} ${conf0} --junction-bed=output/$@.juncs.bed --intron-bed=output/$@.introns.bed --intron-calls=output/$@.introns.tsv ${multi_one_sam} ${multi_two_sam}
 	${diff_out}
 
 testOntUnsorted: mkout
-	${intronProspector} --unsorted --allow-anchor-indels --junction-bed=output/$@.juncs.bed --intron-bed=output/$@.introns.bed --intron-calls=output/$@.introns.tsv input/ont-out-of-order-targets.sam
+	${intron_prospector} --unsorted --allow-anchor-indels --junction-bed=output/$@.juncs.bed --intron-bed=output/$@.introns.bed --intron-calls=output/$@.introns.tsv input/ont-out-of-order-targets.sam
 	${diff_out}
 
 

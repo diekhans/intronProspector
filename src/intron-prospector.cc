@@ -1,4 +1,4 @@
-/* intronProspector.cc - command line program to extract 
+/* intron-prospector.cc - command line program to extract 
 
     Copyright (c) 2018-2025, Mark Diekhans, University of California, Santa Cruz
 
@@ -51,7 +51,7 @@ static const uint32_t DEFAULT_MIN_READ_COUNT = 0;
 static const Strandness DEFAULT_STRANDED = UNSTRANDED;
 
 static const char *usage_msg =
-#include "intronProspector.man.h"
+#include "intron-prospector.man.h"
     ;
 
 // Usage statement for this tool

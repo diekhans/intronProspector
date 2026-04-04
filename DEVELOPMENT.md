@@ -4,14 +4,15 @@
 - update CHANGELOG.md
 - update version in configure.ac
 - autoreconf -fi
-- make doc 
+- ./configure
+- make doc
   this builds help and manual pages from markdown
 - test:
   - make distclean
   - ./configure --prefix=/some/test/dir
-  - make
+  - make -j 32
+  - make -j 32 test
   - make install
-  - make test
 - git commit -am 'v1.5.0 release'
 - git tag v1.5.0
 - git push

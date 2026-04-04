@@ -1,4 +1,4 @@
-/* intronProspectorMerge.cc - merge from multiple intronProspector runs
+/* intron_prospector_merge.cc - merge from multiple intronProspector runs
 
     Copyright (c) 2018-2025, Mark Diekhans, University of California, Santa Cruz
 
@@ -46,7 +46,7 @@ using namespace std;
 static const uint32_t DEFAULT_MIN_READ_COUNT = 0;
 
 static const char *usage_msg =
-#include "intronProspectorMerge.man.h"
+#include "intron-prospector-merge.man.h"
     ;
 
 // Usage statement for this tool

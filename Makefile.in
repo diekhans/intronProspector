@@ -2,7 +2,7 @@
 PREFIX = @prefix@
 
 BINDIR = ${PREFIX}/bin
-DOCDIR = ${PREFIX}/share/doc/intronProspector-@PACKAGE_VERSION@
+DOCDIR = ${PREFIX}/share/doc/intron-prospector-@PACKAGE_VERSION@
 MANDIR = ${PREFIX}/share/man/man1
 
 .PHONY: all
@@ -18,12 +18,13 @@ install: install-bin install-doc
 
 install-bin:
 	mkdir -p ${BINDIR}
-	cp -f bin/intronProspector bin/intronProspectorMerge ${BINDIR}
+	cp -f bin/intron-prospector bin/intron-prospector-merge ${BINDIR}
+	cp -f src/intronProspector src/intronProspectorMerge ${BINDIR}
 
 install-doc:
 	mkdir -p ${DOCDIR} ${MANDIR}
-	cp -f docs/intronProspector.md docs/intronProspectorMerge.md ${DOCDIR}
-	cp -f man/intronProspector.1 man/intronProspectorMerge.1 ${MANDIR}
+	cp -f docs/intron-prospector.md docs/intron-prospector-merge.md ${DOCDIR}
+	cp -f man/intron-prospector.1 man/intron-prospector-merge.1 ${MANDIR}
 
 .PHONY: clean
 clean:

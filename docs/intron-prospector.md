@@ -25,7 +25,7 @@ not collected per chromosome.  This mode does not require a sorted BAM and is
 incompatible with `--pass-through`.  It may also improve the confidence
 scoring in some cases.
 
-The `intronProspectorMerge` program can be used to convert to from the
+The `intron-prospector-merge` program can be used to convert to from the
 `--intron-calls` format to other formats as well as merge the output from
 multiple `intronProspector` runs.
 

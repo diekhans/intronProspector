@@ -1,10 +1,10 @@
 # NAME
 
-**intronProspectorMerge** — Merge putative introns junctions calls made `intronProspector` and/or convert output formats
+**intron-prospector-merge** — Merge putative introns junctions calls made `intronProspector` and/or convert output formats
 
 # SYNOPSIS
 
-`intronProspectorMerge [options] [intronCallsTsv ...]`
+`intron-prospector-merge [options] [intronCallsTsv ...]`
 
 # DESCRIPTION
 

@@ -3,17 +3,17 @@ ROOT = ..
 OBJDIR = ${ROOT}/objs
 BINDIR = ${ROOT}/bin
 
-intronProspector = ${BINDIR}/intronProspector
-intronProspectorMerge = ${BINDIR}/intronProspectorMerge
+intron_prospector = ${BINDIR}/intron-prospector
+intron_prospector_merge = ${BINDIR}/intron-prospector-merge
 
 shared_SRCS = junctions.cc junctions_extractor.cc genome.cc zfstream.cc splice_juncs.cc
-intronProspector_SRCS =  intronProspector.cc
-intronProspectorMerge_SRCS = intronProspectorMerge.cc
-SRCS = ${shared_SRCS} ${intronProspector_SRCS} ${intronProspectorMerge_SRCS}
+intron_prospector_SRCS =  intron-prospector.cc
+intron_prospector_merge_SRCS = intron-prospector-merge.cc
+SRCS = ${shared_SRCS} ${intron_prospector_SRCS} ${intron_prospector_merge_SRCS}
 
 shared_OBJS = ${shared_SRCS:%.cc=${OBJDIR}/%.o}
-intronProspector_OBJS = ${intronProspector_SRCS:%.cc=${OBJDIR}/%.o}
-intronProspectorMerge_OBJS = ${intronProspectorMerge_SRCS:%.cc=${OBJDIR}/%.o}
+intron_prospector_OBJS = ${intron_prospector_SRCS:%.cc=${OBJDIR}/%.o}
+intron_prospector_merge_OBJS = ${intron_prospector_merge_SRCS:%.cc=${OBJDIR}/%.o}
 
 DEPENDS = ${SRCS:%.cc=%.depend}
 
@@ -24,13 +24,13 @@ LDFLAGS = @LDFLAGS@
 LIBS = @LIBS@
 
 .PHONY: all
-all: ${intronProspector} ${intronProspectorMerge}
+all: ${intron_prospector} ${intron_prospector_merge}
 
-${intronProspector}: ${shared_OBJS} ${intronProspector_OBJS}
+${intron_prospector}: ${shared_OBJS} ${intron_prospector_OBJS}
 	@mkdir -p $(dir $@)
 	${CXX} ${CXXFLAGS} ${LDFLAGS} -o $@ $^ ${LIBS}
 
-${intronProspectorMerge}: ${shared_OBJS} ${intronProspectorMerge_OBJS}
+${intron_prospector_merge}: ${shared_OBJS} ${intron_prospector_merge_OBJS}
 	@mkdir -p $(dir $@)
 	${CXX} ${CXXFLAGS} ${LDFLAGS} -o $@ $^ ${LIBS}
 
@@ -42,7 +42,7 @@ ${OBJDIR}/%.o: %.cc Makefile
 
 .PHONY: clean
 clean:
-	rm -f ${OBJS} ${intronProspector} ${DEPENDS}
+	rm -f ${OBJS} ${intron_prospector} ${DEPENDS}
 
 .PHONY: distclean
 distclean: clean
@@ -57,7 +57,7 @@ doc:
 	${MAKE} dodoc dodoc=yes
 
 ifeq (${dodoc},yes)
-dodoc:  intronProspector.man.h intronProspectorMerge.man.h
+dodoc:  intron-prospector.man.h intron-prospector-merge.man.h
 
 %.man.h: ../docs/%.md mkManHelp.awk
 	pandoc -f markdown -t plain  $< >$@.txt.tmp

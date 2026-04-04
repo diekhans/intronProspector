@@ -33,7 +33,7 @@
 "sorted BAM and is incompatible with --pass-through. It may also improve\n"
 "the confidence scoring in some cases.\n"
 "\n"
-"The intronProspectorMerge program can be used to convert to from the\n"
+"The intron-prospector-merge program can be used to convert to from the\n"
 "--intron-calls format to other formats as well as merge the output from\n"
 "multiple intronProspector runs.\n"
 "\n"
