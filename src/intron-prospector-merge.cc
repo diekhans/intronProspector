@@ -136,6 +136,7 @@ class CmdParser {
                     cerr << PACKAGE_NAME << " " << PACKAGE_VERSION << " " << PACKAGE_URL << endl;
                     exit(0);
                 case '?':
+                    exit(1);
                 default:
                     cmd_error("bug: option not handled");
             }
