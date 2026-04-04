@@ -31,3 +31,5 @@
   creates built-in help files (src/*.man.h) and man pages (man/*.1)
   and is run with:
       `make doc`
+
+  See DEVELOPMENT.md for release instructions

@@ -1,5 +1,9 @@
 # Development
 
+Notes:
+* The configure script is kept current it git, which allows builds from github
+  generated release download archives.
+
 ## Making a release:
 - update CHANGELOG.md
 - update version in configure.ac
@@ -18,3 +22,8 @@
 - git push
 - git push --tags
 - github draft a release with CHANGELOG text as description
+- in fork of https://github.com/bioconda/bioconda-recipes
+  update the version and sha256 in
+     bioconda-recipes/recipes/intron-prospector/meta.yaml
+  make a pull request to bioconda/bioconda-recipes
+

@@ -11,7 +11,7 @@ and [intron-prospector-merge manual page](docs/intron-prospector-merge.md)
 
 ## Installation
 
-[See INSTALL.md for instation](INSTALL.md)
+[See INSTALL.md for installation](INSTALL.md)
 
 The only dependencies are `htslib` and a modern C++ compiler
 
