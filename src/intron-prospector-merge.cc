@@ -1,4 +1,4 @@
-/* intron_prospector_merge.cc - merge from multiple intronProspector runs
+/* intron_prospector_merge.cc - merge from multiple intron-prospector runs
 
     Copyright (c) 2018-2025, Mark Diekhans, University of California, Santa Cruz
 

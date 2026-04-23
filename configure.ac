@@ -1,4 +1,4 @@
-AC_INIT([intron-prospector], 1.5.0)
+AC_INIT([intron-prospector], 1.5.1)
 
 ##
 # rebuild with:
@@ -7,7 +7,7 @@ AC_INIT([intron-prospector], 1.5.0)
 # requires autoconf-archive
 ##
 
-PACKAGE_URL='https://github.com/diekhans/intronProspector'
+PACKAGE_URL='https://github.com/diekhans/intron-prospector'
 AC_SUBST([PACKAGE_NAME])
 AC_SUBST([PACKAGE_URL])
 AC_SUBST([PACKAGE_VERSION])

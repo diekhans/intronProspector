@@ -1,6 +1,6 @@
 # NAME
 
-**intron-prospector-merge** — Merge putative introns junctions calls made `intronProspector` and/or convert output formats
+**intron-prospector-merge** — Merge putative introns junctions calls made `intron-prospector` and/or convert output formats
 
 # SYNOPSIS
 
@@ -8,7 +8,7 @@
 
 # DESCRIPTION
 
-Merge output of the `intronProspector` intron calls tab-separated (TSV) files, as created by the `--intron-calls` option.
+Merge output of the `intron-prospector` intron calls tab-separated (TSV) files, as created by the `--intron-calls` option.
 This program can also be used to convert the output format from a single run.
 
 Compressed intron calls TSV files are recognized if they end in `.gz`.
@@ -46,7 +46,7 @@ TSV and BED files will be automatically compressed with `gzip` if they end in `.
 
 `-f spec, --sj-filter=spec`
 
-> Filter based on splice junctions motif. A spec of `canon` keeps only canonical splice junctions (AT/AG, GC/AG, and AT/AC).  A spec of `all` passes all through. The `intronProspector` runs must have used a genome for this option to have an effect.
+> Filter based on splice junctions motif. A spec of `canon` keeps only canonical splice junctions (AT/AG, GC/AG, and AT/AC).  A spec of `all` passes all through. The `intron-prospector` runs must have used a genome for this option to have an effect.
 
 `-r INT, --min-read-count=INT`
 
@@ -54,13 +54,13 @@ TSV and BED files will be automatically compressed with `gzip` if they end in `.
 
 # BUGS
 
-See GitHub Issues: <https://github.com/diekhans/intronProspector/issues>
+See GitHub Issues: <https://github.com/diekhans/intron-prospector/issues>
 
 # AUTHOR
 
 Mark Diekhans <markd@ucsc.edu>
 
-Source available from <https://github.com/diekhans/intronProspector>
+Source available from <https://github.com/diekhans/intron-prospector>
 
 Base on code from RegTools <https://github.com/griffithlab/regtools>
 by Avinash Ramu <aramu@genome.wustl.edu>.

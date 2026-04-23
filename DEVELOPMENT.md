@@ -17,7 +17,7 @@ Notes:
   - make -j 32
   - make -j 32 test
   - make install
-- git commit -am 'v1.5.0 release'
+- git commit -am '1.x.x release'
 - git tag v1.5.0
 - git push
 - git push --tags

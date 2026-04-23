@@ -1,10 +1,10 @@
 # NAME
 
-**intronProspector** — Extract putative intron junctions from RNA-Seq alignments
+**intron-prospector** — Extract putative intron junctions from RNA-Seq alignments
 
 # SYNOPSIS
 
-`intronProspector [options] [readaligns ...]`
+`intron-prospector [options] [readaligns ...]`
 
 # DESCRIPTION
 
@@ -27,7 +27,7 @@ scoring in some cases.
 
 The `intron-prospector-merge` program can be used to convert to from the
 `--intron-calls` format to other formats as well as merge the output from
-multiple `intronProspector` runs.
+multiple `intron-prospector` runs.
 
 TSV and BED files will be automatically compressed with `gzip` if they end in `.gz`.
 
@@ -152,14 +152,14 @@ Secondary alignments are not used to support introns.
 
 Call junctions from a BAM file, also creating BEDs of junctions and introns:
 ```
-intronProspector --genome-fasta=thegenome.fa.gz --intron-calls=introns.tsv --junction-bed=juncs.bed --intron-bed=introns.bed reads.bam
+intron-prospector --genome-fasta=thegenome.fa.gz --intron-calls=introns.tsv --junction-bed=juncs.bed --intron-bed=introns.bed reads.bam
 ```
 
 Pipeline to call introns and create a CRAM file:
 ```
 cat reads.sam \
     | samtools sort -O sam  \
-    | ./intronProspector -c introns.tsv --genome-fasta=thegenome.fa.gz -p /dev/stdout \
+    | ./intron-prospector -c introns.tsv --genome-fasta=thegenome.fa.gz -p /dev/stdout \
     | samtools view -O CRAM -T grch38.fa >reads.cram
 ```
 Note that the `cat` command could be an aligner outputting a SAM file and that the genome FASTA file must be index by `samtools faidx`.
@@ -167,13 +167,13 @@ Note that the `cat` command could be an aligner outputting a SAM file and that t
  
 # BUGS
 
-See GitHub Issues: <https://github.com/diekhans/intronProspector/issues>
+See GitHub Issues: <https://github.com/diekhans/intron-prospector/issues>
 
 # AUTHOR
 
 Mark Diekhans <markd@ucsc.edu>
 
-Source available from <https://github.com/diekhans/intronProspector>
+Source available from <https://github.com/diekhans/intron-prospector>
 
 Base on code from RegTools <https://github.com/griffithlab/regtools>
 by Avinash Ramu <aramu@genome.wustl.edu>.
