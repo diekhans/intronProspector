@@ -1,0 +1,2 @@
+Error: can only have one input BAM with --bam-pass-through
+Use --help to get usage

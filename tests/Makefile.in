@@ -55,7 +55,7 @@ test: intron_prospectorTests intron_prospector_mergeTests
 # intron_prospector tests
 #####
 intron_prospectorTests: basicTests minReadCountTests multiTests fake10Tests regressTests ontTests multiBamTests \
-	sjfilterTests
+	sjfilterTests strandTagTests parityTests errorTests
 
 ###
 # basic tests
@@ -214,8 +214,9 @@ testSortBug: mkout
 #####
 # intron_prospector_merge tests
 #####
-intron_prospector_mergeTests: testBasic134Merge testBasic134MergeGz testFake10abMerge testStrandConflictMerge \
-	testSjFilterCanonMerge testSjFilterAllMerge testSjFilterDefaultMerge minReadCountMergeTests
+intron_prospector_mergeTests: testBasic134Merge testBasic134MergeGz testBasic134LstMerge testFake10abMerge \
+	testStrandConflictMerge testSjFilterCanonMerge testSjFilterAllMerge testSjFilterDefaultMerge \
+	minReadCountMergeTests mergeErrorTests
 
 testBasic134Merge: mkout
 	${intron_prospector_merge} --junction-bed=output/$@.juncs.bed --intron-bed=output/$@.introns.bed --intron-calls=output/$@.introns.tsv \
@@ -229,6 +230,13 @@ testBasic134MergeGz: mkout
 	${intron_prospector_merge} --junction-bed=output/$@.juncs.bed.gz --intron-bed=output/$@.introns.bed.gz --intron-calls=output/$@.introns.tsv.gz \
 	    output/testBasic1_gz.introns.tsv.gz output/testBasic3_gz.introns.tsv.gz output/testBasic4_gz.introns.tsv.gz
 	$(call diff_out_gz,testBasic134Merge)
+
+# same merge as testBasic134Merge but via --intron-calls-files list, exercising
+# the read_input_call_list path.  Uses existing testBasic134LstMerge expected files.
+testBasic134LstMerge: mkout
+	${intron_prospector_merge} --intron-calls-files=input/basic134.files.txt \
+	    --junction-bed=output/$@.juncs.bed --intron-bed=output/$@.introns.bed --intron-calls=output/$@.introns.tsv
+	${diff_out}
 
 testFake10abMerge: mkout
 	${intron_prospector_merge} --intron-calls=output/$@.introns.tsv \
@@ -333,6 +341,90 @@ testMultiSam: mkout
 testOntUnsorted: mkout
 	${intron_prospector} --unsorted --allow-anchor-indels --junction-bed=output/$@.juncs.bed --intron-bed=output/$@.introns.bed --intron-calls=output/$@.introns.tsv input/ont-out-of-order-targets.sam
 	${diff_out}
+
+
+##
+# Strand tag pass-through tests.  Exercise --set-XS-strand-tag and
+# --set-TS-strand-tag which write XS/TS tags into the pass-through BAM/SAM.
+##
+strandTagTests: testStrandTagAdd testStrandTagUpdate
+
+# STAR input has no XS tag; code should add XS and TS.
+testStrandTagAdd: mkout ${fake10_fa} ${fake10_fai}
+	${intron_prospector} ${conf0} --genome-fasta=${fake10_fa} --set-XS-strand-tag --set-TS-strand-tag \
+	    --pass-through=output/$@.sam ${fake10_star_sam}
+	${diff} expected/$@.sam output/$@.sam
+
+# hisat2 input already has XS tag; code should overwrite it via bam_aux_del + bam_aux_append.
+# Expected file was built with --set-XS-strand-tag only (no TS).
+testStrandTagUpdate: mkout ${fake10_fa} ${fake10_fai}
+	${intron_prospector} ${conf0} --genome-fasta=${fake10_fa} --set-XS-strand-tag \
+	    --pass-through=output/$@.sam ${fake10_hisat2_sam}
+	${diff} expected/$@.sam output/$@.sam
+
+##
+# Parity check: --unsorted code path should produce same output as the
+# per-target code path for a properly sorted BAM.  Guards against divergence
+# between extract_junctions_by_target and extract_junctions_unsorted.
+##
+parityTests: testUnsortedSortedParity
+
+testUnsortedSortedParity: mkout
+	${intron_prospector} ${conf0} --junction-bed=output/$@.sorted.juncs.bed --intron-bed=output/$@.sorted.introns.bed --intron-calls=output/$@.sorted.introns.tsv ${basic_sam}
+	${intron_prospector} ${conf0} --unsorted --junction-bed=output/$@.unsorted.juncs.bed --intron-bed=output/$@.unsorted.introns.bed --intron-calls=output/$@.unsorted.introns.tsv ${basic_sam}
+	${diff} output/$@.sorted.introns.tsv output/$@.unsorted.introns.tsv
+	${diff} output/$@.sorted.juncs.bed output/$@.unsorted.juncs.bed
+	${diff} output/$@.sorted.introns.bed output/$@.unsorted.introns.bed
+
+##
+# Command-line error-path tests.  Each runs a bad invocation, captures
+# stderr, and diffs against a stored expected file.  To bootstrap the
+# expected output for a new rule:
+#   make -k <rule>            # will fail on missing expected
+#   cp output/<rule>.err expected/
+##
+errorTests: testStrandnessInvalid testExcludeInvalid testSjFilterInvalid \
+	testSjFilterCanonNoGenome testPassThroughMultiBam testStrandTagNoPassThrough
+
+# invalid --strandness value
+testStrandnessInvalid: mkout
+	${intron_prospector} --strandness=XX ${basic_sam} > output/$@.err 2>&1 || true
+	${diff} expected/$@.err output/$@.err
+
+# invalid --excludes category
+testExcludeInvalid: mkout
+	${intron_prospector} --excludes=bogus ${basic_sam} > output/$@.err 2>&1 || true
+	${diff} expected/$@.err output/$@.err
+
+# invalid --sj-filter value
+testSjFilterInvalid: mkout
+	${intron_prospector} --sj-filter=weird ${basic_sam} > output/$@.err 2>&1 || true
+	${diff} expected/$@.err output/$@.err
+
+# --sj-filter=canon requires --genome-fasta
+testSjFilterCanonNoGenome: mkout
+	${intron_prospector} --sj-filter=canon ${basic_sam} > output/$@.err 2>&1 || true
+	${diff} expected/$@.err output/$@.err
+
+# --pass-through rejected with multiple input BAMs
+testPassThroughMultiBam: mkout
+	${intron_prospector} ${conf0} --pass-through=output/$@.sam ${multi_one_sam} ${multi_two_sam} > output/$@.err 2>&1 || true
+	${diff} expected/$@.err output/$@.err
+
+# --set-XS-strand-tag requires --pass-through and --genome-fasta
+testStrandTagNoPassThrough: mkout
+	${intron_prospector} --set-XS-strand-tag ${basic_sam} > output/$@.err 2>&1 || true
+	${diff} expected/$@.err output/$@.err
+
+##
+# intron-prospector-merge error-path tests.
+##
+mergeErrorTests: testMergeNoInputs
+
+# no positional args and no --intron-calls-files
+testMergeNoInputs: mkout
+	${intron_prospector_merge} --intron-calls=output/$@.introns.tsv > output/$@.err 2>&1 || true
+	${diff} expected/$@.err output/$@.err
 
 
 ###

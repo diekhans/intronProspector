@@ -1,0 +1,2 @@
+Error: --set-XS-strand-tag and --set-TS-strand-tag require --pass-through and --genome-fasta
+Use --help to get usage
