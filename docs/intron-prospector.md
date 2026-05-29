@@ -83,12 +83,12 @@ TSV and BED files will be automatically compressed with `gzip` if they end in `.
 
 `-s STRING, --strandness=STRING`
 
+> Strand specificity of RNA library preparation.  Use `UN` for unstranded, `RF` for first-strand, `FR` for second-strand (case-insensitive).  The default is `UN`.  This is used to set the strand in the junction-format BED file.
+
 `-u, --unsorted`
 
 > SAM/BAM files are not sorted.  This will require more memory, as intron counts are
 > not collected per chromosome.
-
-> Strand specificity of RNA library preparation.  Use `UN` for unstranded, `RF` for first-strand, `FR` for second-strand (case-insensitive).  The default is `UN`.  This is used to set the strand in the junction-format BED file.
 
 `-X category, --exclude=category`
 
